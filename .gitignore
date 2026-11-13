@@ -1,0 +1,11 @@
+_site/
+_site.*
+*.deb.partial
+__pycache__/
+*.pyc
+.DS_Store
+# Private signing material must never be committed.
+*.key
+*secret*.asc
+*private*.asc
+gnupg/

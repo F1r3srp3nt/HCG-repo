@@ -1,0 +1,5 @@
+# Packages are stored as ordinary Git blobs, never as Git LFS pointers: GitHub Pages and APT
+# clients would otherwise publish/download a text pointer instead of the package.
+*.deb binary -filter -diff -merge
+*.png binary
+*.jpg binary
