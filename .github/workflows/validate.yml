@@ -1,0 +1,68 @@
+# Validates every pull request and branch push. Read-only: it never deploys or writes anything.
+name: Validate repository
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: Tool versions
+        run: |
+          python3 --version
+          dpkg-deb --version | head -1
+          gpg --version | head -1
+
+      - name: Refuse Git LFS pointers for packages
+        run: |
+          if git check-attr filter -- pool/x.deb | grep -q 'filter: lfs'; then
+            echo "::error::.deb files must not be tracked with Git LFS"; exit 1
+          fi
+          bad=$(git ls-files -z ':(glob)pool/**/*.deb' | xargs -0 -r grep -l '^version https://git-lfs.github.com/spec/v1' || true)
+          if [ -n "$bad" ]; then echo "::error::Git LFS pointer files in pool: $bad"; exit 1; fi
+
+      - name: Unit and regression tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Validate pool, lock, provenance and dependencies
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            bin/hcgrepo validate --base-ref "$BASE_SHA"
+          elif git rev-parse --verify -q origin/main >/dev/null && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            bin/hcgrepo validate --base-ref origin/main
+          else
+            bin/hcgrepo validate
+          fi
+
+      - name: Build and verify over local HTTP (project Pages prefix and custom-domain root)
+        run: bin/hcgrepo smoke
+
+      - name: Build preview snapshot for the GitHub Pages URL
+        run: SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build --target pages --out _site
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: site-preview
+          path: _site
+          retention-days: 7
+          include-hidden-files: true

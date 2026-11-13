@@ -1,0 +1,135 @@
+# Manual publication to GitHub Pages. Runs only when started by hand from the main branch.
+#
+# One-time setup (repository Settings → Pages): Source = "GitHub Actions".
+# Optional signing: see docs/SIGNING.md (environment "repo-signing", secret HCG_REPO_GPG_PRIVATE_KEY).
+name: Publish repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Public base URL to embed (pages = https://f1r3srp3nt.github.io/HCG-repo/, production = custom domain; only after docs/CUSTOM_DOMAIN.md)"
+        type: choice
+        options: [pages, production]
+        default: pages
+      require_signature:
+        description: "Fail unless Release is signed and the signature verifies"
+        type: boolean
+        default: false
+      confirm:
+        description: "Type PUBLISH to deploy"
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: repo-signing
+    permissions:
+      contents: read
+    outputs:
+      signed: ${{ steps.build.outputs.signed }}
+    steps:
+      - name: Confirm
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = "PUBLISH" ] || { echo "::error::Type PUBLISH to confirm"; exit 1; }
+
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          lfs: false
+          persist-credentials: false
+
+      - name: Tests and validation
+        run: |
+          python3 -m unittest discover -s tests
+          bin/hcgrepo validate
+          bin/hcgrepo smoke
+
+      - name: Import signing key (only if the secret exists)
+        id: key
+        env:
+          KEY: ${{ secrets.HCG_REPO_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "No signing key configured; building unsigned."; exit 0; fi
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          install -d -m 700 "$GNUPGHOME"
+          printf '%s\n' "$KEY" | gpg --batch --quiet --import >/dev/null 2>&1
+          fpr=$(python3 -c 'import tomllib;print(tomllib.load(open("config/repo.toml","rb"))["signing"]["fingerprint"].replace(" ",""))')
+          [ -n "$fpr" ] || { echo "::error::config/repo.toml [signing] fingerprint is empty"; exit 1; }
+          gpg --batch --list-secret-keys "$fpr" >/dev/null 2>&1 || { echo "::error::secret key for $fpr was not imported"; exit 1; }
+          echo "gnupghome=$GNUPGHOME" >> "$GITHUB_OUTPUT"
+          echo "fpr=$fpr" >> "$GITHUB_OUTPUT"
+
+      - name: Build complete snapshot
+        id: build
+        env:
+          TARGET: ${{ inputs.target }}
+          REQUIRE_SIG: ${{ inputs.require_signature }}
+          GNUPGHOME: ${{ steps.key.outputs.gnupghome }}
+          HCG_REPO_SIGNING_KEY: ${{ steps.key.outputs.fpr }}
+        run: |
+          [ -n "$GNUPGHOME" ] || unset GNUPGHOME
+          args=(--target "$TARGET" --out _site)
+          [ "$REQUIRE_SIG" = "true" ] && args+=(--require-signature)
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build "${args[@]}"
+          python3 -c 'import json;d=json.load(open("_site/build-info.json"));print("signed=" + str(d["signature_verified"]).lower())' >> "$GITHUB_OUTPUT"
+          find _site -type f | sort
+
+      - name: Remove key material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/gnupg"
+
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+
+  verify-deployed:
+    needs: [build, deploy]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Verify the live HTTPS endpoints (waits for the CDN to serve this revision)
+        env:
+          TARGET: ${{ inputs.target }}
+          SIGNED: ${{ needs.build.outputs.signed }}
+        run: |
+          base=$(python3 -c "import sys;sys.path.insert(0,'tools');from hcgrepo.config import load_config;print(load_config().base_url('$TARGET'))")
+          for i in $(seq 1 30); do
+            rev=$(curl -fsSL -H 'Cache-Control: no-cache' "${base}build-info.json?nocache=$i" | python3 -c 'import json,sys;print(json.load(sys.stdin)["revision"])' || true)
+            [ "$rev" = "$GITHUB_SHA" ] && break
+            echo "waiting for ${base} to serve $GITHUB_SHA (got '${rev:-nothing}')"; sleep 20
+          done
+          [ "$rev" = "$GITHUB_SHA" ] || { echo "::error::deployed site does not serve this revision"; exit 1; }
+          args=(--target "$TARGET" --list-urls)
+          [ "$SIGNED" = "true" ] && args+=(--require-signature --pubkey keys/hcg-repo-archive-key.asc)
+          bin/hcgrepo verify "${args[@]}"

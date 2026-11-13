@@ -1,0 +1,47 @@
+# HCG Repo configuration. Read by tools/hcgrepo (Python 3.11+, standard library only).
+#
+# Nothing in this file describes a package's version, architecture or dependencies: those
+# always come from the control file inside each .deb.
+
+[repository]
+origin = "HCG Repo"
+label = "HCG Repo"
+suite = "stable"
+codename = "hcg"
+version = "1.0"
+description = "Jailbreak apps, tweaks and command-line tools by Hakmi Capital Group."
+
+# Flat repository: Release, Packages and debs/ live in this sub-directory of the site.
+# The APT source URL is therefore <base_url><repo_subdir>/
+repo_subdir = "repo"
+
+# Architectures this repository accepts and announces in Release.
+#   iphoneos-arm64  rootless (Procursus layout under /var/jb, Dopamine, palera1n rootless, ...)
+#   iphoneos-arm    rootful  (files installed relative to /)
+# iphoneos-arm64e (roothide) is deliberately NOT accepted until a roothide package has been
+# built and device-tested; see docs/ROOTLESS_ROOTFUL.md.
+architectures = ["iphoneos-arm64", "iphoneos-arm"]
+
+# Packages in this namespace must have every in-namespace dependency satisfied by this repo.
+package_namespace = "com.hakmicapitalgroup."
+
+# Bundle identifiers that must never be shipped by a .deb in this repository, because they belong
+# to the standard, sandboxed App Store / TestFlight edition.
+reserved_bundle_ids = ["com.hakmicapitalgroup.hcgterminal"]
+
+[urls]
+# Public base URLs of the whole site (APT source = base + repo_subdir + "/").
+# Pick one with `--target pages|production`, or pass `--base-url` / HCG_REPO_BASE_URL.
+pages = "https://f1r3srp3nt.github.io/HCG-repo/"
+production = "https://repo.hakmicapitalgroup.com/"
+# Which one the publish workflow uses unless told otherwise. Switch to "production" only after
+# the custom-domain migration in docs/CUSTOM_DOMAIN.md is complete.
+default_target = "pages"
+
+[signing]
+# Repository-metadata signing (InRelease / Release.gpg). This is unrelated to iOS code signing.
+# When `required` is true, a build without a usable signing key fails.
+required = false
+# Fingerprint of the published archive key (keys/hcg-repo-archive-key.asc). Empty = no key yet.
+fingerprint = ""
+public_key_file = "keys/hcg-repo-archive-key.asc"

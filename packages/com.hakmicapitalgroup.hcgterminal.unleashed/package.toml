@@ -1,0 +1,48 @@
+# Presentation and review metadata for HCG Terminal Unleashed (jailbreak edition).
+#
+# This file publishes NOTHING by itself. The package appears in the index only after a real .deb
+# has been imported into pool/ with `bin/hcgrepo import-deb` (or one of the GitHub import
+# commands). Version, architecture and dependencies always come from that .deb's control file.
+# See docs/TERMINAL_UNLEASHED.md for the packaging review and what is still needed.
+
+[display]
+summary = "Jailbreak edition of HCG Terminal with a local shell in a pseudo-terminal."
+icon = "icon.png"
+header = "header.jpg"
+tint = "#2FD3E6"
+notes = """
+This is a **separate app** from the standard HCG Terminal on the App Store / TestFlight (bundle id `com.hakmicapitalgroup.hcgterminal`), which stays sandboxed.
+
+Installing this package does not remove the iOS sandbox or change security settings globally. It installs a copy of the app that is signed with `ldid` for use outside the app sandbox, where your jailbreak permits that. Shell sessions run as the app's own user (normally `mobile`), never automatically as root. Commands that need more privileges are yours to run with your own `sudo`/`su`.
+
+Before installing, delete any sideloaded copy of *HCG Terminal Unleashed* (installed with Xcode, an IPA or TrollStore): it uses the same bundle identifier.
+"""
+
+[review]
+# Paths (inside the package) allowed to be setuid/setgid. Keep empty: nothing should run as root
+# automatically. Keys must stay ABOVE the [review.entitlements."..."] tables below (TOML scoping).
+allow_setuid = []
+
+# Entitlements must be recorded here, per Mach-O path inside the package, before an import can
+# succeed. Fill this in only after running `bin/hcgrepo inspect <the real .deb>` and deciding the
+# set is appropriate for the jailbreaks you support. The HCG-Terminal CI currently signs with
+# HCGTerminal-Support/Unleashed-optional-entitlements.example.plist, which would be:
+#
+# [review.entitlements."var/jb/Applications/HCGTerminalUnleashed.app/HCGTerminalUnleashed"]
+# "com.apple.private.security.no-sandbox" = true
+#
+# Whether that set lets the app spawn a shell on a given jailbreak has NOT been verified on a device.
+
+
+# Per-version status. Every imported version is "experimental" until a passing device test is
+# recorded here, e.g.:
+#
+# [versions."0.1.0-2"]
+# status = "device-tested"
+# [[versions."0.1.0-2".device_tests]]
+# device = "iPhone 12 (A14)"
+# ios = "17.0"
+# jailbreak = "Dopamine 2.x (rootless)"
+# date = "2026-11-20"
+# result = "pass"
+# evidence = "docs/device-tests/2026-11-20-iphone12.md"

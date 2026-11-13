@@ -1,0 +1,31 @@
+# Products shown on the website in the "Planned" section.
+#
+# A product listed here is shown as NOT AVAILABLE, with no install button, unless a package with
+# one of its `package_ids` is actually present in the generated Packages index. In that case the
+# website shows the real indexed package instead and hides this planned entry.
+#
+# Never describe build or device-test results here that have not happened.
+
+[[products]]
+name = "HCG Terminal Unleashed"
+package_ids = ["com.hakmicapitalgroup.hcgterminal.unleashed"]
+kind = "App"
+status = "Packaging under review"
+summary = "Jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal using the access the device already grants. Separate from the sandboxed App Store / TestFlight edition."
+detail = "No .deb has been imported yet. It will be listed here only after a build passes repository validation; it will be labelled Experimental until device tests are recorded."
+
+[[products]]
+name = "HCG Nexus"
+package_ids = []
+kind = "Planned"
+status = "Not available"
+summary = "Planned HCG package. Details will be published when a build is ready."
+detail = ""
+
+[[products]]
+name = "HCG Sentinel"
+package_ids = []
+kind = "Planned"
+status = "Not available"
+summary = "Planned HCG package. Details will be published when a build is ready."
+detail = ""

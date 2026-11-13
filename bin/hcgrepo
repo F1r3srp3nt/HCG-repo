@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""HCG Repo tool. See docs/PUBLISHING.md. Requires Python 3.11+ and dpkg-deb."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+if sys.version_info < (3, 11):
+    sys.exit("hcgrepo needs Python 3.11 or later")
+from hcgrepo.cli import main  # noqa: E402
+
+sys.exit(main())

@@ -1,0 +1,33 @@
+# Dependencies that this repository does NOT provide, but that a package may legitimately
+# depend on because the device's bootstrap or another well-known repository provides them.
+#
+# The validator rejects any Depends / Pre-Depends alternative that is neither provided by a
+# package in this repository nor listed here. Add an entry only after checking that the named
+# package really exists for the target jailbreak; say who provides it.
+#
+# Version constraints on external packages cannot be checked here; they are checked by APT on
+# the device.
+
+[packages.firmware]
+provided_by = "Virtual package created by the bootstrap (Procursus `firmware`) from the running iOS version"
+
+[packages.uikittools]
+provided_by = "Procursus bootstrap (provides uicache, used to register apps on the home screen)"
+
+[packages.bash]
+provided_by = "Procursus bootstrap"
+
+[packages.zsh]
+provided_by = "Procursus bootstrap"
+
+[packages.coreutils]
+provided_by = "Procursus bootstrap"
+
+[packages.dpkg]
+provided_by = "Procursus bootstrap"
+
+[packages.apt]
+provided_by = "Procursus bootstrap"
+
+[packages.mobilesubstrate]
+provided_by = "Virtual package provided by the jailbreak's tweak injector (e.g. ElleKit on rootless)"
