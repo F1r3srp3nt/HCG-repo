@@ -105,6 +105,57 @@ def cmd_import_artifact(a, cfg) -> int:
         return _import(cfg, path, prov, a.dry_run)
 
 
+def cmd_import_plan(a, cfg) -> int:
+    from .importer import pending_requests
+    pend = pending_requests(cfg)
+    builds = [{"id": r["id"], "repository": r["source"]["repository"], "commit": r["source"]["commit"],
+               "recipe": r["source"]["recipe"], "layout": r["source"]["layout"],
+               "entitlements": r["source"]["entitlements"]} for r in pend if r["source"]["kind"] == "build"]
+    out = {"pending": [r["id"] for r in pend], "builds": builds}
+    if a.github_output:
+        with open(a.github_output, "a", encoding="utf-8") as f:
+            f.write(f"pending={json.dumps(out['pending'])}\nbuilds={json.dumps(builds)}\n")
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_import_request(a, cfg) -> int:
+    from .importer import GitHub, ImportError_, load_request, request_is_done, run_request, temp_workdir
+    rc = 0
+    for f in a.requests:
+        try:
+            r = load_request(Path(f))
+        except ImportError_ as exc:
+            print(f"REJECTED: {exc}")
+            rc = 1
+            continue
+        if request_is_done(cfg, r):
+            print(f"SKIPPED: {r['id']} ({r['request']['package']} {r['request']['version']} "
+                  f"{r['request']['architecture']}) is already in repo-lock.json")
+            continue
+        built = None
+        if r["source"]["kind"] == "build":
+            cand = sorted(Path(a.built_dir, r["id"]).glob("*.deb")) if a.built_dir else []
+            if len(cand) != 1:
+                print(f"REJECTED: {r['id']}: expected exactly one built .deb in {a.built_dir}/{r['id']}/, found {len(cand)}")
+                rc = 1
+                continue
+            built = cand[0]
+        builder = {"builder_run_url": a.builder_run_url} if a.builder_run_url else {}
+        with temp_workdir() as tmp:
+            try:
+                status, rep = run_request(cfg, r, GitHub(), Path(tmp), built, builder, dry_run=a.dry_run)
+            except ImportError_ as exc:
+                print(f"REJECTED: {r['id']}: {exc}")
+                rc = 1
+                continue
+        if rep.items:
+            print(rep.render())
+        print(f"{status.upper()}: {r['id']}")
+        rc |= 0 if status in ("imported", "already-present", "validated") else 1
+    return rc
+
+
 def cmd_withdraw(a, cfg) -> int:
     from .importer import withdraw
     fn = withdraw(cfg, a.package, a.version, a.arch, a.reason)
@@ -235,6 +286,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sha256")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(fn=cmd_import_artifact)
+
+    p = sp.add_parser("import-plan", help="list import requests in imports/ that are not yet in repo-lock.json")
+    p.add_argument("--github-output", help="also write pending/builds as GitHub Actions step outputs to this file")
+    p.set_defaults(fn=cmd_import_plan)
+
+    p = sp.add_parser("import-request", help="process import request files (imports/*.toml)")
+    p.add_argument("requests", nargs="+")
+    p.add_argument("--built-dir", help="directory with <request-id>/<file>.deb for build requests")
+    p.add_argument("--builder-run-url", help="URL of the CI run that built the package (provenance)")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(fn=cmd_import_request)
 
     p = sp.add_parser("withdraw", help="remove a version from the index; its lock record stays")
     p.add_argument("--package", required=True)

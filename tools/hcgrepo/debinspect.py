@@ -124,6 +124,15 @@ class DebInfo:
         return self.get("Architecture") or ""
 
     @property
+    def binary_min_os(self) -> str | None:
+        """Highest iOS deployment target recorded in any packaged Mach-O (what the code needs)."""
+        found = [s.min_os for b in self.binaries if b.info for s in b.info.slices if s.min_os]
+        if not found:
+            return None
+        import functools
+        return max(found, key=functools.cmp_to_key(debian.compare_versions))
+
+    @property
     def key(self) -> tuple[str, str, str]:
         return (self.package, self.version, self.architecture)
 
@@ -139,9 +148,11 @@ class DebInfo:
                       "minimum_os": a.min_os} for a in self.apps],
             "binaries": [{"path": b.path, "arches": b.info.arches if b.info else [],
                           "signed": all(s.signed for s in b.info.slices) if b.info else False,
-                          "entitlements": _merged_entitlements(b), "libraries": _dylibs(b)}
+                          "entitlements": _merged_entitlements(b), "libraries": _dylibs(b),
+                          "minimum_ios": sorted({s.min_os for s in b.info.slices if s.min_os}) if b.info else []}
                          for b in self.binaries],
             "maintainer_scripts": sorted(self.scripts),
+            "binary_minimum_ios": self.binary_min_os,
         }
 
 
@@ -336,7 +347,19 @@ def validate_deb(info: DebInfo, cfg: RepoConfig, meta: PackageMeta) -> Report:
     _check_binaries(info, meta, r)
     _check_apps(info, cfg, r)
     _check_scripts(info, r)
+    _check_min_os(info, r)
     return r
+
+
+def _check_min_os(info: DebInfo, r: Report) -> None:
+    need = info.binary_min_os
+    if not need or info.apps:  # apps are checked strictly in _check_apps
+        return
+    lo, _ = debian.firmware_bounds(_safe_get_relations(info))
+    if lo is None:
+        r.warn("firmware-undeclared", f"binaries require iOS {need} or later, but Depends declares no firmware range")
+    elif debian.compare_versions(_vfix(lo), _vfix(need)) < 0:
+        r.warn("firmware-below-binary", f"Depends allows firmware >= {lo}, but binaries require iOS {need}")
 
 
 def _check_control(info: DebInfo, cfg: RepoConfig, r: Report) -> None:

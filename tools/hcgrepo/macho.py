@@ -27,6 +27,9 @@ LC_RPATH = 0x8000001C
 LC_CODE_SIGNATURE = 0x1D
 LC_ENCRYPTION_INFO = 0x21
 LC_ENCRYPTION_INFO_64 = 0x2C
+LC_BUILD_VERSION = 0x32
+LC_VERSION_MIN_IPHONEOS = 0x25
+PLATFORM_IOS = 2
 
 CSMAGIC_EMBEDDED_SIGNATURE = 0xFADE0CC0
 CSMAGIC_CODEDIRECTORY = 0xFADE0C02
@@ -50,6 +53,7 @@ class Slice:
     signed: bool = False
     entitlements: dict | None = None
     encrypted: bool = False
+    min_os: str | None = None   # iOS deployment target recorded in the binary
 
 
 @dataclass
@@ -137,11 +141,22 @@ def _parse_thin(data: bytes) -> Slice:
             if dataoff + datasize > len(data):
                 raise MachOError("code signature extends past end of file (truncated?)")
             sl.signed, sl.entitlements = _parse_signature(data[dataoff:dataoff + datasize])
+        elif cmd == LC_BUILD_VERSION and cmdsize >= 24:
+            platform, minos = struct.unpack("<II", body[8:16])
+            if platform == PLATFORM_IOS:
+                sl.min_os = _ver(minos)
+        elif cmd == LC_VERSION_MIN_IPHONEOS and cmdsize >= 16:
+            sl.min_os = _ver(struct.unpack("<I", body[8:12])[0])
         elif cmd in (LC_ENCRYPTION_INFO, LC_ENCRYPTION_INFO_64):
             cryptid = struct.unpack("<I", body[16:20])[0]
             sl.encrypted = cryptid != 0
         off += cmdsize
     return sl
+
+
+def _ver(v: int) -> str:
+    major, minor, patch = v >> 16, (v >> 8) & 0xFF, v & 0xFF
+    return f"{major}.{minor}" + (f".{patch}" if patch else "")
 
 
 def _lc_str(body: bytes, offset: int) -> str:
@@ -176,7 +191,7 @@ def _parse_signature(blob: bytes) -> tuple[bool, dict | None]:
 
 
 def build_test_macho(arch: str = "arm64", entitlements: dict | None = None, dylibs: list[str] | None = None,
-                     signed: bool = True, filetype: int = 2) -> bytes:
+                     signed: bool = True, filetype: int = 2, min_os: str | None = None) -> bytes:
     """Build a tiny, structurally valid (not runnable) thin Mach-O for tests."""
     cputype, sub = {"arm64": (CPU_TYPE_ARM64, 0), "arm64e": (CPU_TYPE_ARM64, 2),
                     "x86_64": (CPU_TYPE_X86_64, 3)}[arch]
@@ -186,6 +201,11 @@ def build_test_macho(arch: str = "arm64", entitlements: dict | None = None, dyli
         name = d.encode() + b"\0"
         name += b"\0" * (-(24 + len(name)) % 8)
         cmds += struct.pack("<IIIIII", LC_LOAD_DYLIB, 24 + len(name), 24, 0, 0, 0) + name
+        ncmds += 1
+    if min_os:
+        parts = [int(x) for x in min_os.split(".")] + [0, 0]
+        enc = (parts[0] << 16) | (parts[1] << 8) | parts[2]
+        cmds += struct.pack("<IIIIII", LC_BUILD_VERSION, 24, PLATFORM_IOS, enc, enc, 0)
         ncmds += 1
     sig = b""
     if signed:

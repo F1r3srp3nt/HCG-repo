@@ -1,21 +1,32 @@
 # Presentation and review metadata for HCG Terminal Unleashed (jailbreak edition).
-#
-# This file publishes NOTHING by itself. The package appears in the index only after a real .deb
-# has been imported into pool/ with `bin/hcgrepo import-deb` (or one of the GitHub import
-# commands). Version, architecture and dependencies always come from that .deb's control file.
-# See docs/TERMINAL_UNLEASHED.md for the packaging review and what is still needed.
+# Version, architecture and dependencies always come from the imported .deb's control file.
+# See docs/TERMINAL_UNLEASHED.md for the packaging review.
 
 [display]
-summary = "Jailbreak edition of HCG Terminal with a local shell in a pseudo-terminal."
+summary = "Jailbreak edition of HCG Terminal with a local shell in a pseudo-terminal, using only the access your device already grants."
 icon = "icon.png"
 header = "header.jpg"
 tint = "#2FD3E6"
 notes = """
 This is a **separate app** from the standard HCG Terminal on the App Store / TestFlight (bundle id `com.hakmicapitalgroup.hcgterminal`), which stays sandboxed.
 
-Installing this package does not remove the iOS sandbox or change security settings globally. It installs a copy of the app that is signed with `ldid` for use outside the app sandbox, where your jailbreak permits that. Shell sessions run as the app's own user (normally `mobile`), never automatically as root. Commands that need more privileges are yours to run with your own `sudo`/`su`.
-
-Before installing, delete any sideloaded copy of *HCG Terminal Unleashed* (installed with Xcode, an IPA or TrollStore): it uses the same bundle identifier.
+Installing this package does not remove the iOS sandbox or change security settings globally. It installs a copy of the app signed with `ldid` for use outside the app sandbox, where your jailbreak permits that. Shell sessions run as the app's own user (normally `mobile`), never automatically as root.
+"""
+limitations = """
+- **Requires iOS 17.0 or later** (the package declares `firmware (>= 17.0)`). Sileo hides it on iOS 16 and earlier, including the iPhone 13 Pro on iOS 16.5 / Dopamine that HCG Nexus targets.
+- **Not yet run on a physical device.** Whether your jailbreak lets this signature and entitlement (`com.apple.private.security.no-sandbox`) start a shell is unverified.
+- Rootless only (`iphoneos-arm64`).
+- The package's `postinst` calls `uicache` but does not declare `uikittools`. If the icon does not appear, run `uicache -a`.
+- Delete any sideloaded *HCG Terminal Unleashed* (Xcode, IPA, TrollStore) first: it uses the same bundle identifier.
+"""
+install = """
+1. Remove any sideloaded copy of *HCG Terminal Unleashed*.
+2. Install **HCG Terminal Unleashed** in Sileo.
+3. Open the app, then *Settings › Unleashed Environment › Run Shell Test*. *Verified working* means a shell can start. *Permission denied* means this jailbreak does not accept the package's signing; please report it.
+"""
+removal = """
+1. Sileo → *Installed* → **HCG Terminal Unleashed** → *Remove*. The removal script unregisters the app icon.
+2. Data the app stored in its own data folder may remain. The standard HCG Terminal and its data are not affected.
 """
 
 [review]
@@ -23,26 +34,15 @@ Before installing, delete any sideloaded copy of *HCG Terminal Unleashed* (insta
 # automatically. Keys must stay ABOVE the [review.entitlements."..."] tables below (TOML scoping).
 allow_setuid = []
 
-# Entitlements must be recorded here, per Mach-O path inside the package, before an import can
-# succeed. Fill this in only after running `bin/hcgrepo inspect <the real .deb>` and deciding the
-# set is appropriate for the jailbreaks you support. The HCG-Terminal CI currently signs with
-# HCGTerminal-Support/Unleashed-optional-entitlements.example.plist, which would be:
-#
-# [review.entitlements."var/jb/Applications/HCGTerminalUnleashed.app/HCGTerminalUnleashed"]
-# "com.apple.private.security.no-sandbox" = true
-#
-# Whether that set lets the app spawn a shell on a given jailbreak has NOT been verified on a device.
+# Reviewed entitlements per Mach-O. This is the set HCG-Terminal's own documented build signs the
+# .deb with (HCGTerminal-Support/Unleashed-optional-entitlements.example.plist at commit ddc5197):
+# only leave the app sandbox; no platform-application, no task ports, no root. Whether it lets the
+# app spawn a shell on a given jailbreak has NOT been verified on a device.
+[review.entitlements."var/jb/Applications/HCGTerminalUnleashed.app/HCGTerminalUnleashed"]
+"com.apple.private.security.no-sandbox" = true
 
-
-# Per-version status. Every imported version is "experimental" until a passing device test is
-# recorded here, e.g.:
-#
-# [versions."0.1.0-2"]
+# Every version is "experimental" until a passing device test is recorded here, e.g.:
+# [versions."0.1.0-1"]
 # status = "device-tested"
-# [[versions."0.1.0-2".device_tests]]
-# device = "iPhone 12 (A14)"
-# ios = "17.0"
-# jailbreak = "Dopamine 2.x (rootless)"
-# date = "2026-11-20"
-# result = "pass"
-# evidence = "docs/device-tests/2026-11-20-iphone12.md"
+# [[versions."0.1.0-1".device_tests]]
+# device = "…"; ios = "17.x"; jailbreak = "…"; date = "…"; result = "pass"; evidence = "docs/device-tests/…"

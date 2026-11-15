@@ -1,0 +1,139 @@
+# Turns pinned import requests (imports/*.toml) into validated pool/ entries on the SAME branch, for
+# review. It never publishes and never runs on main. See imports/README.md.
+#
+#  plan    lists requests not yet in repo-lock.json
+#  build   (macOS) builds "build" requests from their pinned source commit with the project's own
+#          documented packaging command (tools/recipes/<recipe>.sh)
+#  import  fetches artifact/release requests, imports everything through `bin/hcgrepo import-request`
+#          (identity, checksum and full repository validation), then commits the result to the branch
+name: Prepare packages
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "imports/**"
+      - "tools/recipes/**"
+      - ".github/workflows/prepare-packages.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: prepare-packages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      pending: ${{ steps.plan.outputs.pending }}
+      builds: ${{ steps.plan.outputs.builds }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - id: plan
+        run: bin/hcgrepo import-plan --github-output "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.builds != '[]' && needs.plan.outputs.builds != ''
+    runs-on: macos-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        request: ${{ fromJSON(needs.plan.outputs.builds) }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: hcg-repo
+          persist-credentials: false
+      - name: Check out the pinned source commit
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: ${{ matrix.request.repository }}
+          ref: ${{ matrix.request.commit }}
+          path: src
+          persist-credentials: false
+      - name: Confirm the checkout is exactly the pinned commit
+        env:
+          WANT: ${{ matrix.request.commit }}
+        run: test "$(git -C src rev-parse HEAD)" = "$WANT"
+      - name: Toolchain
+        run: |
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          brew install ldid dpkg >/dev/null
+      - name: Build with the project's documented command
+        env:
+          RECIPE: ${{ matrix.request.recipe }}
+          LAYOUT: ${{ matrix.request.layout }}
+          ENTITLEMENTS: ${{ matrix.request.entitlements }}
+          REQ_ID: ${{ matrix.request.id }}
+        run: |
+          case "$RECIPE" in *[!a-z0-9-]*|"") echo "bad recipe"; exit 2 ;; esac
+          hcg-repo/tools/recipes/"$RECIPE".sh "$GITHUB_WORKSPACE/src" "$GITHUB_WORKSPACE/built/$REQ_ID" "$LAYOUT" "$ENTITLEMENTS"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: built-${{ matrix.request.id }}
+          path: built/${{ matrix.request.id }}/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+  import:
+    needs: [plan, build]
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.pending != '[]' && needs.build.result != 'failure' && needs.build.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write   # commit the validated import back to this branch
+      actions: read     # download artifacts
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: needs.plan.outputs.builds != '[]'
+        with:
+          pattern: built-*
+          path: built
+      - name: Arrange built packages by request id
+        run: |
+          mkdir -p built
+          for d in built/built-*; do [ -d "$d" ] && mv "$d" "built/${d#built/built-}"; done
+          find built -type f -name '*.deb' -exec sha256sum {} \;
+      - name: Import requests and commit the validated result to this branch
+        env:
+          # Artifacts of other repositories need a token that can read them. The workflow token
+          # works for public repositories; set HCG_IMPORT_TOKEN (read-only, actions:read) otherwise.
+          GITHUB_TOKEN: ${{ secrets.HCG_IMPORT_TOKEN || github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set +e
+          bin/hcgrepo import-request imports/*.toml --built-dir built --builder-run-url "$RUN_URL" > import.log 2>&1
+          rc=$?
+          set -e
+          cat import.log
+          bin/hcgrepo validate          # never commit an invalid pool, even if some requests succeeded
+          git add pool repo-lock.json
+          if git diff --cached --quiet; then
+            echo "nothing new to commit"
+          else
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Import packages from pinned requests" -m "$(grep -E '^(IMPORTED|SKIPPED|REJECTED)' import.log)" -m "Prepared by $RUN_URL"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+            git log --stat -1
+          fi
+          {
+            echo "## Import results"; echo '```'; grep -E '^(IMPORTED|SKIPPED|REJECTED|  ERROR|  warn)' import.log; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
