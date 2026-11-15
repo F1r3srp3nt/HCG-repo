@@ -15,7 +15,7 @@ There are three layers of checks. Any **error** blocks import, build and publica
 | Apps | missing/unreadable `Info.plist`, bundle id or executable; executable missing, not executable or not a Mach-O executable; bundle id reserved for the App Store edition; `MinimumOSVersion` not enforced by a `firmware (>= …)` dependency |
 | Maintainer scripts | not executable; no `#!`; scripts that edit sudoers, passwords, NVRAM, sshd config, APT sources or trusted keys, set setuid bits, or recursively delete system/user roots |
 | Metadata | missing icon/header file; `device-tested` without a complete, passing device-test entry |
-| Access | package of a product whose `access` is not `public` (`access-not-public`); package in the `com.hakmicapitalgroup.` namespace that no product in `config/products.toml` lists (`access-unmapped`). See [STORE_INTEGRATION.md](STORE_INTEGRATION.md) |
+| Access | package of a product whose `access` is not `public` (`access-not-public`); package in the `com.hakmicapitalgroup.` namespace that is neither listed by a product in `config/products.toml` nor in `public_packages` in `config/repo.toml` (`access-unmapped`). See [STORE_INTEGRATION.md](STORE_INTEGRATION.md) |
 
 ## 2. The whole repository (`validate`, `import-*`, `build`, CI)
 
@@ -50,33 +50,37 @@ There are three layers of checks. Any **error** blocks import, build and publica
 
 ## Regression tests (`python3 -m unittest discover -s tests`)
 
-92 tests in `tests/`, covering among others:
+87 tests in `tests/`. They cover:
 
 - **Damaged or fake packages:** truncated archives, corrupted xz payloads, LFS pointers, HTML error pages.
-- **Layout mistakes:** rootless/rootful/all path errors, setuid and world-writable files.
-- **Entitlements and Mach-O:** unreviewed or mismatched entitlements, unsigned and wrong-architecture binaries.
-- **Apps:** reserved bundle ids, missing firmware dependencies.
+- **Layout and permissions:** rootless/rootful/all path errors, setuid and world-writable files, ownership judged by name the way dpkg judges it.
+- **Entitlements and Mach-O:** unreviewed or mismatched entitlements, unsigned and wrong-architecture binaries, the binary minimum iOS against the declared firmware range, mixed certificate and ldid signatures inside an app.
+- **Apps:** reserved bundle IDs, missing firmware dependencies.
 - **Maintainer scripts:** forbidden script content.
 - **Pool and lock:** immutability and lock history, conflicting duplicates, dependency resolution by version and architecture.
-- **Path-prefix mistakes:**
-  - a site built for the custom domain but served under `/HCG-repo/`;
-  - a missing prefix;
-  - a double `repo/` prefix;
-  - an absolute `Filename`.
-- **Index and download integrity:** tampered `.deb`, an inconsistent compressed index, an index changed after `Release`, a stale unlisted `Packages.zst`, a `Release` missing an architecture, and an atomic build that keeps the previous snapshot.
-- **GitHub imports:** `latest`, a moved tag, a digest mismatch, a failed run, ambiguous artifacts, and the token not being forwarded to redirected downloads.
-- **GPG:** signing with a throw-away key, `gpgv` verification, tamper detection, and refusal of the wrong key.
-- **HCG Store:** product mapping and URLs, missing `access` treated as `login-required`, refusal of login-required, paid and unmapped packages by import, `validate`, `build` and `verify`, product page content and verification, `payment_endpoint` emission and validation.
+- **Import requests:** pinned identity (package, version, architecture, SHA-256); `latest`, short SHAs, unknown recipes and path escapes refused; build provenance recorded.
+- **Path-prefix mistakes:** a site built for the custom domain but served under `/HCG-repo/`, a missing prefix, a double `repo/`, an absolute `Filename`.
+- **Index integrity:** tampered `.deb`, inconsistent compressed index, an index changed after `Release`, a stale `Packages.zst`, `Release` missing an architecture.
+- **Build safety:** the build is atomic and keeps the previous snapshot.
+- **Site rules:**
+  - install actions appear only for indexed packages, never in "In development";
+  - detail pages include compatibility, screenshots, installation, limitations, changelog, removal and checksums;
+  - the native depiction includes screenshots;
+  - brand assets are present.
+- **GitHub imports:** `latest`, a moved tag, a digest mismatch, a failed run, ambiguous artifacts, the token not being forwarded to redirected downloads.
+- **GPG:** signing with a throw-away key, `gpgv` verification, tamper detection, the wrong key refused, and keyring packages for both layouts (refused without a key).
+- **HCG Store:** product mapping and URLs, missing `access` treated as `login-required`, refusal of login-required, paid and unmapped packages by import, `validate`, `build` and `verify`, the `public_packages` allowance, product page content and verification, `payment_endpoint` emission and validation.
 
-## Latest results (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4; tests, `validate` and `smoke` on 15 Nov 2026, the rest on 13 Nov 2026)
+## Latest results (15 Nov 2026)
 
 | Check | Result |
 |---|---|
-| `python3 -m unittest discover -s tests` | **92 tests, OK** |
-| `bin/hcgrepo validate` | OK: 0 packages, repository valid |
-| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (served at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (served at `/`): 15 URLs each (including the three product pages), 0 errors, 0 warnings |
-| Rehearsal: Terminal-shaped `.deb` (real script's control/scripts/layout, stand-in binary) → import → build → serve at `/HCG-repo/` → verify | OK after the entitlements were recorded: 16 URLs, 1 package, 0 errors. The rehearsal ran in a scratch copy and nothing was committed |
-| Website rendering (Chromium, 390 px and 1100 px) | No horizontal overflow, no failed requests |
-| Deployed HTTPS endpoints | **Not tested.** Pages is not enabled yet, and `*.github.io` is not reachable from the build sandbox. The publish workflow's `verify-deployed` job performs this check |
+| Unit and regression tests (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4) | **87 tests, OK** |
+| `bin/hcgrepo validate` | OK: 2 packages, repository valid. 3 warnings, all shown on the package pages: Nexus declares no firmware range; Terminal does not declare `uikittools`; Terminal embeds an Apple-signed dylib |
+| Production build `bin/hcgrepo build --target production` | OK: 2 packages, verified offline before replacing `_site` |
+| `bin/hcgrepo smoke` (production at `/`, old project URL at `/HCG-repo/`) | OK for both: 20 URLs each, including both `.deb` downloads with size, SHA-256 and SHA-512. 0 errors |
+| Package imports in CI (Prepare packages, [run 43673491962](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/43673491962)) | Nexus 0.2.0 fetched with a matching pinned SHA-256; Terminal 0.1.0-1 built on macOS from the pinned commit. Both imported, then re-inspected locally with identical hashes |
+| Website QA (Chromium: 1280 px, iPhone 13, iPhone SE) | No horizontal overflow; banner aspect 2.999 against 3.000, so not cropped; no failed requests; keyboard order and visible focus; reduced motion disables the ambient effect; Copy URL writes the exact URL; contrast: body 11.5:1, muted 6.6:1, primary button 10.6:1 |
+| Live HTTPS (Check transport, [run 43673491995](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/43673491995)) | **Fails.** DNS is correct, but GitHub serves `*.github.io` and has no certificate for the domain. Details and fix: `TRANSPORT.md` |
 | Sileo on a device | **Not tested.** See `DEVICE_CHECKLIST.md` |
-| Metadata signature | **None.** No key exists yet. The signing path is tested with throw-away keys only |
+| Metadata signature | **None.** No archive key yet. The signing path is tested with throw-away keys only |

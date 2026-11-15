@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import tempfile
+import tomllib
 import urllib.error
 import urllib.request
 import zipfile
@@ -34,9 +35,11 @@ def _now() -> str:
     return datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = False) -> tuple[str, Report]:
+def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = False,
+               expect: dict | None = None) -> tuple[str, Report]:
     """Validate `path` together with the existing pool and, if everything passes, add it.
 
+    `expect` may pin package/version/architecture/sha256; any mismatch rejects the import.
     Returns (status, report) where status is 'imported', 'already-present' or 'rejected'.
     """
     report = Report(Path(path).name)
@@ -44,6 +47,12 @@ def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = Fa
         info = inspect_deb(Path(path))
     except InspectError as exc:
         report.error("deb-unreadable", str(exc))
+        return "rejected", report
+    actual = {"package": info.package, "version": info.version, "architecture": info.architecture, "sha256": info.sha256}
+    for k, want in (expect or {}).items():
+        if want and actual.get(k) != (want.lower() if k == "sha256" else want):
+            report.error("unexpected-identity", f"expected {k} {want!r}, the package has {actual.get(k)!r}")
+    if not report.ok:
         return "rejected", report
 
     lock = load_lock(cfg)
@@ -256,3 +265,85 @@ def fetch_workflow_artifact(gh: GitHub, repo: str, run_id: int, commit: str, art
 
 def temp_workdir() -> tempfile.TemporaryDirectory:
     return tempfile.TemporaryDirectory(prefix="hcgrepo-import-")
+
+
+# ---------------------------------------------------------------------------- import requests
+#
+# imports/<name>.toml pins one package to an immutable source. The "Prepare packages" workflow
+# processes requests on GitHub's runners (which can download artifacts and run macOS builds) and
+# commits the validated result for review. See docs/PUBLISHING.md.
+
+RECIPES = {"hcg-terminal-unleashed"}
+LAYOUTS = {"rootless", "rootful"}
+SAFE_PATH = re.compile(r"^[A-Za-z0-9._/-]+$")
+REQUEST_KINDS = {"github-artifact", "github-release", "build"}
+
+
+def load_request(path: Path) -> dict:
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+    req, src = data.get("request", {}), data.get("source", {})
+    kind = src.get("kind")
+    problems = []
+    for k in ("package", "version", "architecture"):
+        if not req.get(k):
+            problems.append(f"[request] {k} is required")
+    if kind not in REQUEST_KINDS:
+        problems.append(f"[source] kind must be one of {sorted(REQUEST_KINDS)}")
+    if not REPO_RE.match(src.get("repository", "")):
+        problems.append("[source] repository must be OWNER/NAME")
+    if not SHA40.match(str(src.get("commit", "")).lower()):
+        problems.append("[source] commit must be a full 40-character SHA")
+    if src.get("sha256") and not re.fullmatch(r"[0-9a-f]{64}", src["sha256"].lower()):
+        problems.append("[source] sha256 must be 64 hex characters")
+    if kind == "github-artifact":
+        if not isinstance(src.get("run_id"), int) or not src.get("artifact"):
+            problems.append("github-artifact needs integer run_id and artifact")
+    elif kind == "github-release":
+        if not src.get("tag") or src.get("tag", "").lower() == "latest" or not src.get("asset"):
+            problems.append("github-release needs an exact tag (not 'latest') and asset")
+    elif kind == "build":
+        if src.get("recipe") not in RECIPES:
+            problems.append(f"build recipe must be one of {sorted(RECIPES)}")
+        if src.get("layout") not in LAYOUTS:
+            problems.append(f"build layout must be one of {sorted(LAYOUTS)}")
+        ent = src.get("entitlements", "")
+        if not SAFE_PATH.match(ent) or ".." in ent.split("/"):
+            problems.append("build entitlements must be a plain relative path inside the source repository")
+    if problems:
+        raise ImportError_(f"{path.name}: " + "; ".join(problems))
+    return {"id": path.stem, "file": str(path), "request": req, "source": src}
+
+
+def request_is_done(cfg: RepoConfig, r: dict) -> bool:
+    req = r["request"]
+    return any((e["package"], e["version"], e["architecture"]) == (req["package"], req["version"], req["architecture"])
+               for e in load_lock(cfg)["packages"])
+
+
+def pending_requests(cfg: RepoConfig) -> list[dict]:
+    d = cfg.root / "imports"
+    reqs = [load_request(p) for p in sorted(d.glob("*.toml"))] if d.exists() else []
+    return [r for r in reqs if not request_is_done(cfg, r)]
+
+
+def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: Path | None = None,
+                builder: dict | None = None, dry_run: bool = False) -> tuple[str, Report]:
+    req, src = r["request"], r["source"]
+    expect = {"package": req["package"], "version": req["version"], "architecture": req["architecture"],
+              "sha256": src.get("sha256")}
+    if src["kind"] == "github-artifact":
+        path, prov = fetch_workflow_artifact(gh, src["repository"], src["run_id"], src["commit"], src["artifact"],
+                                             src.get("member"), workdir, src.get("sha256"))
+    elif src["kind"] == "github-release":
+        path, prov = fetch_release_asset(gh, src["repository"], src["tag"], src["commit"], src["asset"],
+                                         workdir, src.get("sha256"))
+    else:
+        if built_deb is None:
+            raise ImportError_(f"{r['id']}: build requests need the built .deb (--deb)")
+        path = built_deb
+        prov = {"source": "source-build", "recipe": src["recipe"], "repository": src["repository"],
+                "commit": src["commit"].lower(), "layout": src["layout"], "entitlements_file": src["entitlements"]}
+        prov.update(builder or {})
+    prov["request"] = r["id"]
+    return import_deb(cfg, path, prov, dry_run=dry_run, expect=expect)

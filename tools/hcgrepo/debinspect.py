@@ -62,6 +62,15 @@ class FileEntry:
     gid: int
     size: int
     linkname: str = ""
+    uname: str = ""
+    gname: str = ""
+
+    @property
+    def root_owned(self) -> bool:
+        # dpkg installs by owner *name* when the tar header has one (Theos on macOS writes the names
+        # root/wheel with the builder's numeric ids), falling back to the numeric id otherwise.
+        return (self.uname == "root" if self.uname else self.uid == 0) and \
+               (self.gname in ("wheel", "root", "admin") if self.gname else self.gid == 0)
 
 
 @dataclass
@@ -124,6 +133,15 @@ class DebInfo:
         return self.get("Architecture") or ""
 
     @property
+    def binary_min_os(self) -> str | None:
+        """Highest iOS deployment target recorded in any packaged Mach-O (what the code needs)."""
+        found = [s.min_os for b in self.binaries if b.info for s in b.info.slices if s.min_os]
+        if not found:
+            return None
+        import functools
+        return max(found, key=functools.cmp_to_key(debian.compare_versions))
+
+    @property
     def key(self) -> tuple[str, str, str]:
         return (self.package, self.version, self.architecture)
 
@@ -139,9 +157,11 @@ class DebInfo:
                       "minimum_os": a.min_os} for a in self.apps],
             "binaries": [{"path": b.path, "arches": b.info.arches if b.info else [],
                           "signed": all(s.signed for s in b.info.slices) if b.info else False,
-                          "entitlements": _merged_entitlements(b), "libraries": _dylibs(b)}
+                          "entitlements": _merged_entitlements(b), "libraries": _dylibs(b),
+                          "minimum_ios": sorted({s.min_os for s in b.info.slices if s.min_os}) if b.info else []}
                          for b in self.binaries],
             "maintainer_scripts": sorted(self.scripts),
+            "binary_minimum_ios": self.binary_min_os,
         }
 
 
@@ -298,7 +318,7 @@ def inspect_deb(path: Path) -> DebInfo:
         name = _norm(m.name)
         kind = ("dir" if m.isdir() else "symlink" if m.issym() else "hardlink" if m.islnk()
                 else "file" if m.isfile() else "other")
-        info.files.append(FileEntry(name, kind, m.mode, m.uid, m.gid, m.size, m.linkname))
+        info.files.append(FileEntry(name, kind, m.mode, m.uid, m.gid, m.size, m.linkname, m.uname or "", m.gname or ""))
         if kind != "file":
             continue
         fobj = tf.extractfile(m)
@@ -337,25 +357,38 @@ def validate_deb(info: DebInfo, cfg: RepoConfig, meta: PackageMeta) -> Report:
     _check_binaries(info, meta, r)
     _check_apps(info, cfg, r)
     _check_scripts(info, r)
+    _check_min_os(info, r)
     return r
 
 
 def check_access(package: str, cfg: RepoConfig, r: Report) -> None:
     """Public-artifact gate. Everything in this repository is downloadable by anyone, so only
     packages of a `public` product may be here. Unmapped in-namespace packages fail closed."""
-    if not package:
+    if not package or package in cfg.public_packages:
         return
     product = cfg.product_for_package(package)
     if product is None:
         if cfg.namespace and package.startswith(cfg.namespace):
             r.error("access-unmapped",
                     f"{package} is not listed in any product's package_ids in config/products.toml; "
-                    "packages in this namespace are refused until they are mapped to a product with access = \"public\"")
+                    "packages in this namespace are refused until they are mapped to a product with access = \"public\" "
+                    "(or, for repository infrastructure, listed in config/repo.toml public_packages)")
         return
     if not product.public:
         r.error("access-not-public",
                 f"{package} belongs to {product.name} (access = {product.access!r}); login-required and paid "
                 "packages must never be published at a public URL, so they cannot be imported, indexed or built")
+
+
+def _check_min_os(info: DebInfo, r: Report) -> None:
+    need = info.binary_min_os
+    if not need or info.apps:  # apps are checked strictly in _check_apps
+        return
+    lo, _ = debian.firmware_bounds(_safe_get_relations(info))
+    if lo is None:
+        r.warn("firmware-undeclared", f"binaries require iOS {need} or later, but Depends declares no firmware range")
+    elif debian.compare_versions(_vfix(lo), _vfix(need)) < 0:
+        r.warn("firmware-below-binary", f"Depends allows firmware >= {lo}, but binaries require iOS {need}")
 
 
 def _check_control(info: DebInfo, cfg: RepoConfig, r: Report) -> None:
@@ -408,7 +441,7 @@ def _check_payload(info: DebInfo, meta: PackageMeta, r: Report) -> None:
                 r.warn("path-setuid-reviewed", f"{p} is setuid/setgid ({oct(f.mode)}) and listed in review.allow_setuid")
         if f.kind in ("file", "dir") and f.mode & 0o002 and not (f.kind == "dir" and f.mode & 0o1000):
             r.error("path-world-writable", f"{p} is world-writable ({oct(f.mode)})")
-        if f.uid != 0 or f.gid != 0:
+        if not f.root_owned:
             not_root_owned += 1
         in_jb = p == ROOTLESS_PREFIX or p.startswith(ROOTLESS_PREFIX + "/")
         if arch == "iphoneos-arm64":
@@ -507,6 +540,18 @@ def _check_apps(info: DebInfo, cfg: RepoConfig, r: Report) -> None:
             elif debian.compare_versions(_vfix(lo), _vfix(app.min_os)) < 0:
                 r.error("firmware-too-low",
                         f"Depends allows firmware >= {lo} but {app.path} requires iOS {app.min_os}")
+    for app in info.apps:
+        exe = binaries.get(f"{app.path}/{app.executable}") if app.executable else None
+        if not exe or not exe.info or any(s.cms for s in exe.info.slices):
+            continue
+        for b in info.binaries:
+            if b is exe or not b.info or not b.path.startswith(app.path + "/"):
+                continue
+            teams = sorted({s.team for s in b.info.slices if s.cms})
+            if teams:
+                r.warn("app-mixed-signatures",
+                       f"{b.path} keeps a certificate signature (team {', '.join(teams) or '?'}) while the app executable is "
+                       "ad-hoc/ldid-signed; whether the jailbreak loads it must be verified on a device")
     if info.apps:
         post = info.scripts.get("postinst", (0, b""))[1].decode("utf-8", "replace")
         if "uicache" not in post:

@@ -1,9 +1,9 @@
-# HCG products. Each one gets a product page at products/<key>/ on the website, linked to its
-# HCG Store page, and is shown in the "Planned" section of the landing page.
+# Projects shown on the website under "In development". Each one also gets a product page at
+# products/<key>/ on the website, linked to its HCG Store page.
 #
-# A product listed here is shown as NOT AVAILABLE, with no install button, unless a package with
+# A project listed here is shown as NOT INSTALLABLE, with no install action, unless a package with
 # one of its `package_ids` is actually present in the generated Packages index. In that case the
-# website shows the real indexed package instead and hides this planned entry.
+# website shows the real indexed package instead and hides this entry.
 #
 # Fields:
 #   key            product page route products/<key>/ and the HCG Store access-check key
@@ -26,10 +26,10 @@ key = "hcg-terminal-unleashed"
 name = "HCG Terminal Unleashed"
 package_ids = ["com.hakmicapitalgroup.hcgterminal.unleashed"]
 layouts = ["iphoneos-arm64", "iphoneos-arm"]
-kind = "App"
+kind = "Jailbreak app"
 status = "Packaging under review"
 summary = "Jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal using the access the device already grants. Separate from the sandboxed App Store / TestFlight edition."
-detail = "No .deb has been imported yet. It will be listed here only after a build passes repository validation; it will be labelled Experimental until device tests are recorded."
+detail = "Listed under Available packages once a validated build is published."
 store_slug = "hcg-terminal"
 store_edition = "unleashed"
 access = "login-required"
@@ -39,10 +39,10 @@ key = "hcg-nexus"
 name = "HCG Nexus"
 package_ids = ["com.hakmicapitalgroup.hcgnexus"]
 layouts = ["iphoneos-arm64"]
-kind = "Planned"
-status = "Release candidate"
-summary = "An HCG command panel with searchable shortcuts, workspaces, recent actions, HCG integration status and settings."
-detail = "Version 0.2.0 is the first device release candidate. It has not yet run on a physical device, and no package has been published. Rootless (iOS 15.0 and later) is the release target; rootful is not supported until it has been verified."
+kind = "Jailbreak tweak"
+status = "Packaging under review"
+summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
+detail = "Listed under Available packages once a validated build is published."
 store_slug = "hcg-nexus"
 store_edition = "jailbreak"
 access = "login-required"
@@ -51,9 +51,9 @@ access = "login-required"
 key = "hcg-sentinel"
 name = "HCG Sentinel"
 package_ids = []
-kind = "Planned"
-status = "Not available"
-summary = "A native SwiftUI iPhone and iPad app (iOS 14.7+) for authorised testing of your own devices, networks and services."
-detail = "HCG Sentinel has no Debian package and no jailbreak build, so it cannot be installed from HCG Repo. It is listed so that HCG Store and HCG Repo can link to each other."
+kind = "App — no jailbreak package"
+status = "In development"
+summary = "Toolkit for authorised testing of your own devices, networks and services."
+detail = "Sentinel ships as a standard app. Its optional privileged helper exists only as a specification, so there is nothing to install from this repository yet."
 store_slug = "hcg-sentinel"
 access = "login-required"

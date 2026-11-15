@@ -76,7 +76,7 @@ class SigningTests(RepoTestCase):
         res = build(self.cfg, PAGES, self.tmp / "site")
         self.assertFalse(res.signed)
         self.assertFalse((res.out_dir / "repo" / "Release.gpg").exists())
-        self.assertIn("Not signed yet", (res.out_dir / "index.html").read_text())
+        self.assertIn("Not signed: no archive key", (res.out_dir / "index.html").read_text())
 
 
 if __name__ == "__main__":

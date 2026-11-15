@@ -40,7 +40,7 @@
 
   function link(text, href, primary) {
     var a = document.createElement("a");
-    a.className = "btn " + (primary ? "btn-primary" : "btn-ghost");
+    a.className = "btn " + (primary ? "btn-primary" : "btn-metal");
     a.href = href;
     a.textContent = text;
     return a;
@@ -48,7 +48,7 @@
   function disabled(text) {
     var b = document.createElement("button");
     b.type = "button";
-    b.className = "btn btn-ghost";
+    b.className = "btn btn-metal";
     b.disabled = true;
     b.textContent = text;
     return b;

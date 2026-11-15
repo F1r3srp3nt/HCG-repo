@@ -129,6 +129,16 @@ class StoreTests(RepoTestCase):
             self.assertEqual(cli.main(["build", "--target", "pages", "--out", str(self.tmp / "site3")]), 1)
             self.assertEqual(cli.main(["inspect", str(tool_deb(self.work, package=NS + "unmapped"))]), 1)
 
+    def test_public_packages_allowance(self):
+        from hcgrepo.debinspect import check_access
+        r = Report("x")
+        check_access(NS + "repo-keyring", self.cfg, r)
+        self.assertTrue(r.ok, r.render())
+        self.edit_repo_toml('public_packages = ["com.hakmicapitalgroup.repo-keyring"]',
+                            'public_packages = ["com.hakmicapitalgroup.repo-keyring", "com.hakmicapitalgroup.hcgnexus"]')
+        with self.assertRaises(ConfigError):
+            self.reload()
+
     # --- product pages
     def test_product_pages(self):
         res = build(self.cfg, PAGES, self.tmp / "site")

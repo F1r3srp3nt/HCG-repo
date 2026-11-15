@@ -31,7 +31,7 @@ every product is `login-required` or `paid`.
 
 | From | To | URL |
 |---|---|---|
-| HCG Repo | Repo product page | `<repo base>products/<key>/` (for example `https://f1r3srp3nt.github.io/HCG-repo/products/hcg-nexus/`) |
+| HCG Repo | Repo product page | `<repo base>products/<key>/` (for example `https://repo.hakmicapitalgroup.com/products/hcg-nexus/`) |
 | Repo product page | Store product page | `<store>apps/<store_slug>[?edition=<store_edition>]` |
 | Repo product page | Store sign-in | `<store>auth/login?return_to=<URL-encoded /apps/<store_slug>[?edition=…]>` |
 | Repo product page | Access check | `GET <store>api/v1/repo/products/<key>/access` |
@@ -73,7 +73,9 @@ this for `inspect`, every `import-*`, `validate`, `build` and `verify`:
 
 - `access-not-public`: the package belongs to a product whose `access` is not `public`.
 - `access-unmapped`: the package is in the `com.hakmicapitalgroup.` namespace but no product lists
-  it. It is refused until it is mapped (fail closed).
+  it. It is refused until it is mapped (fail closed). The only exception is repository
+  infrastructure listed in `public_packages` in `config/repo.toml`, currently the archive keyring
+  `com.hakmicapitalgroup.repo-keyring`, which is public by nature and is not a product.
 - `index-access-*` (`verify`): a published index lists such a package.
 
 Product pages of non-public products say "Downloads are not available yet." and have no
@@ -95,7 +97,8 @@ if the file exists.
    package-manager integration work, so installation stays unavailable until it is done.
 2. **Store go-live.** The store, its sign-in, its access endpoint, its CORS policy for this site and
    its payment provider must be live before any of the store links work.
-3. **Domain migration.** After [CUSTOM_DOMAIN.md](CUSTOM_DOMAIN.md), the Store's links to Repo product
-   pages must change from `https://f1r3srp3nt.github.io/HCG-repo/products/<key>/` to
-   `https://repo.hakmicapitalgroup.com/products/<key>/`, and the store's CORS policy must allow the new
-   origin.
+3. **Domain and HTTPS.** Builds now embed `https://repo.hakmicapitalgroup.com/` (`default_target =
+   "production"`), and the old project URL redirects there. HTTPS on the domain does not work yet
+   ([TRANSPORT.md](TRANSPORT.md)). The Store should link to
+   `https://repo.hakmicapitalgroup.com/products/<key>/`, and its CORS policy must allow that origin.
+   The access check cannot be relied on until the Repo is served over HTTPS.

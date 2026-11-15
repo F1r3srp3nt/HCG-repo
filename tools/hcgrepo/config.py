@@ -162,6 +162,7 @@ class RepoConfig:
     architectures: list[str]
     namespace: str
     reserved_bundle_ids: list[str]
+    public_packages: list[str]
     urls: dict[str, str]
     default_target: str
     signing_required: bool
@@ -249,14 +250,21 @@ def load_config(root: Path | None = None) -> RepoConfig:
             raise ConfigError(f"[payments] endpoint must be a plain https:// URL, got {endpoint!r}")
         if not endpoint.startswith(store_base):
             raise ConfigError(f"[payments] endpoint must start with the HCG Store base URL {store_base}, got {endpoint!r}")
+    parsed_products = parse_products(products)
+    public_packages = list(r.get("public_packages", []))
+    for pkg in public_packages:
+        owner = next((p for p in parsed_products if pkg in p.package_ids), None)
+        if owner:
+            raise ConfigError(f"{pkg} is in [repository] public_packages and also mapped to product {owner.key!r}")
     return RepoConfig(
         root=root, origin=r["origin"], label=r["label"], suite=r["suite"], codename=r["codename"],
         version=str(r["version"]), description=r["description"], repo_subdir=sub, architectures=archs,
         namespace=r.get("package_namespace", ""), reserved_bundle_ids=list(r.get("reserved_bundle_ids", [])),
+        public_packages=public_packages,
         urls=urls, default_target=default_target, signing_required=bool(s.get("required", False)),
         signing_fingerprint=s.get("fingerprint", "").replace(" ", "").upper(),
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
-        external_deps=ext, products=parse_products(products), store_base_url=store_base,
+        external_deps=ext, products=parsed_products, store_base_url=store_base,
         payment_endpoint=endpoint,
     )
 
@@ -280,6 +288,10 @@ class PackageMeta:
     versions: dict[str, dict] = field(default_factory=dict)
     changelog: dict[str, str] = field(default_factory=dict)
     notes: str = ""
+    limitations: str = ""
+    install: str = ""
+    removal: str = ""
+    screenshots: list[dict] = field(default_factory=list)  # [{file, caption}]
 
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
@@ -306,6 +318,8 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
     meta = PackageMeta(
         package=package, directory=d, summary=disp.get("summary", ""), icon=disp.get("icon"),
         header=disp.get("header"), tint=disp.get("tint"), notes=disp.get("notes", ""),
+        limitations=disp.get("limitations", ""), install=disp.get("install", ""), removal=disp.get("removal", ""),
+        screenshots=list(disp.get("screenshots", [])),
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
         versions=data.get("versions", {}),
@@ -335,9 +349,14 @@ def parse_changelog(text: str) -> dict[str, str]:
 
 
 def check_package_meta(meta: PackageMeta, report: Report) -> None:
-    for asset in (meta.icon, meta.header):
+    for asset in (meta.icon, meta.header, *(s.get("file") for s in meta.screenshots)):
         if asset and (meta.directory is None or not (meta.directory / asset).is_file()):
             report.error("meta-missing-asset", f"package.toml references missing file {asset!r}")
+        if asset and not re.fullmatch(r"[A-Za-z0-9._-]+\.(png|jpe?g|webp)", asset):
+            report.error("meta-bad-asset-name", f"asset {asset!r} must be a plain .png/.jpg/.webp file name")
+    for s in meta.screenshots:
+        if not s.get("file") or not str(s.get("caption", "")).strip():
+            report.error("meta-screenshot", "every screenshot needs file and caption (used as alt text)")
     if meta.tint and not re.fullmatch(r"#[0-9A-Fa-f]{6}", meta.tint):
         report.error("meta-bad-tint", f"tint must be #RRGGBB, got {meta.tint!r}")
     for ver, v in meta.versions.items():

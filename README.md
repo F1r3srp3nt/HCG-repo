@@ -7,20 +7,19 @@ and command-line tools.
 
 | | |
 |---|---|
-| Test source (GitHub Pages, after the first publish) | `https://f1r3srp3nt.github.io/HCG-repo/repo/` |
-| Production source (after the custom-domain migration) | `https://repo.hakmicapitalgroup.com/repo/` |
-| Website | the same URLs without `repo/` |
-| Packages published | **none yet** (the repository is valid and empty) |
-| Metadata signing | supported, **no key configured yet** |
+| APT source | **`https://repo.hakmicapitalgroup.com/repo/`**. The old `https://f1r3srp3nt.github.io/HCG-repo/repo/` redirects to it |
+| Website | `https://repo.hakmicapitalgroup.com/` |
+| HTTPS | **Not working yet:** GitHub has not issued a certificate for the domain, so the site is served over http. Fix: `docs/TRANSPORT.md` |
+| Metadata signing | Implemented; **no archive key yet**, so `Release` is unsigned. Prerequisites: `docs/SIGNING.md` |
+| Packages on the review branch | HCG Nexus 0.2.0 (rootless) and HCG Terminal Unleashed 0.1.0-1 (rootless): validated, **Experimental**, not yet published. See `docs/PUBLICATION_PLAN.md` |
 
 ## Status
 
-- **Infrastructure:** complete and tested locally. 92 automated tests, plus build → serve under the real path prefix → verify over HTTP, for both base URLs.
-- **Deployment:** not yet done. GitHub Pages is not enabled for this repository yet, and publishing runs only from `main`. See [First deployment](#first-deployment).
-- **HCG Terminal Unleashed:** not published. No built `.deb` exists yet: HCG-Terminal's CI builds one but does not upload it. The packaging has been reviewed and two fixes are recommended; see [docs/TERMINAL_UNLEASHED.md](docs/TERMINAL_UNLEASHED.md).
-- **HCG Nexus, HCG Sentinel:** shown on the website as planned and unavailable, with no install button.
-- **HCG Store:** each product has a page at `products/<key>/` linking to its HCG Store page (the store is not live yet). Every product is currently `login-required`, and the validator refuses any package that is not `public`, so none can be published here. See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
-- **Device testing:** none. Nothing has been installed through Sileo on a device. Use [docs/DEVICE_CHECKLIST.md](docs/DEVICE_CHECKLIST.md).
+- **Website:** the "HCG Futuristic" design, using the approved banner and square icon. It is generated from the real index.
+- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums. They become public only after merge and a manual **Publish repository**.
+- **In development:** HCG Sentinel has no jailbreak package. It is listed under "In development" with no install action.
+- **HCG Store:** each product has a page at `products/<key>/` linking to its HCG Store page (the store is not live yet). Every product is currently `login-required`, and the validator refuses any HCG package that is not `public`. See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
+- **Device testing:** none yet. Use `docs/DEVICE_CHECKLIST.md`. Nothing is marked device-tested without recorded evidence.
 
 ## Quick start
 
@@ -32,9 +31,11 @@ bin/hcgrepo inspect path/to/package.deb             # review a package; does not
 bin/hcgrepo import-deb path/to/package.deb \
     --built-from F1r3srp3nt/HCG-Terminal@<40-char sha>   # validate + add to pool/ + lock + provenance
 bin/hcgrepo validate                                # whole pool, lock, provenance, dependencies
-bin/hcgrepo build --target pages --out _site        # complete static snapshot
-bin/hcgrepo serve --target pages --dir _site        # http://127.0.0.1:8000/HCG-repo/ (real prefix)
-bin/hcgrepo verify --target pages --fetch-url http://127.0.0.1:8000/HCG-repo/
+bin/hcgrepo build --out _site                       # complete static snapshot (default target: production)
+bin/hcgrepo serve --dir _site                       # http://127.0.0.1:8000/
+bin/hcgrepo verify --fetch-url http://127.0.0.1:8000/
+bin/hcgrepo import-plan                             # pinned import requests in imports/ not yet imported
+bin/hcgrepo keyring-deb --layout rootless --version 1.0   # once an archive key exists
 bin/hcgrepo smoke                                   # build + serve + verify, for every configured base URL
 python3 -m unittest discover -s tests               # test suite
 ```
@@ -56,20 +57,26 @@ bin/hcgrepo                       entry point
 tests/                            unit and regression tests
 .github/workflows/validate.yml    pull-request and push validation (read-only)
 .github/workflows/publish.yml     manual publication to GitHub Pages (workflow_dispatch, main only)
+.github/workflows/prepare-packages.yml  imports/builds pinned requests on review branches (never publishes)
+.github/workflows/check-transport.yml   read-only DNS / certificate / redirect diagnostics
+imports/                          pinned import requests (one .toml per package version and variant)
+tools/recipes/                    build recipes that run a project's own documented packaging command
 ```
 
 Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`, and `payment_endpoint` only once `[payments] endpoint` is set). The output also includes `products/<key>/index.html` and `build-info.json`.
 
-## First deployment
+## Publishing
 
-1. Merge this work into `main`. Publishing is refused from any other branch.
-2. In GitHub, open **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. This is the only repository setting that has to change.
-3. Go to **Actions → Publish repository → Run workflow**. Choose target `pages` and type `PUBLISH`.
-4. The workflow builds and verifies the snapshot, deploys it, then waits until `https://f1r3srp3nt.github.io/HCG-repo/build-info.json` reports this commit, and verifies every live HTTPS endpoint.
-5. Follow [docs/DEVICE_CHECKLIST.md](docs/DEVICE_CHECKLIST.md) on a device.
+1. Merge the review branch into `main`.
+2. Run **Actions → Publish repository** with target `production` and type `PUBLISH`.
+
+The workflow rebuilds and verifies the snapshot, deploys it, and checks every live URL. Before publishing packages, fix HTTPS (`docs/TRANSPORT.md`) and follow `docs/PUBLICATION_PLAN.md`.
 
 ## Documentation
 
+- [docs/PUBLICATION_PLAN.md](docs/PUBLICATION_PLAN.md): exactly which package, version and variant is ready, and the steps to publish.
+- [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis and the settings fix.
+- [imports/README.md](imports/README.md): pinned import requests and the **Prepare packages** workflow.
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): importing, provenance, immutability, building, publishing, withdrawing.
 - [docs/ROOTLESS_ROOTFUL.md](docs/ROOTLESS_ROOTFUL.md): architectures, paths, libroot, separate sources.
 - [docs/SIGNING.md](docs/SIGNING.md): repository-metadata signing and key management. This is not iOS code signing.

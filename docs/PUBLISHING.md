@@ -24,7 +24,15 @@ Versions, architectures and dependencies are never written by hand. They come fr
 
 ## 2. Import
 
-There are three import routes, and every route runs the same validation.
+**Preferred: pinned import requests.** Add `imports/<name>.toml` (format in `imports/README.md`) on a review
+branch and push. The **Prepare packages** workflow then does three things:
+1. It downloads the pinned artifact or release asset, or builds the package from the pinned commit with that project's documented command on a macOS runner.
+2. It imports the package with the expected package/version/architecture/SHA-256.
+3. It commits `pool/`, the provenance and the lock back to the branch for review.
+
+Nothing is published. The same requests can be run locally with `bin/hcgrepo import-request imports/<name>.toml`, which needs `GITHUB_TOKEN` for artifacts and `--built-dir` for build requests.
+
+The commands below are the manual routes. Every route runs the same validation.
 
 **Local file**:
 

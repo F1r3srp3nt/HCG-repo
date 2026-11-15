@@ -31,3 +31,9 @@ provided_by = "Procursus bootstrap"
 
 [packages.mobilesubstrate]
 provided_by = "Virtual package provided by the jailbreak's tweak injector (e.g. ElleKit on rootless)"
+
+[packages.ellekit]
+provided_by = "ElleKit tweak injector (default on Dopamine and palera1n rootless)"
+
+[packages.preferenceloader]
+provided_by = "PreferenceLoader, available from the jailbreak's default sources; Sileo offers it as a dependency"
