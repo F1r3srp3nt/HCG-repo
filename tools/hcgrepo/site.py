@@ -29,6 +29,7 @@ TINT = "#2FD3E6"
 ASSET_DIR = Path(__file__).parent / "assets"
 SOURCE_REPO = "https://github.com/F1r3srp3nt/HCG-repo"
 BANNER_WIDTHS = (800, 1200, 2000)
+REPO_BANNER = "hcg-repo-banner.jpg"   # 1200x400 JPEG under <repo>/assets/, used by Sileo
 # Branding files copied into the site (assets/brand/) and the site root (iOS looks for this name).
 BRAND_FILES = ("favicon.svg", "favicon-16.png", "favicon-32.png", "favicon-48.png", "favicon-192.png",
                "apple-touch-icon.png", "hcg-repo-icon-512.png", "hcg-repo-banner-1200.jpg",
@@ -309,7 +310,7 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     layouts = ", ".join(f"{describe_arch(v.info.architecture)} <span class=\"muted\">({e(v.info.architecture)})</span>" for v in current)
     ios_short, _ = ios_requirement(p)
     statuses = {v.meta.status(v.info.version) for v in current}
-    badge = status_badge("device-tested" if statuses == {"device-tested"} else "experimental")
+    badge = status_badge("device-tested" if statuses == {"device-tested"} else "experimental") + access_badge(p.meta.access)
     detail = f"{repo_rel}depictions/{e(pkg)}/"
     return f"""<li class="card pkg-card">
   <div class="pkg-head">
@@ -347,12 +348,15 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
   <img src="assets/brand/favicon.svg" alt="" width="56" height="56">
   <div>
     <h3>No packages are published yet</h3>
-    <p>The source is live and valid, so you can add it now and Sileo will refresh it without errors. Packages appear here as soon as a validated build is published. Projects still being built are listed under <a href="#in-development">In development</a>.</p>
+    <p>The source is live and valid, so you can add it now and Sileo will refresh it without errors. Public packages appear here as soon as a validated build is published. Packages that need HCG Connect sign-in or an HCG Store purchase are listed under <a href="#sign-in-required">Sign-in required</a>; projects still being built are under <a href="#in-development">In development</a>.</p>
   </div>
 </div>"""
 
     indexed = set(groups)
-    planned = [p for p in cfg.products if not (set(p.get("package_ids", [])) & indexed)]
+    not_indexed = [p for p in cfg.products if not (set(p.get("package_ids", [])) & indexed)]
+    restricted = [p for p in not_indexed if p.get("access") in ("connect", "paid")]
+    planned = [p for p in not_indexed if p not in restricted]
+    restricted_html = restricted_section(restricted, info.get("protected", {}), bool(cfg.payment_endpoint))
     dev_items = "".join(f"""<li class="card dev-card">
   <div class="dev-head"><h3>{e(p['name'])}</h3><span class="badge badge-muted">{e(p.get('status', 'Not available'))}</span></div>
   {f'<p class="dev-kind">{e(p["kind"])}</p>' if p.get('kind') else ''}
@@ -384,6 +388,7 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
 <h2 id="packages-h">Available packages</h2>
 {packages_html}
 </section>
+{restricted_html}
 {dev_html}
 
 <section id="install" class="section prose" aria-labelledby="install-h">
@@ -447,6 +452,40 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
     return page("HCG Repo", body, "", "HCG Repo: jailbreak apps, tweaks and tools by Hakmi Capital Group for Sileo.", base)
 
 
+ACCESS_LABELS = {"connect": "HCG Connect sign-in", "paid": "Paid · HCG Store"}
+
+
+def access_badge(level: str) -> str:
+    if level not in ACCESS_LABELS:
+        return ""
+    return f'<span class="badge badge-access">{e(ACCESS_LABELS[level])}</span>'
+
+
+def restricted_section(products: list[dict], protected: dict[str, list[dict]], endpoint_live: bool) -> str:
+    """Products that need HCG Connect sign-in or Store ownership and are not installable yet."""
+    if not products:
+        return ""
+    items = []
+    for p in products:
+        prepared = [x for pid in p.get("package_ids", []) for x in protected.get(pid, [])]
+        prep = ", ".join(f"{e(x['version'])} ({e(describe_arch(x['architecture']))})" for x in prepared)
+        items.append(f"""<li class="card dev-card restricted-card">
+  <div class="dev-head"><h3>{e(p['name'])}</h3>{access_badge(p.get('access', ''))}</div>
+  {f'<p class="dev-kind">{e(p["kind"])}</p>' if p.get('kind') else ''}
+  <p>{e(p.get('summary', ''))}</p>
+  {f'<p class="small">Build prepared: {prep}. Not downloadable here.</p>' if prep else ''}
+  <p class="small muted"><span class="badge badge-muted">Not yet available</span> {e(p.get('detail', ''))}</p>
+</li>""")
+    lead = ("These need HCG Connect sign-in; paid products also need HCG Store ownership. Authenticated delivery is not "
+            "live yet, so they cannot be installed, and their packages are not published as public files."
+            if not endpoint_live else "These need HCG Connect sign-in in Sileo.")
+    return f"""<section id="sign-in-required" class="section" aria-labelledby="restricted-h">
+<h2 id="restricted-h">Sign-in required</h2>
+<p class="section-lead">{lead}</p>
+<ul class="cards cards-dev" role="list">{''.join(items)}</ul>
+</section>"""
+
+
 # ---------------------------------------------------------------------------- package pages
 
 
@@ -468,7 +507,7 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
     builds_rows = "".join(
         f"""<tr><td>{describe_arch(v.info.architecture)} <code>{e(v.info.architecture)}</code></td>
 <td>{status_badge(v.meta.status(v.info.version))}</td>
-<td><a href="../../debs/{e(v.info.canonical_filename())}" download>.deb</a> <span class="muted">{v.info.size:,} bytes</span></td></tr>"""
+<td>{'Through HCG Connect in Sileo' if v.protected else f'<a href="../../debs/{e(v.info.canonical_filename())}" download>.deb</a>'} <span class="muted">{v.info.size:,} bytes</span></td></tr>"""
         for v in versions)
     compat = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in (
         ("Version", e(p.info.version)),
@@ -495,7 +534,7 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
         changes.append(f'<article class="change"><h3>{e(v.info.version)} {status_badge(v.meta.status(v.info.version))}</h3>'
                        f"{body_html}</article>")
     downloads = "".join(
-        f"""<li><a href="../../debs/{e(v.info.canonical_filename())}" download>{e(v.info.canonical_filename())}</a>
+        f"""<li>{e(v.info.canonical_filename()) + ' (delivered through HCG Connect after sign-in)' if v.protected else f'<a href="../../debs/{e(v.info.canonical_filename())}" download>{e(v.info.canonical_filename())}</a>'}
 <span class="small muted">{v.info.size:,} bytes</span><br>
 <span class="small">SHA-256 <code class="hash">{v.info.sha256}</code></span><br>
 <span class="small muted">Source: {provenance_html(provenance(cfg, v))}</span></li>""" for v in all_versions)
@@ -606,8 +645,8 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
             {"tabname": "Changelog", "class": "DepictionStackView", "views": changes},
         ],
     }
-    if p.meta.header:
-        dep["headerImage"] = f"{repo_url}assets/{pkg}/{p.meta.header}"
+    dep["headerImage"] = (f"{repo_url}assets/{pkg}/{p.meta.header}" if p.meta.header
+                          else f"{repo_url}assets/{REPO_BANNER}")
     return dep
 
 
@@ -641,6 +680,10 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
     lock = load_lock(cfg)
     published = {e["filename"] for e in lock["packages"] if e.get("status", "published") == "published"}
     pkgs = [p for p in pkgs if p.rel in published]
+    from .repo import protected_packages
+    protected = protected_packages(cfg)
+    if cfg.payment_endpoint:
+        pkgs = pkgs + protected   # indexed as cydia::commercial; files are never deployed
 
     out_dir = Path(out_dir).resolve()
     out_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -659,9 +702,21 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         date = build_info_date()
         (repo_dir / "Release").write_text(render_release(cfg, indexes, date), encoding="utf-8")
         for p in pkgs:
-            shutil.copyfile(cfg.root / p.rel, repo_dir / "debs" / p.info.canonical_filename())
+            if not p.protected:
+                shutil.copyfile(cfg.root / p.rel, repo_dir / "debs" / p.info.canonical_filename())
+        if cfg.payment_endpoint:
+            (repo_dir / "payment_endpoint").write_text(cfg.payment_endpoint.rstrip("/") + "/\n", encoding="utf-8")
         for icon in ("CydiaIcon.png", "CydiaIcon@2x.png", "CydiaIcon@3x.png"):
             shutil.copyfile(cfg.root / "branding" / icon, repo_dir / icon)
+        # Sileo shows sileo-featured.json at the top of this source's page (not in the Sources list,
+        # which only shows the icon). Images are drawn aspect-fill at itemSize, so itemSize is exactly
+        # 3:1 like the banner (1200x400), and displayText is off so no title covers the lettering.
+        (repo_dir / "assets").mkdir(exist_ok=True)
+        shutil.copyfile(cfg.root / "branding" / "hcg-repo-banner-1200.jpg", repo_dir / "assets" / REPO_BANNER)
+        featured = {"class": "FeaturedBannersView", "itemSize": "{330, 110}", "itemCornerRadius": 10,
+                    "banners": [{"url": f"{repo_url}assets/{REPO_BANNER}", "title": "HCG Repo",
+                                 "displayText": False, "hideShadow": True}]}
+        (repo_dir / "sileo-featured.json").write_text(json.dumps(featured, indent=2) + "\n", encoding="utf-8")
 
         # Per-package assets and depictions
         groups = _groups_from_index(pkgs, repo_dir / "Packages")
@@ -695,7 +750,12 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         # Website
         revision = git_revision(cfg.root)
         fpr = cfg.signing_fingerprint
+        prot_entries: dict[str, list[dict]] = {}
+        for e_ in load_lock(cfg)["packages"]:
+            if e_.get("status") == "protected":
+                prot_entries.setdefault(e_["package"], []).append(e_)
         info = {
+            "protected": prot_entries,
             "date_iso": date.isoformat(), "date_human": date.strftime("%d %b %Y, %H:%M UTC"), "revision": revision,
             "builds": len(pkgs),
             "signature": (f"Signed; verified at build time with gpgv against key {fpr[-16:]}" if res.signature_verified
@@ -725,6 +785,17 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             "signed": res.signed, "signature_verified": res.signature_verified, "signature_detail": res.signature_detail,
         }
         (tmp / "build-info.json").write_text(json.dumps(build_info, indent=2) + "\n", encoding="utf-8")
+
+        # Containment: no protected package may appear as a file or an install link in the public output.
+        prot_names = {p.info.canonical_filename() for p in protected}
+        leaked = [str(f.relative_to(tmp)) for f in tmp.rglob("*") if f.name in prot_names]
+        if leaked:
+            raise BuildError(f"protected package files in the public output: {leaked}")
+        if not cfg.payment_endpoint:
+            home = (tmp / "index.html").read_text(encoding="utf-8")
+            exposed = [p.info.package for p in protected if f"sileo://package/{p.info.package}" in home]
+            if exposed:
+                raise BuildError(f"install links for protected packages without a payment endpoint: {exposed}")
 
         # Verify the finished tree offline before it replaces anything.
         vr = verifymod.verify(base_url, tmp.as_uri() + "/", cfg=cfg,

@@ -33,6 +33,9 @@ class RepoTestCase(unittest.TestCase):
         (self.root / "packages").mkdir()
         (self.root / "pool").mkdir()
         (self.root / "repo-lock.json").write_text('{"packages": [], "schema": 1}\n')
+        # Fixture packages have no package.toml; strict access declarations are tested separately.
+        cfgp = self.root / "config" / "repo.toml"
+        cfgp.write_text(cfgp.read_text().replace("require_explicit = true", "require_explicit = false"))
         self.work = self.tmp / "work"
         self.work.mkdir()
         self.cfg = load_config(self.root)

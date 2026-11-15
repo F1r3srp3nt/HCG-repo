@@ -19,36 +19,49 @@ document records the transport status.
 
 It fails while HTTPS is not valid. Run it from **Actions → Check transport → Run workflow** after each settings change.
 
-## Result on 15 Nov 2026 (run 43673491995)
+## Result on 15 Nov 2026, 04:21 UTC (run 43676397361), after "HTTPS enabled" was reported
 
 | Check | Result |
 |---|---|
-| DNS | ✅ `repo.hakmicapitalgroup.com` → CNAME `f1r3srp3nt.github.io` → GitHub Pages addresses (185.199.108–111.153, 2606:50c0:8000–8003::153) |
-| Content over plain http | ✅ `http://repo.hakmicapitalgroup.com/` and `/repo/Release` → 200 (the published snapshot) |
-| Old source URL | ↪ `https://f1r3srp3nt.github.io/HCG-repo/repo/…` → 301 to **`http://`**`repo.hakmicapitalgroup.com/repo/…` (same path; existing sources keep working, but over http) |
-| Certificate served on 443 | ❌ GitHub's shared `*.github.io` certificate (Let's Encrypt), which does not cover `repo.hakmicapitalgroup.com` |
-| GitHub Pages record | ❌ custom domain `repo.hakmicapitalgroup.com`; **certificate state: none**; **HTTPS enforced: false** |
-| GitHub Pages build type | ⚠️ **`legacy`** ("Deploy from a branch"). This repository publishes with GitHub Actions. With the branch source, a push to `main` may redeploy the raw branch over the APT site |
+| Authoritative DNS | Nameservers `ns1/ns2/ns3.dnsdomene.net` (Domene). All three answer `repo.hakmicapitalgroup.com` → **CNAME `f1r3srp3nt.github.io`** |
+| Public resolvers | 1.1.1.1, 8.8.8.8, 9.9.9.9 and 208.67.222.222 all agree: GitHub Pages 185.199.108–111.153 |
+| Each address | `http://…/repo/Release` → 200, `Server: GitHub.com`, **no `cf-ray` (no Cloudflare)** |
+| GitHub Pages record | build type `workflow` (correct now); custom domain set; **certificate state: none; HTTPS enforced: false** |
+| Certificate on 443 | GitHub's shared `*.github.io`, which does not cover the domain, so `https://…/repo/Release`, `Packages*` and the icons all fail verification |
 
-So browsers show "Not Secure" because GitHub has never issued a certificate for the custom domain. That
-usually happens when the domain was saved before DNS pointed at GitHub. It is not a DNS or site-build problem.
+### Conclusion
 
-## Fix (repository settings, by you)
+- **Server side:** GitHub has not issued a certificate, so HTTPS cannot work yet. Whatever was switched on, it was not GitHub Pages' **Enforce HTTPS** (GitHub reports it off) and not a certificate at GitHub. This alone makes Sileo report "The certificate for this server is invalid".
+- **Device side:** **522 is Cloudflare's "origin timed out" status**, and Cloudflare is not in this domain's DNS or serving path. The phone is therefore not reaching GitHub the way every resolver above does. The likely causes are:
+  - a stale DNS answer for the old Domene web host (the earlier `php.ini` page);
+  - a VPN, DNS profile or content filter (for example Cloudflare WARP or a 1.1.1.1 profile);
+  - a proxy configured in Wi-Fi settings.
+- **So it is both:** the certificate issue is real for everyone, and the 522 is specific to how the phone reaches the domain.
 
-1. **Settings → Pages → Build and deployment → Source: GitHub Actions.** Choosing it saves immediately.
-2. **Re-trigger certificate provisioning.** Under **Custom domain**, click **Remove**, then enter
-   `repo.hakmicapitalgroup.com` again and **Save**. Wait for "DNS check successful".
-3. Wait until **Enforce HTTPS** can be ticked. GitHub issues the Let's Encrypt certificate, usually within
-   minutes and occasionally up to 24 hours. Then **tick Enforce HTTPS**.
-4. Run **Actions → Check transport**. It should pass and show:
-   - certificate state `approved`;
-   - a served certificate for `repo.hakmicapitalgroup.com`;
-   - `http://` → `https://` redirects;
-   - old URLs redirecting to `https://repo.hakmicapitalgroup.com/…`.
-5. Republish with **Publish repository** (target `production`). Its live check fails unless HTTPS verifies.
+## Fix (by you)
 
-Optional hardening: verify `hakmicapitalgroup.com` under **your GitHub account → Settings → Pages →
-Add a domain**, so no other GitHub account can claim the subdomain.
+**At GitHub (certificate):**
+1. Open **Settings → Pages**. Under **Custom domain**, click **Remove**, then enter `repo.hakmicapitalgroup.com` and **Save**. Wait for "DNS check successful". This makes GitHub request a new Let's Encrypt certificate.
+2. Wait until **Enforce HTTPS** can be ticked, usually within minutes and sometimes up to 24 hours, then **tick it**.
+3. If the checkbox is still unavailable after 24 hours, check CAA records at Domene. They must allow `letsencrypt.org`, or contain none. **Check transport** prints them.
+
+**At Domene (DNS):** keep exactly one record for `repo`: **CNAME → `f1r3srp3nt.github.io`**. Do **not** add A/AAAA records or a web-hotel subdomain for `repo`, and do **not** put a proxy/CDN (e.g. Cloudflare's orange cloud) in front of it while GitHub issues the certificate.
+
+**On the phone (522):**
+1. Turn off any VPN, DNS profile (Settings → General → VPN & Device Management) or Wi-Fi HTTP proxy.
+2. Toggle Airplane mode on and off, or restart, to flush cached DNS.
+3. Open `http://repo.hakmicapitalgroup.com/` in Safari. You should see the HCG Repo page. If you see a `php.ini` listing or a Cloudflare error page instead, the phone is still resolving the old host.
+4. Once **Check transport** passes, open `https://repo.hakmicapitalgroup.com/repo/Release` in Safari. It must show plain text starting `Origin: HCG Repo` with no certificate warning.
+
+## After the fix: refresh the source in Sileo
+
+1. Sileo → **Sources** → swipe left on the old source → **Delete**. This clears Sileo's cached failure, "Untitled Repo" and the generic icon.
+2. **Sources → + →** `https://repo.hakmicapitalgroup.com/repo/` → **Add**, or use **Add to Sileo** on the website.
+3. Pull down to refresh. Expected:
+   - the source is named **HCG Repo** with the square HCG icon;
+   - opening the source shows the HR banner at the top (from `sileo-featured.json`);
+   - the Sources-list row itself shows only the icon and name, which is all Sileo supports there.
+4. Expected package count: **0** while protected delivery is not live. Nexus is paid and Terminal Unleashed needs HCG Connect sign-in, so neither is in the public index yet (`ACCESS.md`). "Package not found" for Nexus is therefore expected until then. It does not mean refresh failed.
 
 ## Existing source URLs
 

@@ -3,6 +3,7 @@
 # A project listed here is shown as NOT INSTALLABLE, with no install action, unless a package with
 # one of its `package_ids` is actually present in the generated Packages index. In that case the
 # website shows the real indexed package instead and hides this entry.
+# access = "connect" | "paid" puts it under "Sign-in required" (HCG Connect / HCG Store).
 #
 # Never describe build or device-test results here that have not happened.
 
@@ -10,17 +11,19 @@
 name = "HCG Terminal Unleashed"
 package_ids = ["com.hakmicapitalgroup.hcgterminal.unleashed"]
 kind = "Jailbreak app"
-status = "Packaging under review"
+access = "connect"
+status = "Not yet available"
 summary = "Jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal using the access the device already grants. Separate from the sandboxed App Store / TestFlight edition."
-detail = "Listed under Available packages once a validated build is published."
+detail = "Requires iOS 17 or later. Installable in Sileo once HCG Connect sign-in is live."
 
 [[products]]
 name = "HCG Nexus"
 package_ids = ["com.hakmicapitalgroup.hcgnexus"]
 kind = "Jailbreak tweak"
-status = "Packaging under review"
+access = "paid"
+status = "Not yet available"
 summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
-detail = "Listed under Available packages once a validated build is published."
+detail = "Available in Sileo once HCG Connect sign-in and HCG Store purchases are live."
 
 [[products]]
 name = "HCG Sentinel"

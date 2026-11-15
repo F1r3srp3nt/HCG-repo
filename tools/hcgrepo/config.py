@@ -91,6 +91,8 @@ class RepoConfig:
     public_key_file: str
     external_deps: dict[str, dict]
     products: list[dict]
+    access_require_explicit: bool = True
+    payment_endpoint: str = ""
 
     @property
     def pool_dir(self) -> Path:
@@ -143,6 +145,10 @@ def load_config(root: Path | None = None) -> RepoConfig:
     for k, v in urls.items():
         urls[k] = normalize_base_url(v)
     s = cfg.get("signing", {})
+    acc = cfg.get("access", {})
+    endpoint = acc.get("payment_endpoint", "").strip()
+    if endpoint and not endpoint.startswith("https://"):
+        raise ConfigError("[access] payment_endpoint must be an https:// URL (Sileo refuses insecure providers)")
     return RepoConfig(
         root=root, origin=r["origin"], label=r["label"], suite=r["suite"], codename=r["codename"],
         version=str(r["version"]), description=r["description"], repo_subdir=sub, architectures=archs,
@@ -151,12 +157,18 @@ def load_config(root: Path | None = None) -> RepoConfig:
         signing_fingerprint=s.get("fingerprint", "").replace(" ", "").upper(),
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
         external_deps=ext, products=products,
+        access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint,
     )
 
 
 # ---------------------------------------------------------------------------- package metadata
 
 STATUSES = ("experimental", "device-tested")
+# public:  in the public index, .deb downloadable without sign-in.
+# connect: free, but only for users signed in with HCG Connect.
+# paid:    HCG Connect sign-in plus HCG Store ownership.
+# connect/paid packages are never stored in this public repository or deployed as public files.
+ACCESS_LEVELS = ("public", "connect", "paid")
 REQUIRED_TEST_FIELDS = ("device", "ios", "jailbreak", "date", "result", "evidence")
 
 
@@ -177,6 +189,8 @@ class PackageMeta:
     install: str = ""
     removal: str = ""
     screenshots: list[dict] = field(default_factory=list)  # [{file, caption}]
+    access: str = "public"
+    access_explicit: bool = False
 
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
@@ -205,6 +219,7 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
         header=disp.get("header"), tint=disp.get("tint"), notes=disp.get("notes", ""),
         limitations=disp.get("limitations", ""), install=disp.get("install", ""), removal=disp.get("removal", ""),
         screenshots=list(disp.get("screenshots", [])),
+        access=data.get("access", {}).get("level", "public"), access_explicit="level" in data.get("access", {}),
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
         versions=data.get("versions", {}),
@@ -242,6 +257,8 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
     for s in meta.screenshots:
         if not s.get("file") or not str(s.get("caption", "")).strip():
             report.error("meta-screenshot", "every screenshot needs file and caption (used as alt text)")
+    if meta.access not in ACCESS_LEVELS:
+        report.error("meta-bad-access", f"[access] level must be one of {ACCESS_LEVELS}, got {meta.access!r}")
     if meta.tint and not re.fullmatch(r"#[0-9A-Fa-f]{6}", meta.tint):
         report.error("meta-bad-tint", f"tint must be #RRGGBB, got {meta.tint!r}")
     for ver, v in meta.versions.items():

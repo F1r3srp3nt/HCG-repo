@@ -24,6 +24,13 @@ for ns in $(dig +short NS "$ZONE" | sort); do
   ans=$(dig +norecurse +noall +answer @"$ns" "$HOST" A "$HOST" AAAA 2>/dev/null | awk '{print $4, $5}' | tr '\n' ' ')
   echo "authoritative @$ns: ${ans:-<no answer>}"
 done
+# CAA records restrict which CAs may issue certificates. GitHub Pages uses Let's Encrypt, so any CAA
+# set on the host or the zone must allow letsencrypt.org, or GitHub can never issue the certificate.
+caa_host=$(dig +short CAA "$HOST" | tr '\n' ' '); caa_zone=$(dig +short CAA "$ZONE" | tr '\n' ' ')
+echo "CAA $HOST: ${caa_host:-<none>}   CAA $ZONE: ${caa_zone:-<none>}"
+if [ -n "$caa_host$caa_zone" ] && ! echo "$caa_host $caa_zone" | grep -qi 'letsencrypt.org'; then
+  echo "!! CAA records exist but do not allow letsencrypt.org: GitHub Pages cannot issue a certificate"
+fi
 for r in 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do
   ans=$(dig +noall +answer @"$r" "$HOST" A 2>/dev/null | awk '{print $4, $5, "ttl=" $2}' | tr '\n' ' ')
   echo "resolver $r: ${ans:-<no answer>}"
@@ -59,7 +66,7 @@ check_body() {  # url expect-regex label
   local url="$1" expect="$2" tmp code ctype first verdict
   tmp=$(mktemp)
   read -r code ctype < <(curl -sS -m 20 -o "$tmp" -w '%{http_code} %{content_type}\n' "$url" 2>/dev/null || echo "000 -")
-  first=$(head -c 200 "$tmp" | head -1 | tr -d '\r|' | cut -c1-60)
+  first=$(head -c 200 "$tmp" 2>/dev/null | head -1 2>/dev/null | tr -d '\r|' | cut -c1-60)
   if [ "$code" != 200 ]; then verdict="FAIL (status)"; fail=1
   elif head -c 512 "$tmp" | grep -qiE '<!doctype|<html|<head|<body'; then verdict="FAIL (HTML, not APT data)"; fail=1
   elif [ -n "$expect" ] && ! head -1 "$tmp" | grep -qE "$expect" && [ -s "$tmp" ]; then verdict="FAIL (unexpected content)"; fail=1

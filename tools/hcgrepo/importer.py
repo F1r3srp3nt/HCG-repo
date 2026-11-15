@@ -21,7 +21,9 @@ from pathlib import Path
 from . import __version__
 from .config import Report, RepoConfig, load_lock, save_lock
 from .debinspect import DebInfo, InspectError, inspect_deb
-from .repo import check_repository, expected_pool_rel, load_pool
+from .config import check_package_meta, load_package_meta
+from .debinspect import validate_deb
+from .repo import check_dependencies, check_repository, expected_pool_rel, load_pool
 
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -72,6 +74,10 @@ def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = Fa
         report.error("withdrawn-version", f"{info.package} {info.version} was withdrawn; publish a new version")
         return "rejected", report
 
+    meta = load_package_meta(cfg, info.package)
+    if meta.access != "public":
+        return _import_protected(cfg, info, meta, rel, provenance, report, same_key, dry_run)
+
     # Validate the candidate together with everything already in the pool.
     pool_report = Report("repository")
     pkgs = load_pool(cfg, pool_report, extra=[(info, rel)])
@@ -107,6 +113,96 @@ def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = Fa
     lock["packages"].extend(new_entries)
     save_lock(cfg, lock)
     return "imported", report
+
+
+def _protected_provenance(info: DebInfo, rel: str, provenance: dict) -> dict:
+    prov = dict(provenance)
+    prov.update({
+        "schema": 1, "importer": f"hcgrepo {__version__}", "imported_at": _now(),
+        "package": info.package, "version": info.version, "architecture": info.architecture,
+        "filename": rel, "size": info.size, "md5": info.md5, "sha1": info.sha1, "sha256": info.sha256,
+        "sha512": info.sha512, "control": info.control_text, "inspection": info.summary(),
+        "storage": "protected: this .deb is not stored in this public repository",
+    })
+    return prov
+
+
+def _import_protected(cfg: RepoConfig, info: DebInfo, meta, rel: str, provenance: dict, report: Report,
+                      same_key: list, dry_run: bool) -> tuple[str, Report]:
+    """connect/paid packages: validate fully, record control data and hashes, never store the file."""
+    r = validate_deb(info, cfg, meta)
+    check_package_meta(meta, r)
+    report.extend(r)
+    pool_report = Report("repository")
+    others = [p.info for p in load_pool(cfg, pool_report)]
+    from .repo import protected_packages
+    others += [p.info for p in protected_packages(cfg)]
+    check_dependencies(cfg, others + [info], pool_report)
+    for level, code, msg in pool_report.items:
+        if info.package in msg:
+            report.items.append((level, code, msg))
+    if not report.ok:
+        return "rejected", report
+    if dry_run:
+        return "validated", report
+    lock = load_lock(cfg)
+    prov_path = cfg.root / (rel + ".provenance.json")
+    prov_path.parent.mkdir(parents=True, exist_ok=True)
+    prov_path.write_text(json.dumps(_protected_provenance(info, rel, provenance), indent=2, sort_keys=True) + "\n",
+                         encoding="utf-8")
+    if not same_key:
+        entry = _lock_entry(info, rel)
+        entry["status"] = "protected"
+        lock["packages"].append(entry)
+        save_lock(cfg, lock)
+    report.warn("protected", f"{info.package} ({meta.access}) recorded as protected; the .deb was NOT stored here. "
+                             "Deliver this exact file (sha256 above) to HCG Connect's protected storage.")
+    return "protected", report
+
+
+def protect(cfg: RepoConfig, package: str, version: str, architecture: str, move_to: Path) -> Path:
+    """Move an imported package out of the public pool: keep its lock entry (status 'protected'),
+    control data and hashes; move the .deb to `move_to`, which must be outside this repository."""
+    move_to = Path(move_to).resolve()
+    if cfg.root.resolve() in [move_to, *move_to.parents]:
+        raise ImportError_("--move-to must be outside the repository, so the file is not committed again")
+    lock = load_lock(cfg)
+    hits = [e for e in lock["packages"] if (e["package"], e["version"], e["architecture"]) == (package, version, architecture)]
+    if not hits:
+        raise ImportError_(f"{package} {version} {architecture} is not in repo-lock.json")
+    e = hits[0]
+    if load_package_meta(cfg, package).access == "public":
+        raise ImportError_(f"set [access] level to connect or paid in packages/{package}/package.toml first")
+    src = cfg.root / e["filename"]
+    prov_path = cfg.root / (e["filename"] + ".provenance.json")
+    prov = json.loads(prov_path.read_text(encoding="utf-8")) if prov_path.exists() else {}
+    if src.exists():
+        info = inspect_deb(src)
+        if info.sha256 != e["sha256"]:
+            raise ImportError_(f"{src} does not match its lock entry")
+        prov = _protected_provenance(info, e["filename"], {k: v for k, v in prov.items()
+                                                            if k not in ("imported_at", "importer")})
+        move_to.mkdir(parents=True, exist_ok=True)
+        dest = move_to / src.name
+        shutil.copyfile(src, dest)
+        if hash_sha256(dest) != e["sha256"]:
+            raise ImportError_("copy to --move-to failed verification")
+        src.unlink()
+    elif not prov.get("control"):
+        raise ImportError_(f"{src} is missing and no control data is recorded; cannot protect")
+    else:
+        dest = move_to / src.name
+    prov["protected_at"] = _now()
+    prov_path.write_text(json.dumps(prov, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    e["status"] = "protected"
+    e["protected_at"] = prov["protected_at"]
+    save_lock(cfg, lock)
+    return dest
+
+
+def hash_sha256(path: Path) -> str:
+    import hashlib
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def _lock_entry(info: DebInfo, rel: str) -> dict:
