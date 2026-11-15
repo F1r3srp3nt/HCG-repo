@@ -12,8 +12,10 @@ from __future__ import annotations
 import bz2
 import gzip
 import hashlib
+import html
 import json
 import lzma
+import re
 import tempfile
 import urllib.error
 import urllib.request
@@ -30,6 +32,9 @@ DECOMPRESS = {"": lambda b: b, ".gz": gzip.decompress, ".bz2": bz2.decompress, "
               ".lzma": lzma.decompress}
 CLIENT_TRIES = ("Packages.zst", "Packages.xz", "Packages.lzma", "Packages.bz2", "Packages.gz", "Packages")
 PRESENTATION = ("SileoDepiction", "Depiction", "Icon", "Header")
+DEB_LINK = re.compile(r"""(?:href|src)\s*=\s*["']?[^"'\s>]*\.deb(?:[?#"'\s>]|$)""", re.I)
+INLINE_SCRIPT = re.compile(r"<script(?![^>]*\bsrc=)[^>]*>", re.I)
+NO_DOWNLOADS = "Downloads are not available yet."
 
 
 @dataclass
@@ -283,8 +288,36 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         for st in stanzas:
             if f"sileo://package/{debian.field(st, 'Package')}".encode() not in data:
                 r.error("site-missing-package", f"website does not offer {debian.field(st, 'Package')}")
+        for product in cfg.products if cfg else []:
+            if f'href="products/{product.key}/"'.encode() not in data:
+                r.error("site-product-link", f"website does not link the product page products/{product.key}/")
+    if cfg:
+        _check_store_pages(f, r, cfg, public_base, {debian.field(st, "Package") for st in stanzas})
     res.checked_urls = f.log
     return res
+
+
+def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, indexed: set[str]) -> None:
+    """Product pages link HCG Store, never link a .deb, and offer installation only for indexed packages."""
+    for p in cfg.products:
+        url = f"{public_base}products/{p.key}/"
+        code, data, _ = f.get(url)
+        if code != 200:
+            r.error("product-page-missing", f"product page {url} returns HTTP {code}")
+            continue
+        text = data.decode("utf-8", "replace")
+        for what, link in (("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p))):
+            if f'href="{html.escape(link)}"' not in text:
+                r.error("product-page-store-link", f"{url} does not link the {what} page {link}")
+        if INLINE_SCRIPT.search(text):
+            r.error("product-page-inline-script", f"{url} contains an inline script")
+        if DEB_LINK.search(text):
+            r.error("product-page-install-link", f"{url} links a .deb; product pages never offer a direct download")
+        offered = set(re.findall(r"sileo://package/([^\"'<>\s]+)", text))
+        for pkg in sorted(offered - indexed):
+            r.error("product-page-install-link", f"{url} offers sileo://package/{pkg}, which is not in the index")
+        if not set(p.package_ids) & indexed and NO_DOWNLOADS not in text:
+            r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
 
 
 def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:

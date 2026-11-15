@@ -1,34 +1,53 @@
-# Projects shown on the website under "In development".
+# Projects shown on the website under "In development". Each one also gets a product page at
+# products/<key>/ that links to its HCG Store page (docs/STORE_INTEGRATION.md).
 #
 # A project listed here is shown as NOT INSTALLABLE, with no install action, unless a package with
 # one of its `package_ids` is actually present in the generated Packages index. In that case the
 # website shows the real indexed package instead and hides this entry.
 # access = "connect" | "paid" puts it under "Sign-in required" (HCG Connect / HCG Store).
+# Who may download a package is decided by `[access] level` in packages/<id>/package.toml
+# (docs/ACCESS.md).
+#
+# Product page and HCG Store fields:
+#   key            product page route products/<key>/ and the HCG Store access-check key
+#   store_slug     HCG Store product page <store>apps/<store_slug>
+#   store_edition  optional; appended as ?edition=<store_edition>
+#   layouts        optional; architectures the product's packaging declares
 #
 # Never describe build or device-test results here that have not happened.
 
 [[products]]
+key = "hcg-terminal-unleashed"
 name = "HCG Terminal Unleashed"
 package_ids = ["com.hakmicapitalgroup.hcgterminal.unleashed"]
+layouts = ["iphoneos-arm64", "iphoneos-arm"]
 kind = "Jailbreak app"
 access = "connect"
 status = "Not yet available"
 summary = "Jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal using the access the device already grants. Separate from the sandboxed App Store / TestFlight edition."
 detail = "Requires iOS 17 or later. Installable in Sileo once HCG Connect sign-in is live."
+store_slug = "hcg-terminal"
+store_edition = "unleashed"
 
 [[products]]
+key = "hcg-nexus"
 name = "HCG Nexus"
 package_ids = ["com.hakmicapitalgroup.hcgnexus"]
+layouts = ["iphoneos-arm64"]
 kind = "Jailbreak tweak"
 access = "paid"
 status = "Not yet available"
 summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
 detail = "Available in Sileo once HCG Connect sign-in and HCG Store purchases are live."
+store_slug = "hcg-nexus"
+store_edition = "jailbreak"
 
 [[products]]
+key = "hcg-sentinel"
 name = "HCG Sentinel"
 package_ids = []
 kind = "App — no jailbreak package"
 status = "In development"
 summary = "Toolkit for authorised testing of your own devices, networks and services."
 detail = "Sentinel ships as a standard app. Its optional privileged helper exists only as a specification, so there is nothing to install from this repository yet."
+store_slug = "hcg-sentinel"

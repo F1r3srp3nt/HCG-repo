@@ -19,6 +19,13 @@ from hcgrepo.config import load_config  # noqa: E402
 
 NS = "com.hakmicapitalgroup."
 
+# A product listing the test packages, so product pages and "Product page" links can be tested.
+FIXTURE_IDS = ("testtool", "testapp", "libcore", "other", "ww", "suid", "scr", "noplist", "dep", "own")
+FIXTURE_PRODUCT = (
+    '\n[[products]]\nkey = "test-fixtures"\nname = "Test fixtures"\nstore_slug = "test-fixtures"\n'
+    'access = "public"\nstatus = "Test"\nsummary = "Packages built by the test suite."\npackage_ids = ['
+    + ", ".join(f'"{NS}{x}"' for x in FIXTURE_IDS) + "]\n")
+
 
 class RepoTestCase(unittest.TestCase):
     """Each test gets a private copy of config/ and branding/ with an empty pool and lock."""
@@ -30,6 +37,8 @@ class RepoTestCase(unittest.TestCase):
         self.root.mkdir()
         for d in ("config", "branding"):
             shutil.copytree(REPO / d, self.root / d)
+        with open(self.root / "config" / "products.toml", "a") as f:
+            f.write(FIXTURE_PRODUCT)
         (self.root / "packages").mkdir()
         (self.root / "pool").mkdir()
         (self.root / "repo-lock.json").write_text('{"packages": [], "schema": 1}\n')

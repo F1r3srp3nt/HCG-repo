@@ -168,6 +168,9 @@ main:focus { outline: none; }
   -webkit-user-select: all; user-select: all;
 }
 .btn-copy { flex: 0 0 auto; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; filter: none; }
+.btn-metal[disabled]:hover { color: inherit; box-shadow: inset 0 0 0 1px var(--line-2), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.hint:empty { display: none; }
 .hint { color: var(--muted); font-size: 0.88rem; margin: 10px 0 0; max-width: 70ch; }
 @media (max-width: 520px) {
   .actions-primary .btn { flex: 1 1 100%; }
@@ -235,6 +238,10 @@ main:focus { outline: none; }
 .note h3 { margin: 0 0 0.3rem; }
 .note-warn { border-color: rgba(231, 184, 102, 0.35); }
 .note-warn::before { background: linear-gradient(90deg, var(--warn), rgba(231, 184, 102, 0)); }
+.product .note p { margin: 0; }
+.store .actions { align-items: center; }
+.store[aria-busy="true"] .actions { opacity: 0.8; }
+.prose .store h2 { margin-top: 0; }
 .faq details { border: 1px solid var(--line); background: rgba(12, 18, 23, 0.9); margin: 8px 0; padding: 0 16px; }
 .faq summary, .repo-details summary { cursor: pointer; padding: 14px 0; font-weight: 650; color: var(--silver); list-style-position: outside; }
 .faq details[open] summary { color: var(--cyan); }

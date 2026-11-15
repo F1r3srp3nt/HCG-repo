@@ -40,7 +40,8 @@ There are three layers of checks. Any **error** blocks import, build and publica
 - **Website and repository icon:**
   - `CydiaIcon.png` must be a PNG.
   - The website root must link `sileo://source/<exact source URL>`.
-  - The website must offer each indexed package.
+  - The website must offer each indexed package and link every product page.
+- **Product pages (`products/<key>/`):** each must exist, link the HCG Store sign-in and product pages, and contain no inline script. They never link a `.deb`, offer `sileo://package/` only for packages in the index, and say "Downloads are not available yet." when none of the product's packages is indexed.
 
 `smoke` and the CI build for each configured base URL, serve the result **under that URL's path prefix** (`/HCG-repo/` for project Pages, `/` for the custom domain), and verify it over HTTP. Requests outside the prefix return 404, as they do on GitHub Pages.
 
@@ -65,8 +66,19 @@ There are three layers of checks. Any **error** blocks import, build and publica
   - brand assets are present.
 - **GitHub imports:** `latest`, a moved tag, a digest mismatch, a failed run, ambiguous artifacts, the token not being forwarded to redirected downloads.
 - **GPG:** signing with a throw-away key, `gpgv` verification, tamper detection, the wrong key refused, and keyring packages for both layouts (refused without a key).
+- **HCG Store:** product mapping and store URLs, invalid product entries, product access level from `[access] level`, product page content for public, protected and payment-endpoint cases, and the verifier's product-page checks (`tests/test_store.py`).
 
 ## Latest results (15 Nov 2026)
+
+After the HCG Store integration was merged with the protected-delivery change (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4):
+
+| Check | Result |
+|---|---|
+| Unit and regression tests | **107 tests, OK** |
+| `bin/hcgrepo validate --base-ref origin/main` | OK: 0 packages in the public pool; both packages held as `protected`; lock history valid |
+| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (at `/`): 19 URLs each, including the three product pages; empty public index; 0 errors, 0 warnings |
+
+Earlier, before the packages were protected:
 
 | Check | Result |
 |---|---|

@@ -6,7 +6,7 @@ import json
 import shutil
 from pathlib import Path
 
-from support import NS, RepoTestCase, app_deb, tool_deb
+from support import FIXTURE_PRODUCT, NS, RepoTestCase, app_deb, tool_deb
 from hcgrepo import debian
 from hcgrepo.config import normalize_base_url
 from hcgrepo.importer import import_deb
@@ -87,7 +87,9 @@ class BuildVerifyTests(RepoTestCase):
 
     def test_planned_product_replaced_when_indexed(self):
         (self.root / "config" / "products.toml").write_text(
-            '[[products]]\nname = "Test App Planned"\npackage_ids = ["%stestapp"]\nstatus = "Soon"\nsummary = "x"\n' % NS)
+            '[[products]]\nkey = "test-app"\nname = "Test App Planned"\nstore_slug = "test-app"\naccess = "public"\n'
+            'package_ids = ["%stestapp"]\nstatus = "Soon"\nsummary = "x"\n' % NS
+            + FIXTURE_PRODUCT.replace(f'"{NS}testapp", ', ""))
         self.reload()
         html = (self.build(PAGES).out_dir / "index.html").read_text()
         self.assertIn("Test App Planned", html)

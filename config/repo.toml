@@ -54,3 +54,11 @@ require_explicit = true
 # HTTPS base URL of the HCG Connect payment provider (Sileo Payment Provider API). Empty while
 # HCG Connect is not configured: connect/paid packages are then left out of the public index.
 payment_endpoint = ""
+
+[store]
+# HCG Store, where products are bought and access is granted. It is NOT live yet.
+# Product pages on this site (products/<key>/) link to <base_url>apps/<store_slug>[?edition=...]
+# and to <base_url>auth/login, and ask <base_url>api/v1/repo/products/<key>/access whether the
+# signed-in visitor owns the product. Must be https. HCG_STORE_BASE_URL overrides it.
+# See docs/STORE_INTEGRATION.md.
+base_url = "https://store.hakmicapitalgroup.com/"

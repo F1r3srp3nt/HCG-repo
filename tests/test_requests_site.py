@@ -111,8 +111,10 @@ class InspectionDetailTests(RepoTestCase):
 class SiteTests(RepoTestCase):
     def test_install_actions_only_for_indexed_packages(self):
         (self.root / "config" / "products.toml").write_text(
-            f'[[products]]\nname = "Indexed One"\npackage_ids = ["{NS}testtool"]\nstatus = "x"\nsummary = "s"\n'
-            '[[products]]\nname = "Future Thing"\npackage_ids = []\nstatus = "In development"\nsummary = "s"\n')
+            f'[[products]]\nkey = "indexed-one"\nname = "Indexed One"\nstore_slug = "indexed-one"\naccess = "public"\n'
+            f'package_ids = ["{NS}testtool"]\nstatus = "x"\nsummary = "s"\n'
+            '[[products]]\nkey = "future-thing"\nname = "Future Thing"\nstore_slug = "future-thing"\npackage_ids = []\n'
+            'status = "In development"\nsummary = "s"\n')
         self.reload()
         self.write_meta(NS + "testtool", '[display]\nsummary = "A tool."\nlimitations = "- Only a test."\n'
                         'removal = "1. Remove it."\nscreenshots = [{file = "shot.png", caption = "Main screen"}]\n',

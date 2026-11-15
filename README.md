@@ -19,6 +19,7 @@ and command-line tools.
 - **Website:** the "HCG Futuristic" design, using the approved banner and square icon. It is generated from the real index.
 - **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums. Both require HCG Connect, so they are recorded as protected: their `.deb` files are not in this repository and are not deployed. See `docs/ACCESS.md` for the Sileo payment-provider integration HCG Connect must provide.
 - **In development:** HCG Sentinel has no jailbreak package. It is listed under "In development" with no install action.
+- **HCG Store:** each product has a page at `products/<key>/` with “Sign in to check access” and “View in HCG Store” links (the store is not live yet). See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
 - **Device testing:** none yet. Use `docs/DEVICE_CHECKLIST.md`. Nothing is marked device-tested without recorded evidence.
 
 ## Quick start
@@ -43,9 +44,9 @@ python3 -m unittest discover -s tests               # test suite
 ## Layout
 
 ```
-config/repo.toml                  repository identity, architectures, base URLs, signing policy
+config/repo.toml                  repository identity, architectures, base URLs, signing policy, HCG Store URL
 config/external-dependencies.toml dependencies provided by the bootstrap or other repos (allow-list)
-config/products.toml              planned products shown as "not available" on the website
+config/products.toml              products: product pages, HCG Store mapping and access level
 packages/<id>/                    presentation + review metadata per package (icon, header, changelog,
                                   reviewed entitlements, device-test evidence). Never versions or deps.
 pool/<arch>/<pkg>_<ver>_<arch>.deb    imported packages (immutable), each with .provenance.json
@@ -63,7 +64,7 @@ imports/                          pinned import requests (one .toml per package 
 tools/recipes/                    build recipes that run a project's own documented packaging command
 ```
 
-Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`). The output also includes `build-info.json`.
+Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`, and `payment_endpoint` and `sileo-featured.json` as described in `docs/ACCESS.md`). The output also includes `products/<key>/index.html` and `build-info.json`.
 
 ## Publishing
 
@@ -85,3 +86,4 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 - [docs/TERMINAL_UNLEASHED.md](docs/TERMINAL_UNLEASHED.md): packaging review, and what is needed to publish it.
 - [docs/DEVICE_CHECKLIST.md](docs/DEVICE_CHECKLIST.md): physical-device test procedure.
 - [docs/VALIDATION.md](docs/VALIDATION.md): what the validator rejects, and the latest results.
+- [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md): product pages, HCG Store links and access states, and why installation is unavailable.

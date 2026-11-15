@@ -5,7 +5,8 @@ so the published indexes and package files always come from the same build.
 
 The website is generated from the index the build has just written: only packages that are really
 in Packages get a card, an install action or a detail page. Planned products come from
-config/products.toml and never get an install action.
+config/products.toml and never get an install action. Every product also gets a page at
+products/<key>/ that links to HCG Store (see docs/STORE_INTEGRATION.md).
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import __version__, debian
-from .config import Report, RepoConfig, load_lock
+from .config import Product, Report, RepoConfig, load_lock
 from .repo import (PoolPackage, build_info_date, check_repository, compress_indexes, git_revision,
                    load_pool, render_packages, render_release)
 
@@ -208,7 +209,10 @@ def provenance_html(prov: dict) -> str:
 # ---------------------------------------------------------------------------- page shell
 
 
-def page(title: str, body: str, rel: str, description: str, canonical: str, current: str = "") -> str:
+def page(title: str, body: str, rel: str, description: str, canonical: str, current: str = "",
+         scripts: tuple[str, ...] = ()) -> str:
+    extra = "".join(f'\n<script src="{rel}assets/{e(name)}" defer></script>' for name in scripts)
+
     def nav(href: str, label: str) -> str:
         cur = ' aria-current="page"' if current == label else ""
         return f'<a href="{rel}{href}"{cur}>{label}</a>'
@@ -249,7 +253,7 @@ def page(title: str, body: str, rel: str, description: str, canonical: str, curr
   <p><a href="{SOURCE_REPO}">Repository source on GitHub</a></p>
 </footer>
 <div class="sr-only" role="status" aria-live="polite" id="live"></div>
-<script src="{rel}assets/site.js" defer></script>
+<script src="{rel}assets/site.js" defer></script>{extra}
 </body>
 </html>
 """
@@ -312,6 +316,8 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     statuses = {v.meta.status(v.info.version) for v in current}
     badge = status_badge("device-tested" if statuses == {"device-tested"} else "experimental") + access_badge(p.meta.access)
     detail = f"{repo_rel}depictions/{e(pkg)}/"
+    product = cfg.product_for_package(pkg)
+    product_link = f'\n    <a class="btn btn-metal" href="products/{e(product.key)}/">Product page</a>' if product else ""
     return f"""<li class="card pkg-card">
   <div class="pkg-head">
     {icon}
@@ -331,7 +337,7 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
   <p class="pkg-tested">{e(tests_text(p))}</p>
   <div class="actions">
     <a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
-    <a class="btn btn-metal" href="{detail}">Details</a>
+    <a class="btn btn-metal" href="{detail}">Details</a>{product_link}
   </div>
 </li>"""
 
@@ -353,15 +359,16 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
 </div>"""
 
     indexed = set(groups)
-    not_indexed = [p for p in cfg.products if not (set(p.get("package_ids", [])) & indexed)]
-    restricted = [p for p in not_indexed if p.get("access") in ("connect", "paid")]
+    not_indexed = [p for p in cfg.products if not (set(p.package_ids) & indexed)]
+    restricted = [p for p in not_indexed if p.restricted]
     planned = [p for p in not_indexed if p not in restricted]
     restricted_html = restricted_section(restricted, info.get("protected", {}), bool(cfg.payment_endpoint))
     dev_items = "".join(f"""<li class="card dev-card">
-  <div class="dev-head"><h3>{e(p['name'])}</h3><span class="badge badge-muted">{e(p.get('status', 'Not available'))}</span></div>
-  {f'<p class="dev-kind">{e(p["kind"])}</p>' if p.get('kind') else ''}
-  <p>{e(p.get('summary', ''))}</p>
-  {f'<p class="small muted">{e(p["detail"])}</p>' if p.get('detail') else ''}
+  <div class="dev-head"><h3>{e(p.name)}</h3><span class="badge badge-muted">{e(p.status)}</span></div>
+  {f'<p class="dev-kind">{e(p.kind)}</p>' if p.kind else ''}
+  <p>{e(p.summary)}</p>
+  {f'<p class="small muted">{e(p.detail)}</p>' if p.detail else ''}
+  <div class="actions"><a class="btn btn-metal" href="products/{e(p.key)}/">Product page</a></div>
 </li>""" for p in planned)
     dev_html = f"""<section id="in-development" class="section" aria-labelledby="dev-h">
 <h2 id="dev-h">In development</h2>
@@ -461,20 +468,21 @@ def access_badge(level: str) -> str:
     return f'<span class="badge badge-access">{e(ACCESS_LABELS[level])}</span>'
 
 
-def restricted_section(products: list[dict], protected: dict[str, list[dict]], endpoint_live: bool) -> str:
+def restricted_section(products: list[Product], protected: dict[str, list[dict]], endpoint_live: bool) -> str:
     """Products that need HCG Connect sign-in or Store ownership and are not installable yet."""
     if not products:
         return ""
     items = []
     for p in products:
-        prepared = [x for pid in p.get("package_ids", []) for x in protected.get(pid, [])]
+        prepared = [x for pid in p.package_ids for x in protected.get(pid, [])]
         prep = ", ".join(f"{e(x['version'])} ({e(describe_arch(x['architecture']))})" for x in prepared)
         items.append(f"""<li class="card dev-card restricted-card">
-  <div class="dev-head"><h3>{e(p['name'])}</h3>{access_badge(p.get('access', ''))}</div>
-  {f'<p class="dev-kind">{e(p["kind"])}</p>' if p.get('kind') else ''}
-  <p>{e(p.get('summary', ''))}</p>
+  <div class="dev-head"><h3>{e(p.name)}</h3>{access_badge(p.access)}</div>
+  {f'<p class="dev-kind">{e(p.kind)}</p>' if p.kind else ''}
+  <p>{e(p.summary)}</p>
   {f'<p class="small">Build prepared: {prep}. Not downloadable here.</p>' if prep else ''}
-  <p class="small muted"><span class="badge badge-muted">Not yet available</span> {e(p.get('detail', ''))}</p>
+  <p class="small muted"><span class="badge badge-muted">Not yet available</span> {e(p.detail)}</p>
+  <div class="actions"><a class="btn btn-metal" href="products/{e(p.key)}/">Product page</a></div>
 </li>""")
     lead = ("These need HCG Connect sign-in; paid products also need HCG Store ownership. Authenticated delivery is not "
             "live yet, so they cannot be installed, and their packages are not published as public files."
@@ -663,6 +671,92 @@ def repo_index(cfg: RepoConfig, repo_url: str) -> str:
     return page("HCG Repo source", body, "../", "HCG Repo APT source root.", repo_url)
 
 
+# ---------------------------------------------------------------------------- product pages
+
+ACCESS_TEXT = {
+    "public": "Public. No sign-in is needed to install.",
+    "connect": "HCG Connect sign-in. Free for signed-in users.",
+    "paid": "Paid. HCG Connect sign-in and HCG Store ownership.",
+}
+NO_DOWNLOADS = "Downloads are not available yet."
+
+
+def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
+                 groups: dict[str, list[PoolPackage]]) -> str:
+    """products/<key>/: what the product is, whether it can be installed, and its HCG Store actions.
+
+    An install action appears only for a package that is in the generated index (public, or
+    protected and indexed as cydia::commercial once a payment endpoint is live). A product page never
+    links a .deb. The store actions are plain links; assets/store-access.js upgrades them once
+    HCG Store says what this visitor may do."""
+    p = product
+    rel = "../../"
+    level = cfg.product_level(p)
+    store_url = cfg.store_product_url(p)
+    login_url = cfg.store_login_url(p)
+    installable = [pkg for pkg in p.package_ids if pkg in groups]
+    pkgs = (", ".join(f"<code>{e(x)}</code>" for x in p.package_ids) if p.package_ids
+            else "None. This product has no Debian package.")
+    rows = [("Package", pkgs)]
+    if p.layouts:
+        rows.append(("Layouts" if installable else "Planned layouts",
+                     ", ".join(f"{describe_arch(a)} (<code>{e(a)}</code>)" for a in p.layouts)))
+    if level:
+        rows.append(("Access", e(ACCESS_TEXT[level])))
+    rows.append(("In HCG Repo", "In the package index" if installable else "Not in the package index"))
+    table = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in rows)
+    if installable:
+        install = "".join(
+            f"""<div class="actions actions-primary"><a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
+<a class="btn btn-metal" href="{rel}{cfg.repo_subdir}/depictions/{e(pkg)}/">Details</a></div>""" for pkg in installable)
+        install += ('<p class="hint">“Install in Sileo” opens the package once the HCG Repo source has been added.'
+                    + (" Sileo asks you to sign in with HCG Connect first." if level in ("connect", "paid") else "") + "</p>")
+    else:
+        if not p.package_ids:
+            reason = "This product has no Debian package, so it cannot be installed from HCG Repo."
+        elif level in ("connect", "paid"):
+            reason = ("It needs HCG Connect sign-in" + (" and HCG Store ownership" if level == "paid" else "")
+                      + ". Authenticated delivery through Sileo is not live yet, and its package is never published "
+                      "here as a public file.")
+        else:
+            reason = "No package has been published yet."
+        install = f'<div class="card note note-warn" role="note"><p><strong>{NO_DOWNLOADS}</strong> {e(reason)}</p></div>'
+    heading = "Buy Product" if level == "paid" else "Get access"
+    body = f"""
+<article class="dep prose product">
+<p class="crumbs"><a href="{rel}">HCG Repo</a> <span aria-hidden="true">›</span> <a href="{rel}#{'sign-in-required' if p.restricted else 'in-development'}">Products</a></p>
+<div class="dep-title card">
+  <div>
+    <h1>{e(p.name)}</h1>
+    <p class="pkg-id"><span class="badge badge-muted">{e(p.status)}</span>{access_badge(level)}{f' · {e(p.kind)}' if p.kind else ''}</p>
+    <p class="lead">{e(p.summary)}</p>
+  </div>
+</div>
+{f'<p>{e(p.detail)}</p>' if p.detail else ''}
+<section class="section-tight" aria-labelledby="facts-h">
+<h2 id="facts-h">Details</h2>
+<dl class="kv card">{table}</dl>
+</section>
+<section class="section-tight" aria-labelledby="inst-h">
+<h2 id="inst-h">Install</h2>
+{install}
+</section>
+<section class="section-tight card store" aria-labelledby="store-h" data-store-access data-store-base="{e(cfg.store_base_url)}"
+  data-access-url="{e(cfg.store_access_url(p))}" data-store-url="{e(store_url)}"
+  data-repo-url="{e(repo_url)}" data-product-name="{e(p.name)}" data-access-level="{e(level)}">
+<h2 id="store-h">{heading}</h2>
+<p class="muted">Purchases and access are handled by HCG Store and HCG Connect. HCG Repo never asks for your password.</p>
+<div class="actions" data-store-actions>
+  <a class="btn btn-primary" href="{e(login_url)}">Sign in to check access</a>
+  <a class="btn btn-metal" href="{e(store_url)}">View in HCG Store</a>
+</div>
+<p class="hint" data-store-status></p>
+</section>
+</article>"""
+    return page(f"{p.name} · HCG Repo", body, rel, p.summary or p.name, f"{base}products/{p.key}/",
+                scripts=("store-access.js",))
+
+
 # ---------------------------------------------------------------------------- build
 
 
@@ -773,6 +867,10 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         shutil.copyfile(cfg.root / "branding" / "apple-touch-icon.png", tmp / "apple-touch-icon.png")
         (tmp / "index.html").write_text(landing(cfg, base_url, repo_url, groups, info), encoding="utf-8")
         (repo_dir / "index.html").write_text(repo_index(cfg, repo_url), encoding="utf-8")
+        for product in cfg.products:
+            pdir = tmp / "products" / product.key
+            pdir.mkdir(parents=True)
+            (pdir / "index.html").write_text(product_page(cfg, base_url, repo_url, product, groups), encoding="utf-8")
         (tmp / "404.html").write_text(page("Not found · HCG Repo", '<section class="section prose"><div class="intro card">'
                                            '<h1>Page not found</h1><p>The page you asked for does not exist.</p>'
                                            f'<p><a class="btn btn-primary" href="{e(base_url)}">Go to HCG Repo</a></p></div></section>',

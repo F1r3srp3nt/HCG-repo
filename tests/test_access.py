@@ -58,7 +58,8 @@ class AccessTests(RepoTestCase):
 
     def test_build_without_endpoint_excludes_and_does_not_expose(self):
         (self.root / "config" / "products.toml").write_text(
-            f'[[products]]\nname = "Tool"\npackage_ids = ["{PKG}"]\naccess = "paid"\nstatus = "x"\nsummary = "s"\n')
+            f'[[products]]\nkey = "tool"\nname = "Tool"\nstore_slug = "tool"\npackage_ids = ["{PKG}"]\naccess = "paid"\n'
+            'status = "x"\nsummary = "s"\n')
         self.set_access("paid")
         import_deb(self.cfg, tool_deb(self.work), {"source": "t"})
         res = build(self.cfg, PROD, self.tmp / "site")
