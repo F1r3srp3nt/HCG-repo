@@ -81,6 +81,25 @@ this for `inspect`, every `import-*`, `validate`, `build` and `verify`:
 Product pages of non-public products say "Downloads are not available yet." and have no
 "Install in Sileo" button and no `.deb` link. `verify` checks this on every build.
 
+## Withdrawn packages
+
+Two packages were imported on `main` (PR #2) and then withdrawn under the HCG release policy (both products are `login-required`, and nothing login-gated may be published at a public URL) pending sign-in/access enforcement and launch approval. They were never published by the
+**Publish repository** workflow.
+
+| Package | Version | Layout | SHA-256 |
+|---|---|---|---|
+| `com.hakmicapitalgroup.hcgnexus` | 0.2.0 | `iphoneos-arm64` | `1987156996c2e76fb005bb66590aff76b77c474c4387ede6e015f19a081616a5` |
+| `com.hakmicapitalgroup.hcgterminal.unleashed` | 0.1.0-1 | `iphoneos-arm64` | `7fdb735e74e551fa05a23a81714ff537f97556a67d600f49f090b543ef1d42bf` |
+
+They were withdrawn with `bin/hcgrepo withdraw`. That command deleted each `.deb` from `pool/` and marked
+its `repo-lock.json` entry `withdrawn` with the reason. The lock entries and the `provenance.json` files
+stay, so these versions can never be re-imported with other bytes, and **Prepare packages** treats
+their import requests in `imports/` as done.
+
+**The `.deb` files remain in the public git history** of this repository (the commits from PR #2).
+Removing them completely would need a history rewrite and force-push. That is a founder decision, and
+it has not been done.
+
 ## Sileo payment endpoint
 
 `[payments] endpoint` in `config/repo.toml` is empty, which disables it. When HCG Store's Sileo

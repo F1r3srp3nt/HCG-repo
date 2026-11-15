@@ -11,12 +11,12 @@ and command-line tools.
 | Website | `https://repo.hakmicapitalgroup.com/` |
 | HTTPS | **Not working yet:** GitHub has not issued a certificate for the domain, so the site is served over http. Fix: `docs/TRANSPORT.md` |
 | Metadata signing | Implemented; **no archive key yet**, so `Release` is unsigned. Prerequisites: `docs/SIGNING.md` |
-| Packages on the review branch | HCG Nexus 0.2.0 (rootless) and HCG Terminal Unleashed 0.1.0-1 (rootless): validated, **Experimental**, not yet published. See `docs/PUBLICATION_PLAN.md` |
+| Packages | **None.** HCG Nexus 0.2.0 and HCG Terminal Unleashed 0.1.0-1 were imported, then withdrawn under the release policy (both are `login-required`). See `docs/STORE_INTEGRATION.md` |
 
 ## Status
 
 - **Website:** the "HCG Futuristic" design, using the approved banner and square icon. It is generated from the real index.
-- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums. They become public only after merge and a manual **Publish repository**.
+- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums, then withdrawn with `bin/hcgrepo withdraw` because both products are `login-required`. Their lock entries are kept as `withdrawn`; the `.deb` files remain in git history (removing them would need a history rewrite, not done).
 - **In development:** HCG Sentinel has no jailbreak package. It is listed under "In development" with no install action.
 - **HCG Store:** each product has a page at `products/<key>/` linking to its HCG Store page (the store is not live yet). Every product is currently `login-required`, and the validator refuses any HCG package that is not `public`. See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
 - **Device testing:** none yet. Use `docs/DEVICE_CHECKLIST.md`. Nothing is marked device-tested without recorded evidence.

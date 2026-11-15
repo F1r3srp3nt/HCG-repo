@@ -73,6 +73,16 @@ There are three layers of checks. Any **error** blocks import, build and publica
 
 ## Latest results (15 Nov 2026)
 
+After the two packages were withdrawn and the HCG Store integration was merged (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4):
+
+| Check | Result |
+|---|---|
+| Unit and regression tests | **102 tests, OK** |
+| `bin/hcgrepo validate --base-ref origin/main` | OK: 0 packages in pool; lock history valid (both entries kept, status `withdrawn`) |
+| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (at `/`): 15 URLs each, including the three product pages; 0 packages, 0 errors, 0 warnings |
+
+Earlier the same day, before the withdrawal:
+
 | Check | Result |
 |---|---|
 | Unit and regression tests (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4) | **87 tests, OK** |

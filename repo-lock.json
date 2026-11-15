@@ -7,8 +7,10 @@
       "package": "com.hakmicapitalgroup.hcgnexus",
       "sha256": "1987156996c2e76fb005bb66590aff76b77c474c4387ede6e015f19a081616a5",
       "size": 238108,
-      "status": "published",
-      "version": "0.2.0"
+      "status": "withdrawn",
+      "version": "0.2.0",
+      "withdrawn_at": "2026-11-15T04:39:07Z",
+      "withdrawn_reason": "Withdrawn under the HCG release policy: login-required product; nothing login-gated may be published at a public URL until sign-in/access enforcement and launch approval"
     },
     {
       "architecture": "iphoneos-arm64",
@@ -17,8 +19,10 @@
       "package": "com.hakmicapitalgroup.hcgterminal.unleashed",
       "sha256": "7fdb735e74e551fa05a23a81714ff537f97556a67d600f49f090b543ef1d42bf",
       "size": 6463750,
-      "status": "published",
-      "version": "0.1.0-1"
+      "status": "withdrawn",
+      "version": "0.1.0-1",
+      "withdrawn_at": "2026-11-15T04:39:07Z",
+      "withdrawn_reason": "Withdrawn under the HCG release policy: login-required product; nothing login-gated may be published at a public URL until sign-in/access enforcement and launch approval"
     }
   ],
   "schema": 1
