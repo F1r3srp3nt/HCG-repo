@@ -1,12 +1,15 @@
 # HCG Terminal Unleashed: packaging review and what is needed to publish it
 
-**Status: not published.** No built `.deb` is available:
+**Status: imported for review, not published.** `0.1.0-1` (rootless, `iphoneos-arm64`) is in `pool/` on the
+review branch. Nothing has been installed on a device.
 
-- HCG-Terminal's CI builds a rootless and a rootful `.deb` in `.github/workflows/apple-build.yml` (step "Jailbreak package"). It uploads only `logs/`, so the packages are discarded when the job ends.
-- The repository has no GitHub releases.
-- The app needs Xcode on macOS, so it cannot be built in this repository's Linux CI.
+- **Where it came from:** HCG-Terminal's CI builds the `.deb` but does not keep it. **Prepare packages** therefore built it on macOS from the pinned commit `ddc51977c95f499a0568bee02aa1f0ba6b87ded7`, using the project's documented command (`imports/hcg-terminal-unleashed-0.1.0-1-rootless.toml`; [run 43673491962](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/43673491962)).
+- **SHA-256:** `7fdb735e74e551fa05a23a81714ff537f97556a67d600f49f090b543ef1d42bf`.
+- **Publication plan:** see `docs/PUBLICATION_PLAN.md`.
 
-This review is based on the source at `F1r3srp3nt/HCG-Terminal@100a8d08f5495a42061ac471bab10da7105fa760`. That source was read; it was not modified.
+**Read first:** the package requires **iOS 17.0 or later** (`Depends: firmware (>= 17.0)`, matching the app's deployment target).
+- Sileo hides it on iOS 16.x, including the iPhone 13 Pro on iOS 16.5 that HCG Nexus targets.
+- To support that device, HCG-Terminal would have to lower its deployment target and pass its own tests, and a new version would then be imported here.
 
 ## The problem it solves
 
@@ -27,7 +30,7 @@ Installing a `.deb` does not remove the sandbox for anything else. Nothing is pa
 | Install path | `/var/jb/Applications/HCGTerminalUnleashed.app` (rootless), `/Applications/…` (rootful) | OK. Matches the layout rules |
 | Depends | `firmware (>= 17.0)` | OK for the iOS 17.0 deployment target. ⚠ `postinst` calls `uicache`, which `uikittools` provides, but `uikittools` is not declared. Add it: `Depends: firmware (>= 17.0), uikittools` |
 | Executable | arm64, mode from the build (755) | OK. The validator checks the mode, Mach-O type, architecture and signature |
-| Libraries | SwiftPM products are static, so there is no embedded framework and no app extension | OK. Only the main executable needs signing, which is what the script does |
+| Libraries | SwiftPM products are static. The Xcode used for the build (26.x) embeds Apple's back-deployment library `Frameworks/libswiftCompatibilitySpan.dylib` | ⚠ The script ldid-signs only the main executable, so that dylib keeps **Apple's own signature** (CMS, team `59GAB85EFG`). It is a valid Apple signature, but whether the jailbreak loads it next to an ldid-signed executable has to be shown on a device. The validator reports this as `app-mixed-signatures`. *(Correction: an earlier review, at a commit built with an older Xcode, said there was no embedded library.)* |
 | Signing | `ldid -S<entitlements>` on the packaged copy only | OK. The CI uses `Unleashed-optional-entitlements.example.plist`: `com.apple.private.security.no-sandbox = true` |
 | Helper / privileges | No helper, no setuid, no LaunchDaemon. `sudo`/`su` only when the user types them | OK. Sessions run as the app's user (normally `mobile`), never automatically as root |
 | postinst | `uicache -p /var/jb/Applications/HCGTerminalUnleashed.app` | OK (see the uikittools note above) |
@@ -44,27 +47,21 @@ warn  [app-uicache-undeclared] postinst uses uicache but Depends does not includ
 
 The import succeeded once the entitlements were recorded, and the build plus HTTP verification under `/HCG-repo/` passed. That run was a rehearsal in a scratch copy, so nothing was committed to `pool/`.
 
-### Entitlements: decision needed
+### Entitlements: recorded, unverified on a device
 
-`com.apple.private.security.no-sandbox` alone may not be enough for every jailbreak. Some terminal apps also use `platform-application` or `com.apple.private.security.container-required = false`. **Which set lets the app spawn a PTY shell on your jailbreak has not been verified on a device.** Decide after a device test, record the exact set in `packages/com.hakmicapitalgroup.hcgterminal.unleashed/package.toml`, and keep it minimal. The validator then refuses any build whose binary carries a different set.
+`packages/com.hakmicapitalgroup.hcgterminal.unleashed/package.toml` records exactly the set the project's own documented build uses: `com.apple.private.security.no-sandbox` only. The import verified that the built binary carries that set and nothing more. `com.apple.private.security.no-sandbox` alone may not be enough for every jailbreak. Some terminal apps also use `platform-application` or `com.apple.private.security.container-required = false`. **Which set lets the app spawn a PTY shell on your jailbreak has not been verified on a device.** Decide after a device test, record the exact set in `packages/com.hakmicapitalgroup.hcgterminal.unleashed/package.toml`, and keep it minimal. The validator then refuses any build whose binary carries a different set.
 
-## Exact steps to publish it
+## Publishing this version and the next
 
-1. In **HCG-Terminal**:
-   - Add `uikittools` to `Depends` in `Scripts/package-ios.sh`.
-   - Bump `CURRENT_PROJECT_VERSION` (e.g. to `2`).
-   - Decide the entitlements file.
-   - Make the CI keep the `.deb`: add an `actions/upload-artifact` step for `$RUNNER_TEMP/dist-rootless/unleashed/*.deb` (and rootful if wanted), or attach the files to a GitHub release.
-2. Note the run id (or release tag) and the full commit SHA it built.
-3. In **this repository**:
-   ```bash
-   GITHUB_TOKEN=<token with actions:read on HCG-Terminal> \
-   bin/hcgrepo import-github-artifact --repo F1r3srp3nt/HCG-Terminal --run-id <id> \
-     --commit <sha> --artifact <artifact-name>
-   # or: bin/hcgrepo import-github-release --repo F1r3srp3nt/HCG-Terminal --tag <tag> --commit <sha> --asset <file>.deb
-   # or, with a local file: bin/hcgrepo import-deb <file>.deb --built-from F1r3srp3nt/HCG-Terminal@<sha>
-   ```
-   Run `bin/hcgrepo inspect` first, then fill in `[review.entitlements]` in the package's `package.toml` from its output.
-4. Add a `## <version>` entry to `packages/com.hakmicapitalgroup.hcgterminal.unleashed/CHANGELOG.md`. Commit `pool/…deb`, `…provenance.json`, `repo-lock.json` and the metadata in one pull request. Merge it once **Validate repository** passes.
-5. Run **Publish repository**.
-6. Run [DEVICE_CHECKLIST.md](DEVICE_CHECKLIST.md) and record the evidence. Only then set `status = "device-tested"` for that version.
+**0.1.0-1:** follow `docs/PUBLICATION_PLAN.md`. Merge the branch, fix HTTPS, run **Publish repository**, then test on an iOS 17+ rootless device.
+
+**Next version.** Recommended changes in HCG-Terminal:
+1. Add `uikittools` to `Depends` in `Scripts/package-ios.sh`.
+2. Bump `CURRENT_PROJECT_VERSION`. `0.1.0-1` is locked here and cannot be rebuilt with other bytes.
+3. Optionally re-sign embedded libraries with `ldid` as well, and keep the `.deb` as a CI artifact.
+4. Consider whether the deployment target can be lowered below iOS 17 for current Dopamine devices.
+
+Then add a request in this repository:
+1. Copy `imports/hcg-terminal-unleashed-0.1.0-1-rootless.toml` and change `version` and `commit`. If HCG-Terminal now uploads the `.deb`, use `kind = "github-artifact"` with the run ID and SHA-256 instead of `kind = "build"`.
+2. Add a `## <version>` changelog entry.
+3. Push to a review branch. **Prepare packages** imports and validates it, and commits the result for review.

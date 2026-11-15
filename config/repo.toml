@@ -34,9 +34,9 @@ reserved_bundle_ids = ["com.hakmicapitalgroup.hcgterminal"]
 # Pick one with `--target pages|production`, or pass `--base-url` / HCG_REPO_BASE_URL.
 pages = "https://f1r3srp3nt.github.io/HCG-repo/"
 production = "https://repo.hakmicapitalgroup.com/"
-# Which one the publish workflow uses unless told otherwise. Switch to "production" only after
-# the custom-domain migration in docs/CUSTOM_DOMAIN.md is complete.
-default_target = "pages"
+# Default target. The custom domain is configured in GitHub Pages and the old project URL
+# redirects to it, so builds embed the production URL (see docs/CUSTOM_DOMAIN.md).
+default_target = "production"
 
 [signing]
 # Repository-metadata signing (InRelease / Release.gpg). This is unrelated to iOS code signing.

@@ -1,0 +1,17 @@
+# HCG Terminal Unleashed 0.1.0 (build 1), rootless. HCG-Terminal's CI builds this .deb but does not
+# keep it, so it is built here from the pinned commit with the project's documented command:
+#   Scripts/package-ios.sh unleashed <out> --deb rootless --ldid-entitlements <entitlements>
+# using the entitlements file that HCG-Terminal's own CI uses for its .deb.
+
+[request]
+package = "com.hakmicapitalgroup.hcgterminal.unleashed"
+version = "0.1.0-1"
+architecture = "iphoneos-arm64"
+
+[source]
+kind = "build"
+recipe = "hcg-terminal-unleashed"
+repository = "F1r3srp3nt/HCG-Terminal"
+commit = "ddc51977c95f499a0568bee02aa1f0ba6b87ded7"
+layout = "rootless"
+entitlements = "HCGTerminal-Support/Unleashed-optional-entitlements.example.plist"

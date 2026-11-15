@@ -2,6 +2,10 @@
 
 Everything is written into a fresh temporary directory, verified, and only then moved into place,
 so the published indexes and package files always come from the same build.
+
+The website is generated from the index the build has just written: only packages that are really
+in Packages get a card, an install action or a detail page. Planned products come from
+config/products.toml and never get an install action.
 """
 
 from __future__ import annotations
@@ -23,6 +27,12 @@ from .repo import (PoolPackage, build_info_date, check_repository, compress_inde
 
 TINT = "#2FD3E6"
 ASSET_DIR = Path(__file__).parent / "assets"
+SOURCE_REPO = "https://github.com/F1r3srp3nt/HCG-repo"
+BANNER_WIDTHS = (800, 1200, 2000)
+# Branding files copied into the site (assets/brand/) and the site root (iOS looks for this name).
+BRAND_FILES = ("favicon.svg", "favicon-16.png", "favicon-32.png", "favicon-48.png", "favicon-192.png",
+               "apple-touch-icon.png", "hcg-repo-icon-512.png", "hcg-repo-banner-1200.jpg",
+               *(f"hcg-repo-banner-{w}.webp" for w in BANNER_WIDTHS))
 
 
 class BuildError(Exception):
@@ -44,7 +54,7 @@ class BuildResult:
     files: list[str] = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------- helpers
+# ---------------------------------------------------------------------------- text helpers
 
 e = html.escape
 
@@ -59,28 +69,36 @@ def md_inline(text: str) -> str:
 
 
 def md_block(text: str) -> str:
-    """Tiny, safe Markdown subset: paragraphs, '-' lists, '###' headings, inline code/bold/links."""
-    out, para, items = [], [], []
+    """Tiny, safe Markdown subset: paragraphs, '-' and '1.' lists, '###' headings, inline code/bold/links."""
+    out: list[str] = []
+    para: list[str] = []
+    items: list[str] = []
+    ordered = False
 
     def flush():
+        nonlocal ordered
         if para:
             out.append(f"<p>{md_inline(' '.join(para))}</p>")
             para.clear()
         if items:
-            out.append("<ul>" + "".join(f"<li>{md_inline(i)}</li>" for i in items) + "</ul>")
+            tag = "ol" if ordered else "ul"
+            out.append(f"<{tag}>" + "".join(f"<li>{md_inline(i)}</li>" for i in items) + f"</{tag}>")
             items.clear()
 
     for line in text.splitlines():
         s = line.strip()
+        m = re.match(r"^(\d+)\.\s+(.*)", s)
         if not s:
             flush()
         elif s.startswith("### "):
             flush()
             out.append(f"<h4>{md_inline(s[4:])}</h4>")
-        elif s.startswith(("- ", "* ")):
-            if para:
+        elif s.startswith(("- ", "* ")) or m:
+            is_ordered = bool(m)
+            if para or (items and is_ordered != ordered):
                 flush()
-            items.append(s[2:])
+            ordered = is_ordered
+            items.append(m.group(2) if m else s[2:])
         elif items and line.startswith("  "):
             items[-1] += " " + s
         else:
@@ -96,14 +114,33 @@ def describe_arch(arch: str) -> str:
             "all": "Any layout"}.get(arch, arch)
 
 
-def compat_text(p: PoolPackage) -> str:
+def ios_requirement(p: PoolPackage) -> tuple[str, str]:
+    """(short label, sentence) describing the iOS range, distinguishing declared from binary-derived."""
     lo, hi = debian.firmware_bounds(p.info.get("Depends"))
-    parts = []
+    need = p.info.binary_min_os
     if lo:
-        parts.append(f"iOS {lo} or later")
-    if hi:
-        parts.append(f"firmware {hi}")
-    return ", ".join(parts) + " (declared by the package)" if parts else "No iOS version range declared"
+        short = f"iOS {lo}+" + (f" ({hi})" if hi else "")
+        return short, f"iOS {lo} or later, declared by the package" + (f"; firmware {hi}" if hi else "") + "."
+    if need:
+        return (f"iOS {need}+ (binary)",
+                f"The package declares no iOS range; its binaries are built for iOS {need} or later.")
+    return "Any iOS (undeclared)", "The package declares no iOS range."
+
+
+def size_text(n: int) -> str:
+    return f"{n / 1_000_000:.1f} MB" if n >= 1_000_000 else f"{max(1, round(n / 1000))} KB"
+
+
+def dependency_text(p: PoolPackage) -> str:
+    deps = p.info.get("Depends")
+    if not deps:
+        return "None"
+    try:
+        groups = debian.parse_relations(deps)
+    except debian.ControlError:
+        return deps
+    shown = [" or ".join(r.name for r in g) for g in groups if not (len(g) == 1 and g[0].name == "firmware")]
+    return ", ".join(shown) or "None"
 
 
 def short_description(p: PoolPackage) -> tuple[str, str]:
@@ -135,42 +172,80 @@ def status_badge(status: str) -> str:
     return '<span class="badge badge-warn">Experimental</span>'
 
 
+def passing_tests(p: PoolPackage) -> list[dict]:
+    return [t for t in p.meta.device_tests(p.info.version) if t.get("result") == "pass"]
+
+
 def tests_text(p: PoolPackage) -> str:
-    tests = [t for t in p.meta.device_tests(p.info.version) if t.get("result") == "pass"]
+    tests = passing_tests(p)
     if not tests:
-        return "Not yet tested on a device."
-    return "Tested on: " + "; ".join(f"{t['device']}, iOS {t['ios']}, {t['jailbreak']} ({t['date']})" for t in tests)
+        return "Not yet tested on a physical device."
+    return "Tested on " + "; ".join(f"{t['device']}, iOS {t['ios']}, {t['jailbreak']} ({t['date']})" for t in tests) + "."
+
+
+def provenance(cfg: RepoConfig, p: PoolPackage) -> dict:
+    f = cfg.root / (p.rel + ".provenance.json")
+    try:
+        return json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def provenance_html(prov: dict) -> str:
+    repo, commit = prov.get("repository"), prov.get("commit")
+    if repo and commit:
+        src = (f'<a href="https://github.com/{e(repo)}/commit/{e(commit)}">{e(repo)} @ <code>{e(commit[:10])}</code></a>')
+    else:
+        src = "local import"
+    how = {"github-workflow-artifact": "CI artifact", "github-release": "GitHub release",
+           "source-build": "built from source", "local-file": "local file"}.get(prov.get("source", ""), prov.get("source", ""))
+    run = prov.get("run_url") or prov.get("builder_run_url") or prov.get("release_url")
+    run_html = f' · <a href="{e(run)}">build run</a>' if run else ""
+    return f"{src} · {e(how)}{run_html}"
 
 
 # ---------------------------------------------------------------------------- page shell
 
 
-def page(title: str, body: str, rel: str, description: str, canonical: str) -> str:
+def page(title: str, body: str, rel: str, description: str, canonical: str, current: str = "") -> str:
+    def nav(href: str, label: str) -> str:
+        cur = ' aria-current="page"' if current == label else ""
+        return f'<a href="{rel}{href}"{cur}>{label}</a>'
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#05080B">
+<meta name="theme-color" content="#05080b">
 <meta name="description" content="{e(description)}">
+<meta property="og:title" content="{e(title)}">
+<meta property="og:description" content="{e(description)}">
+<meta property="og:image" content="{e(canonical_root(canonical, rel))}assets/brand/hcg-repo-banner-1200.jpg">
 <title>{e(title)}</title>
 <link rel="canonical" href="{e(canonical)}">
-<link rel="icon" href="{rel}repo/CydiaIcon.png">
-<link rel="apple-touch-icon" href="{rel}repo/CydiaIcon@3x.png">
+<link rel="icon" href="{rel}assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{rel}assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="{rel}assets/brand/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="{rel}apple-touch-icon.png">
 <link rel="stylesheet" href="{rel}assets/site.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
+<div class="circuit" aria-hidden="true"></div>
 <header class="topbar">
-  <a class="brand" href="{rel}"><img src="{rel}repo/CydiaIcon@2x.png" alt="" width="36" height="36"><span>HCG Repo</span></a>
-  <nav aria-label="Primary"><a href="{rel}#packages">Packages</a><a href="{rel}#install">Install</a><a href="{rel}#help">Help</a></nav>
+  <div class="topbar-inner">
+    <a class="brand" href="{rel or './'}"><img src="{rel}repo/CydiaIcon@2x.png" alt="" width="34" height="34"><span>HCG Repo</span></a>
+    <nav aria-label="Primary">{nav('#packages', 'Packages')}{nav('#install', 'Install')}{nav('#help', 'Help')}</nav>
+  </div>
 </header>
-<main id="main">
+<main id="main" tabindex="-1">
 {body}
 </main>
 <footer class="footer">
-  <p>HCG Repo · Hakmi Capital Group · <a href="https://github.com/F1r3srp3nt/HCG-repo">Repository source</a></p>
+  <p><strong>HCG Repo</strong> · Hakmi Capital Group</p>
+  <p><a href="{SOURCE_REPO}">Repository source on GitHub</a></p>
 </footer>
 <div class="sr-only" role="status" aria-live="polite" id="live"></div>
 <script src="{rel}assets/site.js" defer></script>
@@ -179,194 +254,307 @@ def page(title: str, body: str, rel: str, description: str, canonical: str) -> s
 """
 
 
-def source_box(repo_url: str) -> str:
+def canonical_root(canonical: str, rel: str) -> str:
+    """Absolute site root, derived from a page's canonical URL and its relative depth."""
+    depth = rel.count("../")
+    root = canonical
+    for _ in range(depth):
+        root = root.rstrip("/").rsplit("/", 1)[0] + "/"
+    return root
+
+
+def url_breaks(url: str) -> str:
+    """Escaped URL with <wbr> after '//' and each later '/', so narrow screens wrap at path boundaries."""
+    scheme, sep, rest = url.partition("://")
+    return e(scheme + sep) + "<wbr>" + "/<wbr>".join(e(part) for part in rest.split("/"))
+
+
+def source_actions(repo_url: str, rel: str = "") -> str:
     sileo = f"sileo://source/{repo_url}"
     zebra = f"zbra://sources/add/{repo_url}"
     return f"""<div class="source">
-  <label for="source-url">Repository URL</label>
-  <div class="source-row">
-    <input id="source-url" class="source-url" value="{e(repo_url)}" readonly spellcheck="false" autocomplete="off">
-    <button type="button" class="btn btn-ghost" data-copy="#source-url">Copy URL</button>
-  </div>
-  <div class="actions">
+  <div class="actions actions-primary">
     <a class="btn btn-primary" href="{e(sileo)}">Add to Sileo</a>
-    <a class="btn btn-ghost" href="{e(zebra)}">Add to Zebra</a>
+    <a class="btn btn-metal" href="{e(zebra)}">Add to Zebra</a>
   </div>
-  <p class="hint">Open this page on your iPhone or iPad. “Add to Sileo” opens Sileo’s Add Source prompt with this URL filled in; you confirm it there.</p>
+  <p class="source-label" id="source-url-label">Repository URL</p>
+  <div class="source-row">
+    <code id="source-url" class="source-url" aria-labelledby="source-url-label">{url_breaks(repo_url)}</code>
+    <button type="button" class="btn btn-metal btn-copy" data-copy="#source-url">Copy URL</button>
+  </div>
+  <p class="hint">Open this page on your iPhone or iPad. <strong>Add to Sileo</strong> opens Sileo’s Add Source prompt with this URL filled in, and you confirm it there.</p>
 </div>"""
 
 
 # ---------------------------------------------------------------------------- landing page
 
 
-def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[PoolPackage]],
-            info: dict) -> str:
-    cards = []
-    for pkg, versions in groups.items():
-        cards.append(package_card(versions, rel="", repo_rel="repo/"))
-    if cards:
-        packages_html = '<ul class="cards" role="list">' + "".join(cards) + "</ul>"
+def banner_html(rel: str) -> str:
+    srcset = ", ".join(f"{rel}assets/brand/hcg-repo-banner-{w}.webp {w}w" for w in BANNER_WIDTHS)
+    return f"""<div class="banner-frame">
+  <picture>
+    <source type="image/webp" srcset="{srcset}" sizes="(min-width: 1120px) 1080px, calc(100vw - 32px)">
+    <img class="banner" src="{rel}assets/brand/hcg-repo-banner-1200.jpg" width="2000" height="667" alt="" fetchpriority="high" decoding="async">
+  </picture>
+</div>"""
+
+
+def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) -> str:
+    p = versions[0]
+    pkg = p.info.package
+    summary = p.meta.summary or short_description(p)[0]
+    icon = (f'<img src="{repo_rel}assets/{e(pkg)}/{e(p.meta.icon)}" alt="" width="64" height="64" class="pkg-icon" loading="lazy">'
+            if p.meta.icon else '<span class="pkg-icon pkg-icon-blank" aria-hidden="true"></span>')
+    current = [v for v in versions if v.info.version == p.info.version]
+    layouts = ", ".join(f"{describe_arch(v.info.architecture)} <span class=\"muted\">({e(v.info.architecture)})</span>" for v in current)
+    ios_short, _ = ios_requirement(p)
+    statuses = {v.meta.status(v.info.version) for v in current}
+    badge = status_badge("device-tested" if statuses == {"device-tested"} else "experimental")
+    detail = f"{repo_rel}depictions/{e(pkg)}/"
+    return f"""<li class="card pkg-card">
+  <div class="pkg-head">
+    {icon}
+    <div class="pkg-title">
+      <h3><a href="{detail}">{e(display_name(p))}</a></h3>
+      <p class="pkg-meta">{badge} <span class="pkg-version">v{e(p.info.version)}</span></p>
+    </div>
+  </div>
+  <p class="pkg-id"><code>{e(pkg)}</code></p>
+  <p class="pkg-desc">{e(summary)}</p>
+  <dl class="pkg-facts">
+    <div><dt>Environment</dt><dd>{layouts}</dd></div>
+    <div><dt>Download</dt><dd>{size_text(sum(v.info.size for v in current) // max(len(current), 1))}</dd></div>
+    <div><dt>iOS</dt><dd>{e(ios_short)}</dd></div>
+    <div><dt>Requires</dt><dd>{e(dependency_text(p))}</dd></div>
+  </dl>
+  <p class="pkg-tested">{e(tests_text(p))}</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
+    <a class="btn btn-metal" href="{detail}">Details</a>
+  </div>
+</li>"""
+
+
+def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[PoolPackage]], info: dict) -> str:
+    n = len(groups)
+    if groups:
+        cards = "".join(package_card(cfg, v, "repo/") for v in groups.values())
+        packages_html = (f'<p class="section-lead">{n} package{"s" if n != 1 else ""} in the repository index. '
+                         'Each card shows the release status and the environment the package declares.</p>'
+                         f'<ul class="cards" role="list">{cards}</ul>')
     else:
-        packages_html = ('<div class="empty"><p><strong>No packages are published yet.</strong></p>'
-                         "<p>The repository is live and valid but empty. Packages appear here only after a real, "
-                         "validated build has been imported. Nothing below the “Planned” heading can be installed.</p></div>")
+        packages_html = """<div class="card empty">
+  <img src="assets/brand/favicon.svg" alt="" width="56" height="56">
+  <div>
+    <h3>No packages are published yet</h3>
+    <p>The source is live and valid, so you can add it now and Sileo will refresh it without errors. Packages appear here as soon as a validated build is published. Projects still being built are listed under <a href="#in-development">In development</a>.</p>
+  </div>
+</div>"""
 
     indexed = set(groups)
     planned = [p for p in cfg.products if not (set(p.get("package_ids", [])) & indexed)]
-    planned_html = ""
-    if planned:
-        items = "".join(
-            f"""<li class="card card-planned">
-  <div class="card-head"><h3>{e(p['name'])}</h3><span class="badge badge-muted">{e(p.get('status', 'Not available'))}</span></div>
+    dev_items = "".join(f"""<li class="card dev-card">
+  <div class="dev-head"><h3>{e(p['name'])}</h3><span class="badge badge-muted">{e(p.get('status', 'Not available'))}</span></div>
+  {f'<p class="dev-kind">{e(p["kind"])}</p>' if p.get('kind') else ''}
   <p>{e(p.get('summary', ''))}</p>
-  {f'<p class="small">{e(p["detail"])}</p>' if p.get('detail') else ''}
-  <p class="small muted">Not available for installation.</p>
+  {f'<p class="small muted">{e(p["detail"])}</p>' if p.get('detail') else ''}
 </li>""" for p in planned)
-        planned_html = f"""<section aria-labelledby="planned-h" class="section">
-<h2 id="planned-h">Planned</h2>
-<p class="muted">These are not in the repository index and cannot be installed yet.</p>
-<ul class="cards" role="list">{items}</ul>
-</section>"""
+    dev_html = f"""<section id="in-development" class="section" aria-labelledby="dev-h">
+<h2 id="dev-h">In development</h2>
+<p class="section-lead">Not in the repository index and not installable yet. Nothing here has an install action.</p>
+<ul class="cards cards-dev" role="list">{dev_items}</ul>
+</section>""" if planned else ""
 
-    archs = ", ".join(f"{describe_arch(a)} <code>{e(a)}</code>" for a in cfg.architectures)
-    sig = info["signature"]
+    archs = ", ".join(f"{describe_arch(a)} (<code>{e(a)}</code>)" for a in cfg.architectures)
+    rev = info["revision"]
+    rev_html = (f'<a href="{SOURCE_REPO}/commit/{e(rev)}"><code>{e(rev[:10])}</code></a>' if re.fullmatch(r"[0-9a-f]{40}", rev)
+                else f"<code>{e(rev)}</code>")
     body = f"""
 <section class="hero" aria-labelledby="hero-h">
-  <img class="hero-mark" src="repo/CydiaIcon@3x.png" alt="HCG logo" width="96" height="96">
-  <div>
+  {banner_html("")}
+  <div class="intro card">
     <p class="eyebrow">Hakmi Capital Group</p>
     <h1 id="hero-h">HCG Repo</h1>
-    <p class="lead">Jailbreak apps, tweaks and command-line tools by HCG, distributed through Sileo and compatible APT package managers.</p>
+    <p class="lead">Jailbreak apps, tweaks and command-line tools by HCG, for Sileo and compatible package managers.</p>
+    {source_actions(repo_url)}
   </div>
 </section>
-{source_box(repo_url)}
-<dl class="facts">
-  <div><dt>Packages</dt><dd>{len(groups)}</dd></div>
-  <div><dt>Layouts</dt><dd>{archs}</dd></div>
-  <div><dt>Metadata signature</dt><dd>{e(sig)}</dd></div>
-  <div><dt>Built</dt><dd><time datetime="{e(info['date_iso'])}">{e(info['date_human'])}</time></dd></div>
-</dl>
 
-<section id="packages" aria-labelledby="packages-h" class="section">
+<section id="packages" class="section" aria-labelledby="packages-h">
 <h2 id="packages-h">Available packages</h2>
 {packages_html}
 </section>
-{planned_html}
+{dev_html}
 
-<section id="install" aria-labelledby="install-h" class="section prose">
-<h2 id="install-h">Installation</h2>
-<ol>
-  <li>On the jailbroken device, open this page in Safari and tap <strong>Add to Sileo</strong>, or in Sileo go to <em>Sources → +</em> and enter <code>{e(repo_url)}</code>.</li>
-  <li>Confirm the source and let Sileo refresh. The source should appear as “{e(cfg.origin)}”.</li>
-  <li>Find the package under the source, review its dependencies on the confirmation screen, and install.</li>
+<section id="install" class="section prose" aria-labelledby="install-h">
+<h2 id="install-h">Install</h2>
+<ol class="steps">
+  <li><strong>Add the source.</strong> On the jailbroken device, tap <em>Add to Sileo</em> above, or in Sileo open <em>Sources → +</em> and enter <code>{e(repo_url)}</code>.</li>
+  <li><strong>Refresh.</strong> The source appears as “{e(cfg.origin)}” with the HCG icon.</li>
+  <li><strong>Install.</strong> Open a package, read its limitations, review the dependencies Sileo lists, then install.</li>
 </ol>
-<h3>Rootless and rootful</h3>
-<p>Each package declares one architecture. Rootless jailbreaks (files under <code>/var/jb</code>) use <code>iphoneos-arm64</code>; rootful jailbreaks use <code>iphoneos-arm</code>. Sileo lists only packages whose architecture matches your device, so you will not be offered a build for the other layout. Roothide (<code>iphoneos-arm64e</code>) is not supported by this repository.</p>
-<h3>Other package managers</h3>
-<p>Zebra: <em>Sources → Add</em>, or the “Add to Zebra” button above. Command line (APT on the device):</p>
-<pre><code>deb {e(repo_url)} ./</code></pre>
-<p>Put that line in a file under <code>/var/jb/etc/apt/sources.list.d/</code> (rootless) or <code>/etc/apt/sources.list.d/</code> (rootful), then run <code>apt update</code>.</p>
-<p class="small muted">Labels: <span class="badge badge-warn">Experimental</span> means the package passed repository validation but has no recorded device test. <span class="badge badge-ok">Device-tested</span> means at least one physical-device test is recorded for that exact version, with the device, iOS version and jailbreak shown.</p>
+<div class="grid-2">
+  <div class="card note">
+    <h3>Rootless and rootful</h3>
+    <p>Rootless jailbreaks (files under <code>/var/jb</code>) use <code>iphoneos-arm64</code>; rootful ones use <code>iphoneos-arm</code>. Sileo lists only packages built for your layout. Roothide is not supported.</p>
+  </div>
+  <div class="card note">
+    <h3>Zebra or the command line</h3>
+    <p>Use <em>Add to Zebra</em>, or add this line under <code>/var/jb/etc/apt/sources.list.d/</code> (rootless) and run <code>apt update</code>:</p>
+    <pre><code>deb {e(repo_url)} ./</code></pre>
+  </div>
+</div>
+<p class="small muted">Release labels: <span class="badge badge-warn">Experimental</span> passed repository validation but has no recorded device test. <span class="badge badge-ok">Device-tested</span> has a recorded test of that exact version on a physical device, shown on its card.</p>
 </section>
 
-<section id="help" aria-labelledby="help-h" class="section prose">
-<h2 id="help-h">Troubleshooting</h2>
+<section id="help" class="section prose" aria-labelledby="help-h">
+<h2 id="help-h">Help</h2>
+<div class="faq">
 <details><summary>Sileo cannot refresh the source</summary>
-<p>Check the URL ends in <code>/{e(cfg.repo_subdir)}/</code> exactly as shown above, including the trailing slash, and that the device has network access. Pull down to refresh again. If an error persists, note the message Sileo shows and report it.</p></details>
+<p>Check that the URL is exactly <code>{e(repo_url)}</code>, including the trailing slash, and that the device is online. Pull down to refresh again, and note any message Sileo shows if it keeps failing.</p></details>
 <details><summary>“Add to Sileo” does nothing</summary>
-<p>The button only works on a device where Sileo is installed. Otherwise copy the URL and add it in your package manager manually.</p></details>
-<details><summary>A package is missing on my device</summary>
-<p>Packages are built for one layout. A rootless package is hidden on rootful devices and vice versa. Packages may also require a minimum iOS version, shown on each card.</p></details>
+<p>It only works on a device with Sileo installed. Otherwise use <em>Copy URL</em> and add the source manually.</p></details>
+<details><summary>“Install in Sileo” says the package is not found</summary>
+<p>Add the source first and let Sileo refresh, then try again. Packages are also hidden when they don’t match your layout or iOS version.</p></details>
 <details><summary>An installed app does not appear on the home screen</summary>
-<p>Run <code>uicache -a</code> from a terminal (it is part of <code>uikittools</code>), or respring.</p></details>
-<details><summary>HCG Terminal Unleashed says “Permission denied” when starting a shell</summary>
-<p>That is what a sandboxed install (Xcode, TestFlight, an IPA) reports. Installing the jailbreak package does not change iOS security globally; it installs a separately signed copy of the app outside the app sandbox, where your jailbreak allows that. See the package page for exact requirements once it is published.</p></details>
-<details><summary>Signature warnings</summary>
-<p>{e(info['signature_help'])} Do not turn off signature checking globally in APT to work around a problem with any repository.</p></details>
-
-<h2>Removing packages and the source</h2>
+<p>Run <code>uicache -a</code> (from <code>uikittools</code>), or respring.</p></details>
+<details><summary>About signatures</summary>
+<p>{e(info['signature_help'])} Never turn off APT signature checking globally to work around any repository.</p></details>
+</div>
+<h3>Removing packages and the source</h3>
 <ul>
-  <li><strong>Remove a package:</strong> Sileo → <em>Installed</em> → the package → <em>Remove</em> → confirm. The package manager removes the files the package installed and runs its removal scripts. Settings or documents an app stored in its own data folders may remain.</li>
-  <li><strong>Remove the source:</strong> Sileo → <em>Sources</em> → swipe left on “{e(cfg.origin)}” → <em>Delete</em>. Installed packages stay installed but will no longer receive updates from here.</li>
+  <li><strong>Package:</strong> Sileo → <em>Installed</em> → the package → <em>Remove</em>. Each package page lists anything it leaves behind.</li>
+  <li><strong>Source:</strong> Sileo → <em>Sources</em> → swipe left on “{e(cfg.origin)}” → <em>Delete</em>. Installed packages stay but stop receiving updates.</li>
 </ul>
+</section>
+
+<section id="details" class="section" aria-labelledby="details-h">
+<h2 id="details-h" class="sr-only">Repository details</h2>
+<details class="card repo-details">
+  <summary>Repository details</summary>
+  <dl class="kv">
+    <div><dt>APT source</dt><dd><code>{e(repo_url)}</code> (flat, <code>./</code>)</dd></div>
+    <div><dt>Packages in index</dt><dd>{n} package{"s" if n != 1 else ""}, {info['builds']} build{"s" if info['builds'] != 1 else ""}</dd></div>
+    <div><dt>Layouts accepted</dt><dd>{archs}</dd></div>
+    <div><dt>Index formats</dt><dd><code>Packages</code>, <code>.xz</code>, <code>.bz2</code>, <code>.gz</code>; SHA-256 and SHA-512 for every file</dd></div>
+    <div><dt>Metadata signature</dt><dd>{e(info['signature'])}</dd></div>
+    <div><dt>Built</dt><dd><time datetime="{e(info['date_iso'])}">{e(info['date_human'])}</time> from {rev_html}</dd></div>
+    <div><dt>Machine-readable</dt><dd><a href="build-info.json">build-info.json</a> · <a href="repo/Release">Release</a> · <a href="repo/Packages">Packages</a></dd></div>
+  </dl>
+</details>
 </section>
 """
     return page("HCG Repo", body, "", "HCG Repo: jailbreak apps, tweaks and tools by Hakmi Capital Group for Sileo.", base)
 
 
-def package_card(versions: list[PoolPackage], rel: str, repo_rel: str) -> str:
-    p = versions[0]
-    summary, _ = short_description(p)
-    pkg = p.info.package
-    icon = (f'<img src="{repo_rel}assets/{e(pkg)}/{e(p.meta.icon)}" alt="" width="56" height="56" class="pkg-icon">'
-            if p.meta.icon else '<span class="pkg-icon pkg-icon-blank" aria-hidden="true"></span>')
-    builds = "".join(
-        f"""<li><span class="badge badge-arch">{describe_arch(v.info.architecture)}</span> <code>{e(v.info.architecture)}</code>
- · {status_badge(v.meta.status(v.info.version))}
- · <a href="{repo_rel}debs/{e(v.info.canonical_filename())}" download>.deb</a> <span class="small muted">{v.info.size:,} bytes</span></li>"""
-        for v in versions if v.info.version == p.info.version)
-    return f"""<li class="card">
-  <div class="card-head">{icon}<div><h3>{e(display_name(p))}</h3><p class="small muted"><code>{e(pkg)}</code> · version <strong>{e(p.info.version)}</strong></p></div></div>
-  <p>{e(summary)}</p>
-  <ul class="builds" role="list">{builds}</ul>
-  <p class="small">{e(compat_text(p))}. {e(tests_text(p))}</p>
-  <div class="actions">
-    <a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
-    <a class="btn btn-ghost" href="{repo_rel}depictions/{e(pkg)}/">Details &amp; changelog</a>
-  </div>
-  <p class="hint">“Install in Sileo” opens the package once this source has been added.</p>
-</li>"""
+# ---------------------------------------------------------------------------- package pages
 
 
-# ---------------------------------------------------------------------------- depictions
+DEFAULT_INSTALL = """1. Add the HCG Repo source to Sileo.
+2. Open this package in Sileo, review the dependencies it lists, and install."""
+DEFAULT_REMOVAL = """Sileo → *Installed* → the package → *Remove*."""
 
 
 def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], all_versions: list[PoolPackage]) -> str:
     p = versions[0]
     pkg = p.info.package
     summary, long = short_description(p)
-    header = (f'<img class="dep-header" src="../../assets/{e(pkg)}/{e(p.meta.header)}" alt="">' if p.meta.header else "")
-    rows = [
-        ("Package", f"<code>{e(pkg)}</code>"), ("Version", e(p.info.version)),
-        ("Builds", ", ".join(f"{describe_arch(v.info.architecture)} (<code>{e(v.info.architecture)}</code>)" for v in versions if v.info.version == p.info.version)),
-        ("Compatibility", e(compat_text(p))),
-        ("Status", status_badge(p.meta.status(p.info.version)) + " " + e(tests_text(p))),
-        ("Depends", f"<code>{e(p.info.get('Depends') or 'nothing')}</code>"),
+    rel = "../../../"
+    icon = (f'<img src="../../assets/{e(pkg)}/{e(p.meta.icon)}" alt="" width="88" height="88" class="pkg-icon pkg-icon-lg">'
+            if p.meta.icon else "")
+    header = (f'<div class="dep-header-frame"><img class="dep-header" src="../../assets/{e(pkg)}/{e(p.meta.header)}" alt=""></div>'
+              if p.meta.header else "")
+    ios_short, ios_long = ios_requirement(p)
+    builds_rows = "".join(
+        f"""<tr><td>{describe_arch(v.info.architecture)} <code>{e(v.info.architecture)}</code></td>
+<td>{status_badge(v.meta.status(v.info.version))}</td>
+<td><a href="../../debs/{e(v.info.canonical_filename())}" download>.deb</a> <span class="muted">{v.info.size:,} bytes</span></td></tr>"""
+        for v in versions)
+    compat = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in (
+        ("Version", e(p.info.version)),
+        ("Environment", ", ".join(f"{describe_arch(v.info.architecture)} (<code>{e(v.info.architecture)}</code>)" for v in versions)),
+        ("iOS", e(ios_long)),
+        ("Requires", e(dependency_text(p))),
+        ("Device testing", e(tests_text(p))),
         ("Section", e(p.info.get("Section") or "—")),
         ("Maintainer", e(p.info.get("Maintainer") or "—")),
-    ]
-    table = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in rows)
-    seen_versions = []
-    for v in all_versions:
-        if v.info.version not in seen_versions:
-            seen_versions.append(v.info.version)
+    ))
+    shots = ""
+    if p.meta.screenshots:
+        figs = "".join(f'<figure><img src="../../assets/{e(pkg)}/{e(s["file"])}" alt="{e(s["caption"])}" loading="lazy">'
+                       f'<figcaption>{e(s["caption"])}</figcaption></figure>' for s in p.meta.screenshots)
+        shots = f'<section class="section-tight" aria-labelledby="shots-h"><h2 id="shots-h">Screenshots</h2><div class="shots">{figs}</div></section>'
+    seen: list[str] = []
     changes = []
-    for ver in seen_versions:
-        text = p.meta.changelog.get(ver)
-        vp = next(v for v in all_versions if v.info.version == ver)
-        changes.append(f"<article class=\"change\"><h3>{e(ver)} {status_badge(vp.meta.status(ver))}</h3>"
-                       f"{md_block(text) if text else '<p class=muted>No changelog entry.</p>'}</article>")
+    for v in all_versions:
+        if v.info.version in seen:
+            continue
+        seen.append(v.info.version)
+        text = p.meta.changelog.get(v.info.version)
+        body_html = md_block(text) if text else '<p class="muted">No changelog entry.</p>'
+        changes.append(f'<article class="change"><h3>{e(v.info.version)} {status_badge(v.meta.status(v.info.version))}</h3>'
+                       f"{body_html}</article>")
     downloads = "".join(
-        f"<li><a href=\"../../debs/{e(v.info.canonical_filename())}\" download>{e(v.info.canonical_filename())}</a>"
-        f"<br><span class=\"small muted\">SHA-256 <code class=\"hash\">{v.info.sha256}</code></span></li>" for v in all_versions)
-    notes = md_block(p.meta.notes) if p.meta.notes else ""
+        f"""<li><a href="../../debs/{e(v.info.canonical_filename())}" download>{e(v.info.canonical_filename())}</a>
+<span class="small muted">{v.info.size:,} bytes</span><br>
+<span class="small">SHA-256 <code class="hash">{v.info.sha256}</code></span><br>
+<span class="small muted">Source: {provenance_html(provenance(cfg, v))}</span></li>""" for v in all_versions)
+    limits = (f'<section class="section-tight" aria-labelledby="lim-h"><h2 id="lim-h">Limitations</h2>'
+              f'<div class="card note note-warn">{md_block(p.meta.limitations)}</div></section>') if p.meta.limitations else ""
     body = f"""
+<article class="dep prose">
+<p class="crumbs"><a href="{rel}">HCG Repo</a> <span aria-hidden="true">›</span> <a href="{rel}#packages">Packages</a></p>
 {header}
-<article class="section prose">
-<p><a href="../../../">← HCG Repo</a></p>
-<h1>{e(display_name(p))}</h1>
-<p class="lead">{e(summary)}</p>
-{md_block(long) if long else ''}
-{notes}
-<dl class="facts facts-table">{table}</dl>
-<div class="actions"><a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a></div>
-<h2>Changelog</h2>
+<div class="dep-title card">
+  {icon}
+  <div>
+    <h1>{e(display_name(p))}</h1>
+    <p class="pkg-id"><code>{e(pkg)}</code> · version <strong>{e(p.info.version)}</strong> · {status_badge(p.meta.status(p.info.version))}</p>
+    <p class="lead">{e(p.meta.summary or summary)}</p>
+  </div>
+</div>
+<div class="actions actions-primary">
+  <a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
+  <a class="btn btn-metal" href="sileo://source/{e(repo_url)}">Add source first</a>
+</div>
+<p class="hint">“Install in Sileo” opens this package once the HCG Repo source has been added.</p>
+
+<section class="section-tight" aria-labelledby="about-h">
+<h2 id="about-h">About</h2>
+{md_block(long) if long and long != summary else f"<p>{e(summary)}</p>"}
+{md_block(p.meta.notes) if p.meta.notes else ""}
+</section>
+
+<section class="section-tight" aria-labelledby="compat-h">
+<h2 id="compat-h">Compatibility</h2>
+<dl class="kv card">{compat}</dl>
+<div class="table-wrap"><table>
+<caption class="sr-only">Builds of version {e(p.info.version)}</caption>
+<thead><tr><th scope="col">Build</th><th scope="col">Status</th><th scope="col">Download</th></tr></thead>
+<tbody>{builds_rows}</tbody></table></div>
+</section>
+{shots}
+<section class="section-tight" aria-labelledby="inst-h">
+<h2 id="inst-h">Installation</h2>
+{md_block(p.meta.install or DEFAULT_INSTALL)}
+</section>
+{limits}
+<section class="section-tight" aria-labelledby="chg-h">
+<h2 id="chg-h">Changelog</h2>
 {''.join(changes)}
-<h2>Downloads</h2>
+</section>
+
+<section class="section-tight" aria-labelledby="rm-h">
+<h2 id="rm-h">Removal</h2>
+{md_block(p.meta.removal or DEFAULT_REMOVAL)}
+</section>
+
+<section class="section-tight" aria-labelledby="dl-h">
+<h2 id="dl-h">Downloads and checksums</h2>
 <ul class="downloads">{downloads}</ul>
+</section>
 </article>"""
-    return page(f"{display_name(p)} · HCG Repo", body, "../../../", summary,
-                f"{repo_url}depictions/{pkg}/")
+    return page(f"{display_name(p)} · HCG Repo", body, rel, p.meta.summary or summary, f"{repo_url}depictions/{pkg}/")
 
 
 def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], all_versions: list[PoolPackage]) -> dict:
@@ -374,20 +562,36 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
     pkg = p.info.package
     summary, long = short_description(p)
     status = "Device-tested" if p.meta.status(p.info.version) == "device-tested" else "Experimental"
+    _, ios_long = ios_requirement(p)
+    about = "\n\n".join(x for x in (p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
     details = [
-        {"class": "DepictionMarkdownView", "markdown": "\n\n".join(x for x in (summary, long, p.meta.notes) if x), "useSpacing": True},
+        {"class": "DepictionMarkdownView", "markdown": about, "useSpacing": True},
         {"class": "DepictionSeparatorView"},
         {"class": "DepictionHeaderView", "title": "Information"},
         {"class": "DepictionTableTextView", "title": "Version", "text": p.info.version},
         {"class": "DepictionTableTextView", "title": "Status", "text": status},
         {"class": "DepictionTableTextView", "title": "Layout",
-         "text": ", ".join(describe_arch(v.info.architecture) for v in versions if v.info.version == p.info.version)},
-        {"class": "DepictionTableTextView", "title": "Compatibility", "text": compat_text(p)},
-        {"class": "DepictionMarkdownView", "markdown": tests_text(p), "useSpacing": True},
-        {"class": "DepictionSeparatorView"},
-        {"class": "DepictionTableButtonView", "title": "Web page and downloads", "action": f"{repo_url}depictions/{pkg}/"},
+         "text": ", ".join(describe_arch(v.info.architecture) for v in versions)},
+        {"class": "DepictionTableTextView", "title": "Requires", "text": dependency_text(p)},
+        {"class": "DepictionMarkdownView", "markdown": f"{ios_long} {tests_text(p)}", "useSpacing": True},
     ]
-    seen, changes = [], []
+    if p.meta.screenshots:
+        details.append({"class": "DepictionScreenshotsView", "itemSize": "{160, 346}", "itemCornerRadius": 8,
+                        "screenshots": [{"url": f"{repo_url}assets/{pkg}/{s['file']}", "accessibilityText": s["caption"]}
+                                        for s in p.meta.screenshots]})
+    if p.meta.limitations:
+        details += [{"class": "DepictionHeaderView", "title": "Limitations"},
+                    {"class": "DepictionMarkdownView", "markdown": p.meta.limitations, "useSpacing": True}]
+    details += [
+        {"class": "DepictionHeaderView", "title": "Installation"},
+        {"class": "DepictionMarkdownView", "markdown": p.meta.install or DEFAULT_INSTALL, "useSpacing": True},
+        {"class": "DepictionHeaderView", "title": "Removal"},
+        {"class": "DepictionMarkdownView", "markdown": p.meta.removal or DEFAULT_REMOVAL, "useSpacing": True},
+        {"class": "DepictionSeparatorView"},
+        {"class": "DepictionTableButtonView", "title": "Web page, downloads and checksums", "action": f"{repo_url}depictions/{pkg}/"},
+    ]
+    seen: list[str] = []
+    changes = []
     for v in all_versions:
         if v.info.version in seen:
             continue
@@ -409,10 +613,13 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
 
 def repo_index(cfg: RepoConfig, repo_url: str) -> str:
     body = f"""<section class="section prose">
+<div class="intro card">
+<p class="eyebrow">APT source root</p>
 <h1>HCG Repo source</h1>
-<p>This is the APT source root. Add it to Sileo or another package manager; it is not meant to be browsed.</p>
-{source_box(repo_url)}
-<p><a href="../">Back to the HCG Repo page</a></p>
+<p>Add this address to Sileo or another package manager; it is not meant to be browsed.</p>
+{source_actions(repo_url)}
+<p><a href="../">Go to the HCG Repo page</a></p>
+</div>
 </section>"""
     return page("HCG Repo source", body, "../", "HCG Repo APT source root.", repo_url)
 
@@ -441,7 +648,7 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
     try:
         repo_dir = tmp / cfg.repo_subdir
         (repo_dir / "debs").mkdir(parents=True)
-        (tmp / "assets").mkdir()
+        (tmp / "assets" / "brand").mkdir(parents=True)
         (tmp / ".nojekyll").write_text("")
 
         # APT metadata
@@ -462,7 +669,7 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             meta = versions[0].meta
             if meta.directory:
                 dst = repo_dir / "assets" / pkg
-                for a in (meta.icon, meta.header):
+                for a in (meta.icon, meta.header, *(s["file"] for s in meta.screenshots)):
                     if a:
                         dst.mkdir(parents=True, exist_ok=True)
                         shutil.copyfile(meta.directory / a, dst / a)
@@ -486,24 +693,32 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             raise BuildError("signing is required (config/repo.toml [signing] required = true) but no key was given")
 
         # Website
+        revision = git_revision(cfg.root)
+        fpr = cfg.signing_fingerprint
         info = {
-            "date_iso": date.isoformat(), "date_human": date.strftime("%d %b %Y, %H:%M UTC"),
-            "signature": ("Signed and verified (key " + cfg.signing_fingerprint[-16:] + ")") if res.signature_verified
-                         else "Not signed yet",
-            "signature_help": ("Release files are signed. Install the HCG archive key only from this site, and compare its fingerprint "
-                               f"{cfg.signing_fingerprint} with the one published here." if res.signature_verified else
-                               "This repository's metadata is not signed yet. Sileo accepts unsigned sources; packages are still "
-                               "protected in transit by HTTPS and checked against the SHA-256 checksums in the index."),
+            "date_iso": date.isoformat(), "date_human": date.strftime("%d %b %Y, %H:%M UTC"), "revision": revision,
+            "builds": len(pkgs),
+            "signature": (f"Signed; verified at build time with gpgv against key {fpr[-16:]}" if res.signature_verified
+                          else "Not signed: no archive key has been set up yet"),
+            "signature_help": (f"Release files are signed with the HCG archive key {fpr}. Compare that fingerprint before trusting the key."
+                               if res.signature_verified else
+                               "This repository's metadata is not signed yet. Sileo accepts unsigned sources; every package "
+                               "is still checked against the SHA-256 checksum in the index."),
         }
         for asset in ASSET_DIR.iterdir():
-            shutil.copyfile(asset, tmp / "assets" / asset.name)
+            if asset.is_file():
+                shutil.copyfile(asset, tmp / "assets" / asset.name)
+        for name in BRAND_FILES:
+            shutil.copyfile(cfg.root / "branding" / name, tmp / "assets" / "brand" / name)
+        shutil.copyfile(cfg.root / "branding" / "apple-touch-icon.png", tmp / "apple-touch-icon.png")
         (tmp / "index.html").write_text(landing(cfg, base_url, repo_url, groups, info), encoding="utf-8")
         (repo_dir / "index.html").write_text(repo_index(cfg, repo_url), encoding="utf-8")
-        (tmp / "404.html").write_text(page("Not found · HCG Repo", '<section class="section prose"><h1>Not found</h1>'
-                                           f'<p><a href="{e(base_url)}">Go to HCG Repo</a></p></section>', base_url,
-                                           "Page not found", base_url), encoding="utf-8")
+        (tmp / "404.html").write_text(page("Not found · HCG Repo", '<section class="section prose"><div class="intro card">'
+                                           '<h1>Page not found</h1><p>The page you asked for does not exist.</p>'
+                                           f'<p><a class="btn btn-primary" href="{e(base_url)}">Go to HCG Repo</a></p></div></section>',
+                                           base_url, "Page not found", base_url), encoding="utf-8")
         build_info = {
-            "builder": f"hcgrepo {__version__}", "revision": git_revision(cfg.root), "date": date.isoformat(),
+            "builder": f"hcgrepo {__version__}", "revision": revision, "date": date.isoformat(),
             "base_url": base_url, "repo_url": repo_url, "packages": [
                 {"package": p.info.package, "version": p.info.version, "architecture": p.info.architecture,
                  "sha256": p.info.sha256} for p in sorted(pkgs, key=lambda p: p.rel)],

@@ -1,0 +1,73 @@
+# Read-only diagnostics for the live site's transport: DNS, the TLS certificate actually served, HTTP→HTTPS
+# redirects, redirects from the old GitHub Pages project URL, and GitHub's own record of the custom domain and
+# certificate. It changes nothing. It fails when HTTPS for the production domain is not valid, so a red run
+# means users would see "Not Secure" or a certificate error.
+name: Check transport
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - ".github/workflows/check-transport.yml"
+
+permissions: {}
+
+jobs:
+  transport:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    env:
+      HOST: repo.hakmicapitalgroup.com
+      OLD_BASE: https://f1r3srp3nt.github.io/HCG-repo/
+    steps:
+      - name: GitHub Pages configuration (custom domain, certificate, HTTPS enforcement)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages" > pages.json || { echo "::warning::Pages API not readable"; echo '{}' > pages.json; }
+          python3 - <<'PY'
+          import json, os
+          d = json.load(open("pages.json"))
+          cert = d.get("https_certificate") or {}
+          rows = [("Pages URL", d.get("html_url")), ("Build type", d.get("build_type")), ("Custom domain", d.get("cname")),
+                  ("HTTPS enforced", d.get("https_enforced")), ("Certificate state", cert.get("state")),
+                  ("Certificate domains", ", ".join(cert.get("domains") or [])), ("Certificate expires", cert.get("expires_at")),
+                  ("Domain protection", d.get("protected_domain_state"))]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("## GitHub Pages\n\n| | |\n|---|---|\n" + "".join(f"| {k} | `{v}` |\n" for k, v in rows))
+          for k, v in rows:
+              print(f"{k}: {v}")
+          PY
+
+      - name: DNS
+        run: |
+          for t in CNAME A AAAA; do echo "$t: $(dig +short "$HOST" "$t" | tr '\n' ' ')"; done | tee dns.txt
+          { echo "## DNS"; echo '```'; cat dns.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Certificate actually served on port 443
+        run: |
+          echo | openssl s_client -connect "$HOST:443" -servername "$HOST" 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -dates -ext subjectAltName 2>&1 | tee cert.txt || true
+          { echo "## Served certificate"; echo '```'; cat cert.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Redirects and HTTPS fetch
+        run: |
+          set +e
+          check() { printf '%-58s ' "$1"; curl -sS -o /dev/null -m 20 -w '%{http_code} → %{redirect_url}\n' "$1" 2>&1 | head -1; }
+          {
+            check "http://$HOST/"
+            check "http://$HOST/repo/Release"
+            check "${OLD_BASE}"
+            check "${OLD_BASE}repo/Release"
+            check "${OLD_BASE}repo/Packages.xz"
+          } | tee redirects.txt
+          echo "--- verified HTTPS (certificate must be valid for $HOST):"
+          curl -fsS -m 20 "https://$HOST/repo/Release" -o release.txt; https_rc=$?
+          if [ $https_rc -eq 0 ]; then echo "OK: https://$HOST/repo/Release"; head -3 release.txt; result="valid"; else result="NOT valid (curl exit $https_rc)"; fi
+          { echo "## Redirects"; echo '```'; cat redirects.txt; echo '```'; echo "## HTTPS for $HOST: **$result**"; } >> "$GITHUB_STEP_SUMMARY"
+          [ $https_rc -eq 0 ] || { echo "::error::HTTPS for $HOST is not valid; users see a certificate warning or 'Not Secure'"; exit 1; }

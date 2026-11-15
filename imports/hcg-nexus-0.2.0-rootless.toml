@@ -1,0 +1,17 @@
+# HCG Nexus 0.2.0, rootless. Built with Xcode's toolchain by HCG-Nexus "Build package" run #9
+# (https://github.com/F1r3srp3nt/HCG-Nexus/actions/runs/43553119233) from commit 907b1df.
+# The SHA-256 is the one HCG-Nexus recorded in docs/VALIDATION.md for that artifact.
+# The artifact expires on 2026-11-21; after that, rebuild in HCG-Nexus and update this request.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.2.0"
+architecture = "iphoneos-arm64"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 43553119233
+commit = "907b1df3305c8960639a662db4d21172162fbea3"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "1987156996c2e76fb005bb66590aff76b77c474c4387ede6e015f19a081616a5"

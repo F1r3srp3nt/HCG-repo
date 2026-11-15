@@ -13,7 +13,18 @@ This repository never re-signs Mach-O binaries. It only *inspects* their signatu
 
 ## Current status
 
-**No archive key exists yet. The repository is published unsigned.** `config/repo.toml` has `[signing] required = false` and an empty `fingerprint`. The website says "Not signed yet" because no signature is produced.
+**No archive key exists yet, so the repository is published unsigned.**
+- `config/repo.toml` has `[signing] required = false` and an empty `fingerprint`.
+- The website's repository details say "Not signed: no archive key has been set up yet".
+- It shows "Signed; verified…" only when the build actually signed `Release` and `gpgv` verified both signatures against the committed public key.
+
+Everything else is implemented and tested with throw-away keys:
+- the CI import of the signing subkey;
+- `Release.gpg` and `InRelease`;
+- `gpgv` verification at build time and against the deployed site;
+- the keyring package for devices (`bin/hcgrepo keyring-deb`).
+
+The only missing prerequisite is **your key**: a committed public key, its fingerprint in `config/repo.toml`, and the `HCG_REPO_GPG_PRIVATE_KEY` secret. Creating it is deliberately left to you, so the private key never passes through this session or the repository.
 
 ## What Sileo actually does (checked in its source, commit `c9f7015`)
 
@@ -66,7 +77,21 @@ Tested in this session with smaller keys: the subkey-only keyring signed a file,
 3. Publish. The build signs `Release` (detached `Release.gpg` and clearsigned `InRelease`, SHA-512 digest). It then verifies both with `gpgv` against **only** the committed public key, and checks that `InRelease`'s content equals `Release`. The build fails if any of that does not hold. The deployed check repeats the verification over HTTPS. The website and `build-info.json` say "verified" only when that check passed.
 4. Publish the fingerprint on the website and in this file, so users can compare it.
 
-## Getting the key onto devices
+## Getting the key onto devices (keyring package)
+
+Once the public key is committed and the fingerprint is configured:
+
+```bash
+bin/hcgrepo keyring-deb --layout rootless --layout rootful --version 1.0 --out keyring-out
+bin/hcgrepo import-deb keyring-out/com.hakmicapitalgroup.repo-keyring_1.0_iphoneos-arm64.deb
+bin/hcgrepo import-deb keyring-out/com.hakmicapitalgroup.repo-keyring_1.0_iphoneos-arm.deb
+```
+
+The package `com.hakmicapitalgroup.repo-keyring` installs only `<jbroot>/etc/apt/trusted.gpg.d/hcg-repo.gpg`, the
+dearmored public key, and has no maintainer scripts. The command refuses to build if the committed key does not
+contain the configured fingerprint.
+
+Background:
 
 On iOS, APT and Sileo trust keys in `/var/jb/etc/apt/trusted.gpg.d/` (rootless) or `/etc/apt/trusted.gpg.d/` (rootful). The usual way to distribute a key is a small keyring package, as Procursus does for other repositories (e.g. `chariz-keyring`). It installs `<jbroot>/etc/apt/trusted.gpg.d/hcg-repo.gpg`, the dearmored public key, and nothing else. Build one `iphoneos-arm64` and one `iphoneos-arm` package with `dpkg-deb --root-owner-group`, then import them like any other package. Do not ship a keyring package before the key exists, and do not ship a maintainer script that modifies other APT keys. The validator rejects scripts that touch `trusted.gpg`.
 

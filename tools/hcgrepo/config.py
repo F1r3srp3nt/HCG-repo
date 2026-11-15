@@ -173,6 +173,10 @@ class PackageMeta:
     versions: dict[str, dict] = field(default_factory=dict)
     changelog: dict[str, str] = field(default_factory=dict)
     notes: str = ""
+    limitations: str = ""
+    install: str = ""
+    removal: str = ""
+    screenshots: list[dict] = field(default_factory=list)  # [{file, caption}]
 
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
@@ -199,6 +203,8 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
     meta = PackageMeta(
         package=package, directory=d, summary=disp.get("summary", ""), icon=disp.get("icon"),
         header=disp.get("header"), tint=disp.get("tint"), notes=disp.get("notes", ""),
+        limitations=disp.get("limitations", ""), install=disp.get("install", ""), removal=disp.get("removal", ""),
+        screenshots=list(disp.get("screenshots", [])),
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
         versions=data.get("versions", {}),
@@ -228,9 +234,14 @@ def parse_changelog(text: str) -> dict[str, str]:
 
 
 def check_package_meta(meta: PackageMeta, report: Report) -> None:
-    for asset in (meta.icon, meta.header):
+    for asset in (meta.icon, meta.header, *(s.get("file") for s in meta.screenshots)):
         if asset and (meta.directory is None or not (meta.directory / asset).is_file()):
             report.error("meta-missing-asset", f"package.toml references missing file {asset!r}")
+        if asset and not re.fullmatch(r"[A-Za-z0-9._-]+\.(png|jpe?g|webp)", asset):
+            report.error("meta-bad-asset-name", f"asset {asset!r} must be a plain .png/.jpg/.webp file name")
+    for s in meta.screenshots:
+        if not s.get("file") or not str(s.get("caption", "")).strip():
+            report.error("meta-screenshot", "every screenshot needs file and caption (used as alt text)")
     if meta.tint and not re.fullmatch(r"#[0-9A-Fa-f]{6}", meta.tint):
         report.error("meta-bad-tint", f"tint must be #RRGGBB, got {meta.tint!r}")
     for ver, v in meta.versions.items():
