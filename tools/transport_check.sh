@@ -77,13 +77,29 @@ check_body() {  # url expect-regex label
 base="https://$HOST$REPO_PATH"
 check_body "${base}Release" '^(Origin|Label|Suite|Date|Architectures|Components|Description|Codename|Version):'
 check_body "${base}Packages" '^Package: '
-for f in Packages.xz Packages.gz Packages.bz2 CydiaIcon.png CydiaIcon@2x.png CydiaIcon@3x.png sileo-featured.json; do
+for f in Packages.xz Packages.gz Packages.bz2 sileo-featured.json; do
   out=$(curl -sS -m 20 -o /dev/null -w '%{http_code} %{content_type}' "${base}$f" 2>/dev/null || echo "000 -")
   code=${out%% *}; ctype=${out#* }
   if [ "$code" = 200 ]; then verdict=OK
   elif [ "$f" = sileo-featured.json ]; then verdict="absent (optional)"
   else verdict=FAIL; fail=1; fi
   echo "| \`${base}$f\` | $code | ${ctype:--} | | $verdict |"
+done
+echo
+echo "## Source icon (Sileo: CydiaIcon@3x.png, then @2x, then CydiaIcon.png, relative to the source URL)"
+echo
+echo "| URL | Status | Content-Type | Redirects | PNG | Matches approved branding/ file | Verdict |"
+echo "|---|---|---|---|---|---|---|"
+branding="$(dirname "$0")/../branding"
+for spec in CydiaIcon.png:60 CydiaIcon@2x.png:120 CydiaIcon@3x.png:180; do
+  f=${spec%%:*}; side=${spec##*:}; u="https://$HOST$REPO_PATH$f"; tmp=$(mktemp)
+  meta=$(curl -sS -m 20 --max-redirs 0 -o "$tmp" -w '%{http_code} %{num_redirects} %{content_type}' "$u" 2>/dev/null || echo "000 0 -")
+  code=$(echo "$meta" | cut -d' ' -f1); redirs=$(echo "$meta" | cut -d' ' -f2); ctype=$(echo "$meta" | cut -d' ' -f3-)
+  dims=$(python3 -c 'import struct,sys;d=open(sys.argv[1],"rb").read(32);print("%dx%d"%struct.unpack(">II",d[16:24]) if d[:8]==b"\x89PNG\r\n\x1a\n" and d[12:16]==b"IHDR" else "not PNG")' "$tmp")
+  if [ -f "$branding/$f" ] && cmp -s "$tmp" "$branding/$f"; then same="yes (sha256 $(sha256sum "$tmp" | cut -c1-12))"; else same="NO"; fi
+  if [ "$code" = 200 ] && [ "$redirs" = 0 ] && [ "${ctype%%;*}" = image/png ] && [ "$dims" = "${side}x${side}" ] && [ "${same%% *}" = yes ]; then verdict=OK; else verdict=FAIL; fail=1; fi
+  echo "| \`$u\` | $code | ${ctype:--} | $redirs | $dims | $same | $verdict |"
+  rm -f "$tmp"
 done
 echo
 echo "## Protected or withdrawn packages must not be downloadable (http and https)"

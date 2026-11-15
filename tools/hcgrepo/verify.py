@@ -271,11 +271,18 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
     elif code == 200 and not looks_like_html(data):
         r.warn("payment-endpoint-unused", "payment_endpoint is published but no protected package is indexed")
 
-    # ---- repository icons (Sileo tries CydiaIcon@<scale>x.png, then CydiaIcon.png) and featured banners
-    for icon in ("CydiaIcon.png", "CydiaIcon@2x.png", "CydiaIcon@3x.png"):
+    # ---- repository icons. Sileo (RepoManager._checkUpdatesInBackground) tries
+    # <source>/CydiaIcon@<screen scale>x.png, then lower scales, then CydiaIcon.png, and stops at the
+    # first download that returns any data, so every variant must be a real PNG of the right size.
+    for icon, side in REPO_ICONS.items():
         code, data, _ = f.get(repo_public + icon)
-        if code != 200 or data[:8] != b"\x89PNG\r\n\x1a\n":
-            r.error("repo-icon", f"{icon} missing or not a PNG (HTTP {code})")
+        problem = icon_problem(data, side) if code == 200 else f"HTTP {code}"
+        if problem:
+            r.error("repo-icon", f"{icon}: {problem}")
+        elif cfg is not None:
+            approved = cfg.root / "branding" / icon
+            if approved.is_file() and approved.read_bytes() != data:
+                r.error("repo-icon-mismatch", f"{icon} is not the approved icon in branding/{icon}")
     code, data, _ = f.get(repo_public + "sileo-featured.json")
     if code == 200:
         _check_featured(f, r, data, public_base, {debian.field(st, "Package") for st in stanzas})
@@ -345,6 +352,30 @@ def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:
             continue  # the repository supplies these (see repo.PRESENTATION_FIELDS)
         if debian.field(st, n) != v:
             r.error("stanza-control-mismatch", f"{label}: index field {n} differs from the package's control file")
+
+
+REPO_ICONS = {"CydiaIcon.png": 60, "CydiaIcon@2x.png": 120, "CydiaIcon@3x.png": 180}
+
+
+def png_size(data: bytes) -> tuple[int, int] | None:
+    """Width and height from a PNG's IHDR chunk, or None if this is not a PNG."""
+    import struct
+    if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR" or len(data) < 24:
+        return None
+    return struct.unpack(">II", data[16:24])
+
+
+def icon_problem(data: bytes, side: int) -> str | None:
+    if looks_like_html(data):
+        return "is an HTML page, not an image"
+    size = png_size(data)
+    if size is None:
+        return "is not a PNG"
+    if size[0] != size[1]:
+        return f"is not square ({size[0]}x{size[1]})"
+    if size[0] != side:
+        return f"is {size[0]}x{size[1]}, expected {side}x{side} for its scale"
+    return None
 
 
 def looks_like_html(data: bytes) -> bool:

@@ -73,3 +73,29 @@ It fails while HTTPS is not valid. Run it from **Actions → Check transport →
 
 Users who added the github.io URL should switch to the custom-domain URL when convenient. The redirect
 keeps working, but the custom-domain URL avoids the extra hop.
+
+## Source icon in Sileo's Sources list
+
+**What is deployed.** The approved square HCG Repo icon is served relative to the source URL as:
+- `https://repo.hakmicapitalgroup.com/repo/CydiaIcon.png` (60×60)
+- `https://repo.hakmicapitalgroup.com/repo/CydiaIcon@2x.png` (120×120)
+- `https://repo.hakmicapitalgroup.com/repo/CydiaIcon@3x.png` (180×180)
+
+These are PNG files with the exact capitalisation shown. They are copied unchanged from `branding/` into `repo/` by every build. The build's verifier and **Check transport** both fail if any variant:
+- is missing or redirects;
+- is not `image/png`;
+- is not square at its scale;
+- is an HTML page;
+- differs from the approved file.
+
+The website favicon and the HCG Store payment-provider icon are separate files and are not used for the source.
+
+**How Sileo loads it** (checked in Sileo's source, `RepoManager._checkUpdatesInBackground` and `SourcesTableViewCell`):
+- Sileo tries `CydiaIcon@<screen scale>x.png`, then the lower scales, then `CydiaIcon.png`, next to the source URL. It stops at the first download that returns data.
+- It does this **once per app launch per source**. If that one attempt fails, for example while the certificate was invalid, the Sources list shows the generic icon for the rest of that launch, even after refreshing.
+- A successfully downloaded icon is cached and refreshed on later launches. The name and the banner are fetched separately, which is why they can be correct while the icon is still generic.
+
+**Refresh steps, least disruptive first:**
+1. Force-quit Sileo (swipe it away in the app switcher) and open it again. Then pull down on **Sources** to refresh.
+2. If the icon is still generic, check from Safari on the phone that `https://repo.hakmicapitalgroup.com/repo/CydiaIcon@3x.png` shows the HCG Repo icon with no certificate warning. If Safari fails, the phone still has a network or DNS problem; see the 522 notes above.
+3. Only if both of those work and the icon is still generic after another relaunch: remove the source and add `https://repo.hakmicapitalgroup.com/repo/` again. No packages are installed from this source, so nothing else is affected.
