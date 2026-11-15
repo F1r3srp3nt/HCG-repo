@@ -2,9 +2,8 @@
 and stops at the first download that returns data, so each variant must be the approved PNG at the
 right size and must never be an HTML page."""
 
-import io
-
-from PIL import Image
+import struct
+import zlib
 
 from support import RepoTestCase
 from hcgrepo.server import BackgroundServer
@@ -15,9 +14,12 @@ PROD = "https://repo.hakmicapitalgroup.com/"
 
 
 def png(w, h, color=(10, 200, 220)):
-    b = io.BytesIO()
-    Image.new("RGB", (w, h), color).save(b, "PNG")
-    return b.getvalue()
+    """A valid RGB PNG built with the standard library (CI has no Pillow)."""
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    rows = b"".join(b"\x00" + bytes(color) * w for _ in range(h))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
 
 
 class IconTests(RepoTestCase):
