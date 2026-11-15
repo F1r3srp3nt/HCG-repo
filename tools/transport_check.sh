@@ -120,18 +120,20 @@ if [ -f "$lock" ]; then
   done
 fi
 echo
-echo "## Deployed content over plain http (identifies the deployed build)"
+echo "## Deployed content over verified HTTPS (identifies the deployed build)"
 echo '```'
-curl -s -m 15 "http://$HOST${REPO_PATH}Release" | head -2
-printf 'sileo-featured.json: %s\n' "$(curl -s -o /dev/null -m 15 -w '%{http_code}' "http://$HOST${REPO_PATH}sileo-featured.json")"
-printf 'Packages entries: %s\n' "$(curl -s -m 15 "http://$HOST${REPO_PATH}Packages" | grep -c '^Package: ')"
-curl -s -m 15 "http://$HOST/build-info.json" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("build-info revision:", d.get("revision"))' 2>/dev/null || echo "build-info: unreadable"
+curl -s -m 15 "https://$HOST${REPO_PATH}Release" | head -2
+printf 'sileo-featured.json: %s\n' "$(curl -s -o /dev/null -m 15 -w '%{http_code}' "https://$HOST${REPO_PATH}sileo-featured.json")"
+printf 'Packages entries: %s\n' "$(curl -s -m 15 "https://$HOST${REPO_PATH}Packages" | grep -c '^Package: ')"
+curl -s -m 15 "https://$HOST/build-info.json" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("build-info revision:", d.get("revision"))' 2>/dev/null || echo "build-info: unreadable"
 echo '```'
 echo
-echo "## Redirects"
+echo "## Redirects (first hop, then where the chain ends)"
 echo '```'
 for u in "http://$HOST$REPO_PATH" "https://f1r3srp3nt.github.io/HCG-repo${REPO_PATH}Release"; do
-  printf '%-60s %s\n' "$u" "$(curl -sS -o /dev/null -m 15 -w '%{http_code} -> %{redirect_url}' "$u" 2>&1 | tail -1)"
+  first=$(curl -sS -o /dev/null -m 15 -w '%{http_code} -> %{redirect_url}' "$u" 2>&1 | tail -1)
+  final=$(curl -sS -L -o /dev/null -m 20 -w '%{http_code} %{url_effective} (%{num_redirects} redirects)' "$u" 2>&1 | tail -1)
+  printf '%-60s %s\n%-60s ends at %s\n' "$u" "$first" "" "$final"
 done
 echo '```'
 echo
