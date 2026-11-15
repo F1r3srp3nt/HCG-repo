@@ -86,6 +86,32 @@ for f in Packages.xz Packages.gz Packages.bz2 CydiaIcon.png CydiaIcon@2x.png Cyd
   echo "| \`${base}$f\` | $code | ${ctype:--} | | $verdict |"
 done
 echo
+echo "## Protected or withdrawn packages must not be downloadable (http and https)"
+echo
+echo "| URL | Status | Verdict |"
+echo "|---|---|---|"
+lock="$(dirname "$0")/../repo-lock.json"
+if [ -f "$lock" ]; then
+  for fn in $(python3 -c 'import json,sys;[print(e["filename"].rsplit("/",1)[1]) for e in json.load(open(sys.argv[1]))["packages"] if e.get("status") in ("protected","withdrawn")]' "$lock"); do
+    for scheme in http https; do
+      for path in "debs/$fn" "protected/$fn"; do
+        u="$scheme://$HOST$REPO_PATH$path"
+        code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$u" 2>/dev/null || echo 000)
+        if [ "$code" = 200 ]; then verdict="EXPOSED"; fail=1; else verdict="OK (not served)"; fi
+        echo "| \`$u\` | $code | $verdict |"
+      done
+    done
+  done
+fi
+echo
+echo "## Deployed content over plain http (identifies the deployed build)"
+echo '```'
+curl -s -m 15 "http://$HOST${REPO_PATH}Release" | head -2
+printf 'sileo-featured.json: %s\n' "$(curl -s -o /dev/null -m 15 -w '%{http_code}' "http://$HOST${REPO_PATH}sileo-featured.json")"
+printf 'Packages entries: %s\n' "$(curl -s -m 15 "http://$HOST${REPO_PATH}Packages" | grep -c '^Package: ')"
+curl -s -m 15 "http://$HOST/build-info.json" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("build-info revision:", d.get("revision"))' 2>/dev/null || echo "build-info: unreadable"
+echo '```'
+echo
 echo "## Redirects"
 echo '```'
 for u in "http://$HOST$REPO_PATH" "https://f1r3srp3nt.github.io/HCG-repo${REPO_PATH}Release"; do
