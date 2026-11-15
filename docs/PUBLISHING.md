@@ -18,6 +18,8 @@ Fill in `packages/<package-id>/package.toml` before importing (copy the HCG Term
 - `[versions."<version>"]`: `status = "device-tested"` together with `device_tests` evidence. Without an entry, a version is labelled *Experimental*.
 - `CHANGELOG.md`: one `## <exact Debian version>` section per version.
 
+The package must also belong to a product in `config/products.toml` whose `access` is `public`. Packages of `login-required` or `paid` products, and unmapped packages in the `com.hakmicapitalgroup.` namespace, are refused, because everything published here is downloadable by anyone. Under the current release policy no product is `public`, so no HCG package can be imported yet. See [STORE_INTEGRATION.md](STORE_INTEGRATION.md).
+
 Versions, architectures and dependencies are never written by hand. They come from the `.deb`'s own control file. The repository adds only `Depiction`, `SileoDepiction`, `Icon` and `Header` (presentation URLs), and `Filename`, `Size` and checksums.
 
 ## 2. Import

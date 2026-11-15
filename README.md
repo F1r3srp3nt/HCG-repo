@@ -15,10 +15,11 @@ and command-line tools.
 
 ## Status
 
-- **Infrastructure:** complete and tested locally. 78 automated tests, plus build → serve under the real path prefix → verify over HTTP, for both base URLs.
+- **Infrastructure:** complete and tested locally. 92 automated tests, plus build → serve under the real path prefix → verify over HTTP, for both base URLs.
 - **Deployment:** not yet done. GitHub Pages is not enabled for this repository yet, and publishing runs only from `main`. See [First deployment](#first-deployment).
 - **HCG Terminal Unleashed:** not published. No built `.deb` exists yet: HCG-Terminal's CI builds one but does not upload it. The packaging has been reviewed and two fixes are recommended; see [docs/TERMINAL_UNLEASHED.md](docs/TERMINAL_UNLEASHED.md).
 - **HCG Nexus, HCG Sentinel:** shown on the website as planned and unavailable, with no install button.
+- **HCG Store:** each product has a page at `products/<key>/` linking to its HCG Store page (the store is not live yet). Every product is currently `login-required`, and the validator refuses any package that is not `public`, so none can be published here. See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
 - **Device testing:** none. Nothing has been installed through Sileo on a device. Use [docs/DEVICE_CHECKLIST.md](docs/DEVICE_CHECKLIST.md).
 
 ## Quick start
@@ -41,9 +42,9 @@ python3 -m unittest discover -s tests               # test suite
 ## Layout
 
 ```
-config/repo.toml                  repository identity, architectures, base URLs, signing policy
+config/repo.toml                  repository identity, architectures, base URLs, signing policy, HCG Store URL
 config/external-dependencies.toml dependencies provided by the bootstrap or other repos (allow-list)
-config/products.toml              planned products shown as "not available" on the website
+config/products.toml              products: product pages, HCG Store mapping and access level
 packages/<id>/                    presentation + review metadata per package (icon, header, changelog,
                                   reviewed entitlements, device-test evidence). Never versions or deps.
 pool/<arch>/<pkg>_<ver>_<arch>.deb    imported packages (immutable), each with .provenance.json
@@ -57,7 +58,7 @@ tests/                            unit and regression tests
 .github/workflows/publish.yml     manual publication to GitHub Pages (workflow_dispatch, main only)
 ```
 
-Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`). The output also includes `build-info.json`.
+Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`, and `payment_endpoint` only once `[payments] endpoint` is set). The output also includes `products/<key>/index.html` and `build-info.json`.
 
 ## First deployment
 
@@ -76,3 +77,4 @@ Generated output, which is never committed: `_site/` holds the website, and `_si
 - [docs/TERMINAL_UNLEASHED.md](docs/TERMINAL_UNLEASHED.md): packaging review, and what is needed to publish it.
 - [docs/DEVICE_CHECKLIST.md](docs/DEVICE_CHECKLIST.md): physical-device test procedure.
 - [docs/VALIDATION.md](docs/VALIDATION.md): what the validator rejects, and the latest results.
+- [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md): product pages, HCG Store links and access states, and why installation is unavailable.

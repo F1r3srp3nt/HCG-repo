@@ -12,8 +12,10 @@ from __future__ import annotations
 import bz2
 import gzip
 import hashlib
+import html
 import json
 import lzma
+import re
 import tempfile
 import urllib.error
 import urllib.request
@@ -23,13 +25,16 @@ from urllib.parse import urljoin, urlsplit
 
 from . import debian
 from .config import Report, RepoConfig
-from .debinspect import InspectError, inspect_deb
+from .debinspect import InspectError, check_access, inspect_deb
 
 HASHES = (("MD5Sum", "md5"), ("SHA1", "sha1"), ("SHA256", "sha256"), ("SHA512", "sha512"))
 DECOMPRESS = {"": lambda b: b, ".gz": gzip.decompress, ".bz2": bz2.decompress, ".xz": lzma.decompress,
               ".lzma": lzma.decompress}
 CLIENT_TRIES = ("Packages.zst", "Packages.xz", "Packages.lzma", "Packages.bz2", "Packages.gz", "Packages")
 PRESENTATION = ("SileoDepiction", "Depiction", "Icon", "Header")
+DEB_LINK = re.compile(r"""(?:href|src)\s*=\s*["']?[^"'\s>]*\.deb(?:[?#"'\s>]|$)""", re.I)
+INLINE_SCRIPT = re.compile(r"<script(?![^>]*\bsrc=)[^>]*>", re.I)
+NO_DOWNLOADS = "Downloads are not available yet."
 
 
 @dataclass
@@ -219,6 +224,11 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         if not url.startswith(repo_public):
             r.error("filename-escapes", f"{label}: Filename {fn!r} resolves outside the source ({url})")
             continue
+        if cfg and pkg:
+            gate = Report(label)
+            check_access(pkg, cfg, gate)
+            for code, msg in gate.errors:
+                r.error("index-" + code, f"{label}: published in the index, but {msg}")
         if check_debs:
             _check_deb(f, r, st, url, label)
         for k in PRESENTATION:
@@ -251,8 +261,46 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         for st in stanzas:
             if f"sileo://package/{debian.field(st, 'Package')}".encode() not in data:
                 r.error("site-missing-package", f"website does not offer {debian.field(st, 'Package')}")
+        for product in cfg.products if cfg else []:
+            if f'href="products/{product.key}/"'.encode() not in data:
+                r.error("site-product-link", f"website does not link the product page products/{product.key}/")
+    if cfg:
+        _check_store_pages(f, r, cfg, public_base, repo_public, {debian.field(st, "Package") for st in stanzas})
     res.checked_urls = f.log
     return res
+
+
+def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, repo_public: str,
+                       indexed: set[str]) -> None:
+    """Product pages link HCG Store, and never offer a download of a product that is not public."""
+    for p in cfg.products:
+        url = f"{public_base}products/{p.key}/"
+        code, data, _ = f.get(url)
+        if code != 200:
+            r.error("product-page-missing", f"product page {url} returns HTTP {code}")
+            continue
+        text = data.decode("utf-8", "replace")
+        for what, link in (("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p))):
+            if f'href="{html.escape(link)}"' not in text:
+                r.error("product-page-store-link", f"{url} does not link the {what} page {link}")
+        if INLINE_SCRIPT.search(text):
+            r.error("product-page-inline-script", f"{url} contains an inline script")
+        if not p.public:
+            if "sileo://package/" in text or DEB_LINK.search(text):
+                r.error("product-page-install-link",
+                        f"{url} offers an install or .deb link, but {p.name} is {p.access}")
+            if NO_DOWNLOADS not in text:
+                r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
+        elif not set(p.package_ids) & indexed and NO_DOWNLOADS not in text:
+            r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
+
+    code, data, _ = f.get(repo_public + "payment_endpoint")
+    if cfg.payment_endpoint:
+        if code != 200 or data.decode("utf-8", "replace").strip() != cfg.payment_endpoint:
+            r.error("payment-endpoint", f"payment_endpoint must contain {cfg.payment_endpoint} (HTTP {code})")
+    elif code == 200:
+        r.error("payment-endpoint-unexpected",
+                "payment_endpoint is served but config/repo.toml [payments] endpoint is empty")
 
 
 def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:

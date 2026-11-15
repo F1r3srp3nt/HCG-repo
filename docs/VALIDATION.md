@@ -15,6 +15,7 @@ There are three layers of checks. Any **error** blocks import, build and publica
 | Apps | missing/unreadable `Info.plist`, bundle id or executable; executable missing, not executable or not a Mach-O executable; bundle id reserved for the App Store edition; `MinimumOSVersion` not enforced by a `firmware (>= …)` dependency |
 | Maintainer scripts | not executable; no `#!`; scripts that edit sudoers, passwords, NVRAM, sshd config, APT sources or trusted keys, set setuid bits, or recursively delete system/user roots |
 | Metadata | missing icon/header file; `device-tested` without a complete, passing device-test entry |
+| Access | package of a product whose `access` is not `public` (`access-not-public`); package in the `com.hakmicapitalgroup.` namespace that no product in `config/products.toml` lists (`access-unmapped`). See [STORE_INTEGRATION.md](STORE_INTEGRATION.md) |
 
 ## 2. The whole repository (`validate`, `import-*`, `build`, CI)
 
@@ -40,13 +41,16 @@ There are three layers of checks. Any **error** blocks import, build and publica
 - **Website and repository icon:**
   - `CydiaIcon.png` must be a PNG.
   - The website root must link `sileo://source/<exact source URL>`.
-  - The website must offer each indexed package.
+  - The website must offer each indexed package and link every product page.
+- **Product pages (`products/<key>/`):** each must exist and link the HCG Store sign-in and product pages, with no inline script. Pages of non-public products must say "Downloads are not available yet." and must not contain a `sileo://package/` or `.deb` link.
+- **Access:** an index entry for a package that is not `public` is an error (`index-access-*`).
+- **`payment_endpoint`:** must contain `[payments] endpoint` when it is set, and must not be served when it is empty.
 
 `smoke` and the CI build for each configured base URL, serve the result **under that URL's path prefix** (`/HCG-repo/` for project Pages, `/` for the custom domain), and verify it over HTTP. Requests outside the prefix return 404, as they do on GitHub Pages.
 
 ## Regression tests (`python3 -m unittest discover -s tests`)
 
-78 tests in `tests/`, covering among others:
+92 tests in `tests/`, covering among others:
 
 - **Damaged or fake packages:** truncated archives, corrupted xz payloads, LFS pointers, HTML error pages.
 - **Layout mistakes:** rootless/rootful/all path errors, setuid and world-writable files.
@@ -62,14 +66,15 @@ There are three layers of checks. Any **error** blocks import, build and publica
 - **Index and download integrity:** tampered `.deb`, an inconsistent compressed index, an index changed after `Release`, a stale unlisted `Packages.zst`, a `Release` missing an architecture, and an atomic build that keeps the previous snapshot.
 - **GitHub imports:** `latest`, a moved tag, a digest mismatch, a failed run, ambiguous artifacts, and the token not being forwarded to redirected downloads.
 - **GPG:** signing with a throw-away key, `gpgv` verification, tamper detection, and refusal of the wrong key.
+- **HCG Store:** product mapping and URLs, missing `access` treated as `login-required`, refusal of login-required, paid and unmapped packages by import, `validate`, `build` and `verify`, product page content and verification, `payment_endpoint` emission and validation.
 
-## Latest results (this session, 13 Nov 2026, Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4)
+## Latest results (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4; tests, `validate` and `smoke` on 15 Nov 2026, the rest on 13 Nov 2026)
 
 | Check | Result |
 |---|---|
-| `python3 -m unittest discover -s tests` | **78 tests, OK** |
+| `python3 -m unittest discover -s tests` | **92 tests, OK** |
 | `bin/hcgrepo validate` | OK: 0 packages, repository valid |
-| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (served at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (served at `/`): 11 URLs each, 0 errors, 0 warnings |
+| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (served at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (served at `/`): 15 URLs each (including the three product pages), 0 errors, 0 warnings |
 | Rehearsal: Terminal-shaped `.deb` (real script's control/scripts/layout, stand-in binary) → import → build → serve at `/HCG-repo/` → verify | OK after the entitlements were recorded: 16 URLs, 1 package, 0 errors. The rehearsal ran in a scratch copy and nothing was committed |
 | Website rendering (Chromium, 390 px and 1100 px) | No horizontal overflow, no failed requests |
 | Deployed HTTPS endpoints | **Not tested.** Pages is not enabled yet, and `*.github.io` is not reachable from the build sandbox. The publish workflow's `verify-deployed` job performs this check |

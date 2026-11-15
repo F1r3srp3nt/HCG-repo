@@ -45,3 +45,18 @@ required = false
 # Fingerprint of the published archive key (keys/hcg-repo-archive-key.asc). Empty = no key yet.
 fingerprint = ""
 public_key_file = "keys/hcg-repo-archive-key.asc"
+
+[store]
+# HCG Store, where products are bought and access is granted. It is NOT live yet.
+# Product pages on this site (products/<key>/) link to <base_url>apps/<store_slug>[?edition=...]
+# and to <base_url>auth/login, and ask <base_url>api/v1/repo/products/<key>/access whether the
+# signed-in visitor owns the product. Must be https. HCG_STORE_BASE_URL overrides it.
+# See docs/STORE_INTEGRATION.md.
+base_url = "https://store.hakmicapitalgroup.com/"
+
+[payments]
+# Sileo payment provider endpoint. Empty = disabled, which is the current state.
+# Set it only once HCG Store's Sileo payment provider is approved and live. The build then writes
+# <repo>/payment_endpoint containing this URL, which is where Sileo looks for it. It must be an
+# https:// URL under [store] base_url. See docs/STORE_INTEGRATION.md.
+endpoint = ""

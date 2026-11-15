@@ -332,11 +332,30 @@ def inspect_deb(path: Path) -> DebInfo:
 def validate_deb(info: DebInfo, cfg: RepoConfig, meta: PackageMeta) -> Report:
     r = Report(f"{info.package or info.path.name} {info.version} {info.architecture}".strip())
     _check_control(info, cfg, r)
+    check_access(info.package, cfg, r)
     _check_payload(info, meta, r)
     _check_binaries(info, meta, r)
     _check_apps(info, cfg, r)
     _check_scripts(info, r)
     return r
+
+
+def check_access(package: str, cfg: RepoConfig, r: Report) -> None:
+    """Public-artifact gate. Everything in this repository is downloadable by anyone, so only
+    packages of a `public` product may be here. Unmapped in-namespace packages fail closed."""
+    if not package:
+        return
+    product = cfg.product_for_package(package)
+    if product is None:
+        if cfg.namespace and package.startswith(cfg.namespace):
+            r.error("access-unmapped",
+                    f"{package} is not listed in any product's package_ids in config/products.toml; "
+                    "packages in this namespace are refused until they are mapped to a product with access = \"public\"")
+        return
+    if not product.public:
+        r.error("access-not-public",
+                f"{package} belongs to {product.name} (access = {product.access!r}); login-required and paid "
+                "packages must never be published at a public URL, so they cannot be imported, indexed or built")
 
 
 def _check_control(info: DebInfo, cfg: RepoConfig, r: Report) -> None:

@@ -1,0 +1,101 @@
+# HCG Store integration
+
+**Status: links only.** HCG Repo product pages link to HCG Store, and HCG Store product pages can
+link back. HCG Store (`https://store.hakmicapitalgroup.com/`) is **not live yet**, so every store
+link and the access check fail until it is. Nothing can be installed through the store yet.
+
+## Products and mapping
+
+`config/products.toml` is the mapping. The HCG ERP remains the source of truth for products;
+update this file to match it.
+
+| Key (Repo page) | Name | Store page | Package IDs | Access |
+|---|---|---|---|---|
+| `hcg-terminal-unleashed` | HCG Terminal Unleashed | `apps/hcg-terminal?edition=unleashed` | `com.hakmicapitalgroup.hcgterminal.unleashed` | `login-required` |
+| `hcg-nexus` | HCG Nexus | `apps/hcg-nexus?edition=jailbreak` | `com.hakmicapitalgroup.hcgnexus` | `login-required` |
+| `hcg-sentinel` | HCG Sentinel | `apps/hcg-sentinel` | none | `login-required` |
+
+HCG Sentinel has no Debian package and no jailbreak build. It is listed only so that navigation
+between the store and the repository works. It cannot be installed from HCG Repo.
+
+`access` is one of:
+
+- `public`: anyone may download the package. Only these packages may be in this repository.
+- `login-required`: the visitor must be signed in to HCG Store (free tools included).
+- `paid`: the visitor must have bought the product in HCG Store.
+
+A product without `access` is treated as `login-required`. Under the current HCG release policy,
+every product is `login-required` or `paid`.
+
+## Routes
+
+| From | To | URL |
+|---|---|---|
+| HCG Repo | Repo product page | `<repo base>products/<key>/` (for example `https://f1r3srp3nt.github.io/HCG-repo/products/hcg-nexus/`) |
+| Repo product page | Store product page | `<store>apps/<store_slug>[?edition=<store_edition>]` |
+| Repo product page | Store sign-in | `<store>auth/login?return_to=<URL-encoded /apps/<store_slug>[?edition=…]>` |
+| Repo product page | Access check | `GET <store>api/v1/repo/products/<key>/access` |
+| HCG Store | Repo product page | `<repo base>products/<key>/` |
+
+`<store>` is `[store] base_url` in `config/repo.toml` (`HCG_STORE_BASE_URL` overrides it). It must
+be `https://`. Product pages are at the site root, not under `repo/`, so the APT source
+`<repo base>repo/` and everything under it is unchanged. The landing page's cards link each product
+page ("Product page").
+
+## Product page and access states
+
+Without JavaScript, the page shows two links: **Sign in to check access** and **View in HCG Store**.
+`assets/store-access.js` then asks the store's access endpoint, sending the store's own cookie
+(`credentials: "include"`, `Accept: application/json`, 5-second timeout). The store answers:
+
+```json
+{ "state": "signed-out | not-owned | owned | not-for-sale | unavailable",
+  "buy_url": "optional", "store_url": "…", "downloads_available": false, "message": "optional" }
+```
+
+| State | Shown |
+|---|---|
+| `signed-out` | The default links stay |
+| `not-owned` | **Buy Product**: `buy_url` if it is under the store base URL, otherwise the store product page |
+| `owned` | **Owned** badge. **Get from HCG Repo** is disabled with "Downloads are not available yet." unless `downloads_available` is `true`. Even then the page only explains how to add the source and install in Sileo; it never links a `.deb` |
+| `not-for-sale` | **Not for sale yet** (disabled) |
+| `unavailable`, network or CORS error, timeout, non-JSON | The default links stay, plus "Access could not be checked right now." |
+
+The script uses only URLs from the response that start with the configured store base URL. It puts
+no token in any URL, stores nothing, and uses no inline code, so it works under a strict CSP. The
+store must allow this site's origin with credentials in its CORS policy for the check to work.
+
+## Why installation is unavailable
+
+Everything in this repository is downloadable by anyone who knows the URL. A login-gated or paid
+package must therefore never be in `pool/`, the `Packages` index or `debs/`. The validator enforces
+this for `inspect`, every `import-*`, `validate`, `build` and `verify`:
+
+- `access-not-public`: the package belongs to a product whose `access` is not `public`.
+- `access-unmapped`: the package is in the `com.hakmicapitalgroup.` namespace but no product lists
+  it. It is refused until it is mapped (fail closed).
+- `index-access-*` (`verify`): a published index lists such a package.
+
+Product pages of non-public products say "Downloads are not available yet." and have no
+"Install in Sileo" button and no `.deb` link. `verify` checks this on every build.
+
+## Sileo payment endpoint
+
+`[payments] endpoint` in `config/repo.toml` is empty, which disables it. When HCG Store's Sileo
+payment provider is approved and live, set it to the provider's `https://` URL under the store
+base URL. The build then writes `repo/payment_endpoint` containing that URL, which is where Sileo
+looks for it, and `verify` checks the file. While the setting is empty, `verify` reports an error
+if the file exists.
+
+## What remains
+
+1. **Protected index entries.** Commercial packages need `Packages` entries with
+   `Tag: cydia::commercial`-style metadata, whose binaries live only behind the store's authorised
+   download service and never in `debs/`. This is not implemented. It is the remaining
+   package-manager integration work, so installation stays unavailable until it is done.
+2. **Store go-live.** The store, its sign-in, its access endpoint, its CORS policy for this site and
+   its payment provider must be live before any of the store links work.
+3. **Domain migration.** After [CUSTOM_DOMAIN.md](CUSTOM_DOMAIN.md), the Store's links to Repo product
+   pages must change from `https://f1r3srp3nt.github.io/HCG-repo/products/<key>/` to
+   `https://repo.hakmicapitalgroup.com/products/<key>/`, and the store's CORS policy must allow the new
+   origin.

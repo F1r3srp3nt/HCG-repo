@@ -65,6 +65,8 @@ h3 { font-size: 1.1rem; margin: 0; }
 .btn-primary:hover { background: #5fe0ee; }
 .btn-ghost { background: transparent; color: var(--text); border-color: var(--line); }
 .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.btn-ghost[disabled]:hover { border-color: var(--line); color: var(--text); }
 .hint, .small { font-size: 0.86rem; }
 .hint, .muted { color: var(--muted); }
 .hint { margin: 10px 0 0; }
@@ -101,6 +103,13 @@ details { background: var(--surface); border: 1px solid var(--line); border-radi
 summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
 details[open] summary { color: var(--cyan); }
 .dep-header { display: block; width: 100%; height: auto; max-height: 320px; object-fit: cover; border-radius: 0 0 var(--radius) var(--radius); }
+.notice { background: var(--surface); border: 1px solid var(--warn); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+.notice p { margin: 0; }
+.store { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin: 26px 0 0; }
+.prose .store h2 { margin-top: 0; }
+.store .actions { align-items: center; }
+.store[aria-busy="true"] .actions { opacity: 0.8; }
+.hint:empty { display: none; }
 .change { border-left: 2px solid var(--line); padding-left: 14px; margin: 14px 0; }
 .downloads { padding-left: 1.1em; }
 .downloads a, .builds a { overflow-wrap: anywhere; }

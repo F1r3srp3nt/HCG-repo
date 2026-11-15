@@ -50,6 +50,8 @@ The import succeeded once the entitlements were recorded, and the build plus HTT
 
 ## Exact steps to publish it
 
+> **Blocked by the release policy.** HCG Terminal Unleashed is `login-required` in `config/products.toml`, so the validator refuses its package (`access-not-public`) and step 3 fails. It can be published here only if the product is made `public`, or once protected (commercial) index entries exist; see [STORE_INTEGRATION.md](STORE_INTEGRATION.md). The steps below remain the procedure for a public package.
+
 1. In **HCG-Terminal**:
    - Add `uikittools` to `Depends` in `Scripts/package-ios.sh`.
    - Bump `CURRENT_PROJECT_VERSION` (e.g. to `2`).

@@ -8,7 +8,7 @@ import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -71,6 +71,84 @@ def normalize_base_url(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc.lower()}{path}"
 
 
+def normalize_store_url(url: str) -> str:
+    """HCG Store base URL: like a base URL, but HTTPS only (the store sets sign-in cookies)."""
+    out = normalize_base_url(url)
+    if not out.startswith("https://"):
+        raise ConfigError(f"[store] base_url must be an https:// URL, got {url!r}")
+    return out
+
+
+# ---------------------------------------------------------------------------- products
+
+# Who may download a product's packages. Only `public` packages may ever be in this repository's
+# pool, index or debs/ directory, because everything published here is reachable by anyone.
+ACCESS_LEVELS = ("public", "login-required", "paid")
+DEFAULT_ACCESS = "login-required"  # a product without `access` is treated as gated (fail closed)
+SLUG_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
+
+
+@dataclass
+class Product:
+    """One entry of config/products.toml: a product page at products/<key>/ and its HCG Store link."""
+
+    key: str
+    name: str
+    store_slug: str
+    store_edition: str = ""
+    access: str = DEFAULT_ACCESS
+    package_ids: list[str] = field(default_factory=list)
+    layouts: list[str] = field(default_factory=list)
+    kind: str = ""
+    status: str = "Not available"
+    summary: str = ""
+    detail: str = ""
+
+    @property
+    def public(self) -> bool:
+        return self.access == "public"
+
+    def store_path(self) -> str:
+        """Store product route, relative to the store base: apps/<slug>[?edition=<edition>]."""
+        path = f"apps/{self.store_slug}"
+        return path + (f"?edition={self.store_edition}" if self.store_edition else "")
+
+
+def parse_products(raw: list) -> list[Product]:
+    products: list[Product] = []
+    owners: dict[str, str] = {}
+    for i, d in enumerate(raw):
+        where = f"config/products.toml product #{i + 1}"
+        if not isinstance(d, dict):
+            raise ConfigError(f"{where}: must be a table")
+        for k in ("key", "name", "store_slug"):
+            if not str(d.get(k, "")).strip():
+                raise ConfigError(f"{where}: `{k}` is required")
+        p = Product(
+            key=d["key"], name=d["name"], store_slug=d["store_slug"], store_edition=d.get("store_edition", ""),
+            access=d.get("access", DEFAULT_ACCESS), package_ids=list(d.get("package_ids", [])),
+            layouts=list(d.get("layouts", [])), kind=d.get("kind", ""), status=d.get("status", "Not available"),
+            summary=d.get("summary", ""), detail=d.get("detail", ""),
+        )
+        where = f"config/products.toml product {p.key!r}"
+        for k in ("key", "store_slug") + (("store_edition",) if p.store_edition else ()):
+            if not SLUG_RE.fullmatch(getattr(p, k)):
+                raise ConfigError(f"{where}: `{k}` must be lowercase letters, digits and '-', got {getattr(p, k)!r}")
+        if p.access not in ACCESS_LEVELS:
+            raise ConfigError(f"{where}: `access` must be one of {', '.join(ACCESS_LEVELS)}, got {p.access!r}")
+        for a in p.layouts:
+            if a not in ("iphoneos-arm64", "iphoneos-arm", "iphoneos-arm64e"):
+                raise ConfigError(f"{where}: unknown layout {a!r}")
+        if any(q.key == p.key for q in products):
+            raise ConfigError(f"{where}: duplicate key")
+        for pkg in p.package_ids:
+            if pkg in owners:
+                raise ConfigError(f"{where}: package {pkg} is already mapped to product {owners[pkg]!r}")
+            owners[pkg] = p.key
+        products.append(p)
+    return products
+
+
 @dataclass
 class RepoConfig:
     root: Path
@@ -90,7 +168,9 @@ class RepoConfig:
     signing_fingerprint: str
     public_key_file: str
     external_deps: dict[str, dict]
-    products: list[dict]
+    products: list[Product]
+    store_base_url: str
+    payment_endpoint: str = ""
 
     @property
     def pool_dir(self) -> Path:
@@ -118,6 +198,20 @@ class RepoConfig:
     def repo_url(self, base_url: str) -> str:
         return normalize_base_url(base_url) + self.repo_subdir + "/"
 
+    # ---- products and HCG Store
+
+    def product_for_package(self, package: str) -> Product | None:
+        return next((p for p in self.products if package in p.package_ids), None)
+
+    def store_product_url(self, p: Product) -> str:
+        return self.store_base_url + p.store_path()
+
+    def store_login_url(self, p: Product) -> str:
+        return self.store_base_url + "auth/login?return_to=" + quote("/" + p.store_path(), safe="")
+
+    def store_access_url(self, p: Product) -> str:
+        return f"{self.store_base_url}api/v1/repo/products/{p.key}/access"
+
 
 def load_config(root: Path | None = None) -> RepoConfig:
     root = Path(root or os.environ.get("HCG_REPO_ROOT") or ROOT)
@@ -143,6 +237,18 @@ def load_config(root: Path | None = None) -> RepoConfig:
     for k, v in urls.items():
         urls[k] = normalize_base_url(v)
     s = cfg.get("signing", {})
+    store = cfg.get("store", {})
+    store_raw = os.environ.get("HCG_STORE_BASE_URL") or store.get("base_url", "")
+    if not store_raw.strip():
+        raise ConfigError("config/repo.toml [store] base_url is required")
+    store_base = normalize_store_url(store_raw)
+    endpoint = cfg.get("payments", {}).get("endpoint", "").strip()
+    if endpoint:
+        parts = urlsplit(endpoint)
+        if parts.scheme != "https" or not parts.netloc or parts.query or parts.fragment or any(c.isspace() for c in endpoint):
+            raise ConfigError(f"[payments] endpoint must be a plain https:// URL, got {endpoint!r}")
+        if not endpoint.startswith(store_base):
+            raise ConfigError(f"[payments] endpoint must start with the HCG Store base URL {store_base}, got {endpoint!r}")
     return RepoConfig(
         root=root, origin=r["origin"], label=r["label"], suite=r["suite"], codename=r["codename"],
         version=str(r["version"]), description=r["description"], repo_subdir=sub, architectures=archs,
@@ -150,7 +256,8 @@ def load_config(root: Path | None = None) -> RepoConfig:
         urls=urls, default_target=default_target, signing_required=bool(s.get("required", False)),
         signing_fingerprint=s.get("fingerprint", "").replace(" ", "").upper(),
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
-        external_deps=ext, products=products,
+        external_deps=ext, products=parse_products(products), store_base_url=store_base,
+        payment_endpoint=endpoint,
     )
 
 
