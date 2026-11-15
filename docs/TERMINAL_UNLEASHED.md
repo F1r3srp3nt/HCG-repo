@@ -1,8 +1,7 @@
 # HCG Terminal Unleashed: packaging review and what is needed to publish it
 
-**Status: withdrawn, not published.** `0.1.0-1` (rootless, `iphoneos-arm64`) was imported for review and then
-withdrawn under the HCG release policy (both products are `login-required`, and nothing login-gated may be published at a public URL) pending sign-in/access enforcement and launch approval. It is no longer in `pool/`; its lock entry is kept as `withdrawn`, and the `.deb` remains in git history.
-Nothing has been installed on a device. See [STORE_INTEGRATION.md](STORE_INTEGRATION.md).
+**Status: imported for review, not published.** `0.1.0-1` (rootless, `iphoneos-arm64`) is in `pool/` on the
+review branch. Nothing has been installed on a device.
 
 - **Where it came from:** HCG-Terminal's CI builds the `.deb` but does not keep it. **Prepare packages** therefore built it on macOS from the pinned commit `ddc51977c95f499a0568bee02aa1f0ba6b87ded7`, using the project's documented command (`imports/hcg-terminal-unleashed-0.1.0-1-rootless.toml`; [run 43673491962](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/43673491962)).
 - **SHA-256:** `7fdb735e74e551fa05a23a81714ff537f97556a67d600f49f090b543ef1d42bf`.
@@ -54,9 +53,7 @@ The import succeeded once the entitlements were recorded, and the build plus HTT
 
 ## Publishing this version and the next
 
-**0.1.0-1:** withdrawn and cannot be published again; any later build needs a new version.
-
-**Blocked by the release policy.** HCG Terminal Unleashed is `login-required` in `config/products.toml`, so the validator refuses its packages (`access-not-public`), and an import request for a new version fails. A new version can be published here only if the product is made `public`, or once protected (commercial) index entries exist; see [STORE_INTEGRATION.md](STORE_INTEGRATION.md). The steps below remain the procedure for when that is resolved.
+**0.1.0-1:** follow `docs/PUBLICATION_PLAN.md`. Merge the branch, fix HTTPS, run **Publish repository**, then test on an iOS 17+ rootless device.
 
 **Next version.** Recommended changes in HCG-Terminal:
 1. Add `uikittools` to `Depends` in `Scripts/package-ios.sh`.

@@ -15,7 +15,6 @@ There are three layers of checks. Any **error** blocks import, build and publica
 | Apps | missing/unreadable `Info.plist`, bundle id or executable; executable missing, not executable or not a Mach-O executable; bundle id reserved for the App Store edition; `MinimumOSVersion` not enforced by a `firmware (>= …)` dependency |
 | Maintainer scripts | not executable; no `#!`; scripts that edit sudoers, passwords, NVRAM, sshd config, APT sources or trusted keys, set setuid bits, or recursively delete system/user roots |
 | Metadata | missing icon/header file; `device-tested` without a complete, passing device-test entry |
-| Access | package of a product whose `access` is not `public` (`access-not-public`); package in the `com.hakmicapitalgroup.` namespace that is neither listed by a product in `config/products.toml` nor in `public_packages` in `config/repo.toml` (`access-unmapped`). See [STORE_INTEGRATION.md](STORE_INTEGRATION.md) |
 
 ## 2. The whole repository (`validate`, `import-*`, `build`, CI)
 
@@ -42,9 +41,7 @@ There are three layers of checks. Any **error** blocks import, build and publica
   - `CydiaIcon.png` must be a PNG.
   - The website root must link `sileo://source/<exact source URL>`.
   - The website must offer each indexed package and link every product page.
-- **Product pages (`products/<key>/`):** each must exist and link the HCG Store sign-in and product pages, with no inline script. Pages of non-public products must say "Downloads are not available yet." and must not contain a `sileo://package/` or `.deb` link.
-- **Access:** an index entry for a package that is not `public` is an error (`index-access-*`).
-- **`payment_endpoint`:** must contain `[payments] endpoint` when it is set, and must not be served when it is empty.
+- **Product pages (`products/<key>/`):** each must exist, link the HCG Store sign-in and product pages, and contain no inline script. They never link a `.deb`, offer `sileo://package/` only for packages in the index, and say "Downloads are not available yet." when none of the product's packages is indexed.
 
 `smoke` and the CI build for each configured base URL, serve the result **under that URL's path prefix** (`/HCG-repo/` for project Pages, `/` for the custom domain), and verify it over HTTP. Requests outside the prefix return 404, as they do on GitHub Pages.
 
@@ -69,19 +66,19 @@ There are three layers of checks. Any **error** blocks import, build and publica
   - brand assets are present.
 - **GitHub imports:** `latest`, a moved tag, a digest mismatch, a failed run, ambiguous artifacts, the token not being forwarded to redirected downloads.
 - **GPG:** signing with a throw-away key, `gpgv` verification, tamper detection, the wrong key refused, and keyring packages for both layouts (refused without a key).
-- **HCG Store:** product mapping and URLs, missing `access` treated as `login-required`, refusal of login-required, paid and unmapped packages by import, `validate`, `build` and `verify`, the `public_packages` allowance, product page content and verification, `payment_endpoint` emission and validation.
+- **HCG Store:** product mapping and store URLs, invalid product entries, product access level from `[access] level`, product page content for public, protected and payment-endpoint cases, and the verifier's product-page checks (`tests/test_store.py`).
 
 ## Latest results (15 Nov 2026)
 
-After the two packages were withdrawn and the HCG Store integration was merged (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4):
+After the HCG Store integration was merged with the protected-delivery change (Linux, Python 3.13, dpkg 1.22.6, GnuPG 2.4.4):
 
 | Check | Result |
 |---|---|
-| Unit and regression tests | **102 tests, OK** |
-| `bin/hcgrepo validate --base-ref origin/main` | OK: 0 packages in pool; lock history valid (both entries kept, status `withdrawn`) |
-| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (at `/`): 15 URLs each, including the three product pages; 0 packages, 0 errors, 0 warnings |
+| Unit and regression tests | **107 tests, OK** |
+| `bin/hcgrepo validate --base-ref origin/main` | OK: 0 packages in the public pool; both packages held as `protected`; lock history valid |
+| `bin/hcgrepo smoke` | OK for `https://f1r3srp3nt.github.io/HCG-repo/` (at `/HCG-repo/`) and `https://repo.hakmicapitalgroup.com/` (at `/`): 19 URLs each, including the three product pages; empty public index; 0 errors, 0 warnings |
 
-Earlier the same day, before the withdrawal:
+Earlier, before the packages were protected:
 
 | Check | Result |
 |---|---|

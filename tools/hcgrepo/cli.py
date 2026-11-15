@@ -66,7 +66,7 @@ def _import(cfg, path: Path, prov: dict, dry_run: bool) -> int:
     if r.items:
         print(r.render())
     print(f"{status.upper()}: {path.name}")
-    return 0 if status in ("imported", "already-present", "validated") else 1
+    return 0 if status in ("imported", "already-present", "validated", "protected") else 1
 
 
 def cmd_import_deb(a, cfg) -> int:
@@ -152,7 +152,7 @@ def cmd_import_request(a, cfg) -> int:
         if rep.items:
             print(rep.render())
         print(f"{status.upper()}: {r['id']}")
-        rc |= 0 if status in ("imported", "already-present", "validated") else 1
+        rc |= 0 if status in ("imported", "already-present", "validated", "protected") else 1
     return rc
 
 
@@ -166,6 +166,18 @@ def cmd_keyring_deb(a, cfg) -> int:
     except SignError as exc:
         print(f"REFUSED: {exc}")
         return 1
+    return 0
+
+
+def cmd_protect(a, cfg) -> int:
+    from .importer import ImportError_, protect
+    try:
+        dest = protect(cfg, a.package, a.version, a.arch, Path(a.move_to))
+    except ImportError_ as exc:
+        print(f"REFUSED: {exc}")
+        return 1
+    print(f"protected: {a.package} {a.version} {a.arch}; the .deb is now at {dest} (outside this repository).")
+    print("Commit repo-lock.json and the provenance file; deliver the .deb to HCG Connect's protected storage.")
     return 0
 
 
@@ -316,6 +328,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", required=True)
     p.add_argument("--out", default="keyring-out")
     p.set_defaults(fn=cmd_keyring_deb)
+
+    p = sp.add_parser("protect", help="move a connect/paid package out of the public pool (metadata stays)")
+    p.add_argument("--package", required=True)
+    p.add_argument("--version", required=True)
+    p.add_argument("--arch", required=True)
+    p.add_argument("--move-to", required=True, help="directory OUTSIDE this repository to move the .deb to")
+    p.set_defaults(fn=cmd_protect)
 
     p = sp.add_parser("withdraw", help="remove a version from the index; its lock record stays")
     p.add_argument("--package", required=True)

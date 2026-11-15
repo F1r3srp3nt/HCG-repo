@@ -35,3 +35,7 @@ removal = """
 allow_setuid = []
 # No entitlements are expected on the tweak dylib or the Settings bundle. If the imported
 # binaries carry any, the import fails until they are reviewed and recorded here.
+
+[access]
+# Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here.
+level = "paid"

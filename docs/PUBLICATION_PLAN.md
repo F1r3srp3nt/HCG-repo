@@ -1,9 +1,9 @@
 # Package publication plan (for review before the production deployment)
 
-> **Withdrawn.** Both packages below were withdrawn under the HCG release policy (both products are `login-required`, and nothing login-gated may be published at a public URL) pending sign-in/access enforcement and launch approval. They are no longer in `pool/` or in any index; their
-> `repo-lock.json` entries are kept with status `withdrawn`. The `.deb` files remain in the public git
-> history; removing them would need a history rewrite, which has not been done. See
-> [STORE_INTEGRATION.md](STORE_INTEGRATION.md). The rest of this page is kept as the record of the review.
+> **Update, 15 Nov 2026:** both packages require HCG Connect: Nexus is `paid` and Terminal Unleashed is `connect`.
+> - They are now recorded as **protected**: removed from `pool/` and from the public index, and never deployed as files.
+> - They become installable only through the HCG Connect payment provider (`ACCESS.md`).
+> - The validation and provenance below still describe the exact files that protected storage must serve.
 
 Nothing below is published yet. The packages are in `pool/` on branch `claude/hcg-apt-sileo-repo-unxxqg`.
 They reach `https://repo.hakmicapitalgroup.com/repo/` only after this branch is merged into `main` **and**

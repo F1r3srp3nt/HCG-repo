@@ -81,10 +81,10 @@ def normalize_store_url(url: str) -> str:
 
 # ---------------------------------------------------------------------------- products
 
-# Who may download a product's packages. Only `public` packages may ever be in this repository's
-# pool, index or debs/ directory, because everything published here is reachable by anyone.
-ACCESS_LEVELS = ("public", "login-required", "paid")
-DEFAULT_ACCESS = "login-required"  # a product without `access` is treated as gated (fail closed)
+# Optional product-level `access` (connect | paid puts the product under "Sign-in required"). Who may
+# download a package is decided per package by `[access] level` in packages/<id>/package.toml
+# (docs/ACCESS.md); this value only drives the website and the product page's store actions.
+PRODUCT_ACCESS = ("", "public", "connect", "paid")
 SLUG_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 
@@ -96,7 +96,7 @@ class Product:
     name: str
     store_slug: str
     store_edition: str = ""
-    access: str = DEFAULT_ACCESS
+    access: str = ""
     package_ids: list[str] = field(default_factory=list)
     layouts: list[str] = field(default_factory=list)
     kind: str = ""
@@ -105,8 +105,8 @@ class Product:
     detail: str = ""
 
     @property
-    def public(self) -> bool:
-        return self.access == "public"
+    def restricted(self) -> bool:
+        return self.access in ("connect", "paid")
 
     def store_path(self) -> str:
         """Store product route, relative to the store base: apps/<slug>[?edition=<edition>]."""
@@ -126,7 +126,7 @@ def parse_products(raw: list) -> list[Product]:
                 raise ConfigError(f"{where}: `{k}` is required")
         p = Product(
             key=d["key"], name=d["name"], store_slug=d["store_slug"], store_edition=d.get("store_edition", ""),
-            access=d.get("access", DEFAULT_ACCESS), package_ids=list(d.get("package_ids", [])),
+            access=d.get("access", ""), package_ids=list(d.get("package_ids", [])),
             layouts=list(d.get("layouts", [])), kind=d.get("kind", ""), status=d.get("status", "Not available"),
             summary=d.get("summary", ""), detail=d.get("detail", ""),
         )
@@ -134,8 +134,8 @@ def parse_products(raw: list) -> list[Product]:
         for k in ("key", "store_slug") + (("store_edition",) if p.store_edition else ()):
             if not SLUG_RE.fullmatch(getattr(p, k)):
                 raise ConfigError(f"{where}: `{k}` must be lowercase letters, digits and '-', got {getattr(p, k)!r}")
-        if p.access not in ACCESS_LEVELS:
-            raise ConfigError(f"{where}: `access` must be one of {', '.join(ACCESS_LEVELS)}, got {p.access!r}")
+        if p.access not in PRODUCT_ACCESS:
+            raise ConfigError(f"{where}: `access` must be public, connect or paid when given, got {p.access!r}")
         for a in p.layouts:
             if a not in ("iphoneos-arm64", "iphoneos-arm", "iphoneos-arm64e"):
                 raise ConfigError(f"{where}: unknown layout {a!r}")
@@ -162,7 +162,6 @@ class RepoConfig:
     architectures: list[str]
     namespace: str
     reserved_bundle_ids: list[str]
-    public_packages: list[str]
     urls: dict[str, str]
     default_target: str
     signing_required: bool
@@ -171,6 +170,7 @@ class RepoConfig:
     external_deps: dict[str, dict]
     products: list[Product]
     store_base_url: str
+    access_require_explicit: bool = True
     payment_endpoint: str = ""
 
     @property
@@ -203,6 +203,16 @@ class RepoConfig:
 
     def product_for_package(self, package: str) -> Product | None:
         return next((p for p in self.products if package in p.package_ids), None)
+
+    def product_level(self, p: Product) -> str:
+        """The strictest access level of a product: its own `access`, or any of its packages'
+        `[access] level` (docs/ACCESS.md). Empty when nothing is declared."""
+        levels = {p.access} if p.access else set()
+        for pkg in p.package_ids:
+            meta = load_package_meta(self, pkg)
+            if meta.access_explicit:
+                levels.add(meta.access)
+        return next((lvl for lvl in ("paid", "connect", "public") if lvl in levels), "")
 
     def store_product_url(self, p: Product) -> str:
         return self.store_base_url + p.store_path()
@@ -243,35 +253,30 @@ def load_config(root: Path | None = None) -> RepoConfig:
     if not store_raw.strip():
         raise ConfigError("config/repo.toml [store] base_url is required")
     store_base = normalize_store_url(store_raw)
-    endpoint = cfg.get("payments", {}).get("endpoint", "").strip()
-    if endpoint:
-        parts = urlsplit(endpoint)
-        if parts.scheme != "https" or not parts.netloc or parts.query or parts.fragment or any(c.isspace() for c in endpoint):
-            raise ConfigError(f"[payments] endpoint must be a plain https:// URL, got {endpoint!r}")
-        if not endpoint.startswith(store_base):
-            raise ConfigError(f"[payments] endpoint must start with the HCG Store base URL {store_base}, got {endpoint!r}")
-    parsed_products = parse_products(products)
-    public_packages = list(r.get("public_packages", []))
-    for pkg in public_packages:
-        owner = next((p for p in parsed_products if pkg in p.package_ids), None)
-        if owner:
-            raise ConfigError(f"{pkg} is in [repository] public_packages and also mapped to product {owner.key!r}")
+    acc = cfg.get("access", {})
+    endpoint = acc.get("payment_endpoint", "").strip()
+    if endpoint and not endpoint.startswith("https://"):
+        raise ConfigError("[access] payment_endpoint must be an https:// URL (Sileo refuses insecure providers)")
     return RepoConfig(
         root=root, origin=r["origin"], label=r["label"], suite=r["suite"], codename=r["codename"],
         version=str(r["version"]), description=r["description"], repo_subdir=sub, architectures=archs,
         namespace=r.get("package_namespace", ""), reserved_bundle_ids=list(r.get("reserved_bundle_ids", [])),
-        public_packages=public_packages,
         urls=urls, default_target=default_target, signing_required=bool(s.get("required", False)),
         signing_fingerprint=s.get("fingerprint", "").replace(" ", "").upper(),
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
-        external_deps=ext, products=parsed_products, store_base_url=store_base,
-        payment_endpoint=endpoint,
+        external_deps=ext, products=parse_products(products), store_base_url=store_base,
+        access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint,
     )
 
 
 # ---------------------------------------------------------------------------- package metadata
 
 STATUSES = ("experimental", "device-tested")
+# public:  in the public index, .deb downloadable without sign-in.
+# connect: free, but only for users signed in with HCG Connect.
+# paid:    HCG Connect sign-in plus HCG Store ownership.
+# connect/paid packages are never stored in this public repository or deployed as public files.
+ACCESS_LEVELS = ("public", "connect", "paid")
 REQUIRED_TEST_FIELDS = ("device", "ios", "jailbreak", "date", "result", "evidence")
 
 
@@ -292,6 +297,8 @@ class PackageMeta:
     install: str = ""
     removal: str = ""
     screenshots: list[dict] = field(default_factory=list)  # [{file, caption}]
+    access: str = "public"
+    access_explicit: bool = False
 
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
@@ -320,6 +327,7 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
         header=disp.get("header"), tint=disp.get("tint"), notes=disp.get("notes", ""),
         limitations=disp.get("limitations", ""), install=disp.get("install", ""), removal=disp.get("removal", ""),
         screenshots=list(disp.get("screenshots", [])),
+        access=data.get("access", {}).get("level", "public"), access_explicit="level" in data.get("access", {}),
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
         versions=data.get("versions", {}),
@@ -357,6 +365,8 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
     for s in meta.screenshots:
         if not s.get("file") or not str(s.get("caption", "")).strip():
             report.error("meta-screenshot", "every screenshot needs file and caption (used as alt text)")
+    if meta.access not in ACCESS_LEVELS:
+        report.error("meta-bad-access", f"[access] level must be one of {ACCESS_LEVELS}, got {meta.access!r}")
     if meta.tint and not re.fullmatch(r"#[0-9A-Fa-f]{6}", meta.tint):
         report.error("meta-bad-tint", f"tint must be #RRGGBB, got {meta.tint!r}")
     for ver, v in meta.versions.items():

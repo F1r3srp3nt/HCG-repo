@@ -16,6 +16,9 @@
   var storeUrl = box.getAttribute("data-store-url") || "";
   var repoUrl = box.getAttribute("data-repo-url") || "";
   var name = box.getAttribute("data-product-name") || "this product";
+  // "paid": not-owned offers "Buy Product". "connect" (free with HCG Connect sign-in): the primary
+  // action stays "Sign in to check access"; the store's answer is shown as text.
+  var level = box.getAttribute("data-access-level") || "";
   var actions = box.querySelector("[data-store-actions]");
   var status = box.querySelector("[data-store-status]");
   var NO_DOWNLOADS = "Downloads are not available yet.";
@@ -77,6 +80,10 @@
         say("Sign in to HCG Store to see whether you can get " + name + "." + note(data));
         return;
       case "not-owned":
+        if (level === "connect") {
+          say(note(data).trim());
+          return;
+        }
         replace([link("Buy Product", fromStore(data.buy_url) || page, true), link("View in HCG Store", page, false)]);
         say(note(data).trim());
         return;

@@ -25,7 +25,7 @@ from urllib.parse import urljoin, urlsplit
 
 from . import debian
 from .config import Report, RepoConfig
-from .debinspect import InspectError, check_access, inspect_deb
+from .debinspect import InspectError, inspect_deb
 
 HASHES = (("MD5Sum", "md5"), ("SHA1", "sha1"), ("SHA256", "sha256"), ("SHA512", "sha512"))
 DECOMPRESS = {"": lambda b: b, ".gz": gzip.decompress, ".bz2": bz2.decompress, ".xz": lzma.decompress,
@@ -116,6 +116,10 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         r.error("release-missing", f"Release: HTTP {code} at {f.map(repo_public + 'Release')}")
         res.checked_urls = f.log
         return res
+    if looks_like_html(release_raw):
+        r.error("release-html", "Release is an HTML page (error/login page?), not APT metadata")
+        res.checked_urls = f.log
+        return res
     try:
         release = debian.parse_control(release_raw.decode("utf-8"))
     except (debian.ControlError, UnicodeDecodeError) as exc:
@@ -127,6 +131,9 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
             r.error("release-field", f"Release lacks {name}")
     archs = (debian.field(release, "Architectures") or "").split(" ")
     if cfg:
+        for k, want in (("Origin", cfg.origin), ("Label", cfg.label)):
+            if debian.field(release, k) != want:
+                r.error("release-identity", f"Release {k} is {debian.field(release, k)!r}, expected {want!r}")
         for a in cfg.architectures:
             if a not in archs:
                 r.error("release-arch", f"Release Architectures does not list {a}; Sileo on those devices would reject the source")
@@ -196,12 +203,15 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         r.error("signature-inrelease-only", "InRelease without Release.gpg: Sileo only reads Release.gpg")
 
     # ---- packages
+    if looks_like_html(plain):
+        r.error("packages-html", "Packages is an HTML page, not APT metadata")
     try:
         stanzas = debian.parse_stanzas(plain.decode("utf-8"))
     except (debian.ControlError, UnicodeDecodeError) as exc:
         r.error("packages-unparseable", f"Packages: {exc}")
         stanzas = []
     seen = set()
+    protected_seen = False
     for st in stanzas:
         pkg, ver, arch = (debian.field(st, k) for k in ("Package", "Version", "Architecture"))
         label = f"{pkg} {ver} {arch}"
@@ -224,12 +234,16 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         if not url.startswith(repo_public):
             r.error("filename-escapes", f"{label}: Filename {fn!r} resolves outside the source ({url})")
             continue
-        if cfg and pkg:
-            gate = Report(label)
-            check_access(pkg, cfg, gate)
-            for code, msg in gate.errors:
-                r.error("index-" + code, f"{label}: published in the index, but {msg}")
-        if check_debs:
+        tags = [t.strip() for t in (debian.field(st, "Tag") or "").split(",")]
+        if fn.startswith("protected/"):
+            # connect/paid: delivered only through the payment provider. The public path must not serve it.
+            if "cydia::commercial" not in tags:
+                r.error("protected-not-commercial", f"{label}: protected entry lacks Tag cydia::commercial")
+            code_p, _, _ = f.get(url)
+            if code_p == 200:
+                r.error("protected-exposed", f"{label}: protected package is publicly downloadable at {url}")
+            protected_seen = True
+        elif check_debs:
             _check_deb(f, r, st, url, label)
         for k in PRESENTATION:
             v = debian.field(st, k)
@@ -248,10 +262,23 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
                 r.error("presentation-image", f"{label}: {k} is not a PNG or JPEG")
     res.packages = len(stanzas)
 
-    # ---- repository icon and website
-    code, data, _ = f.get(repo_public + "CydiaIcon.png")
-    if code != 200 or data[:8] != b"\x89PNG\r\n\x1a\n":
-        r.error("repo-icon", f"CydiaIcon.png missing or not a PNG (HTTP {code})")
+    # ---- payment provider (only when protected packages are indexed)
+    code, data, _ = f.get(repo_public + "payment_endpoint")
+    if protected_seen:
+        endpoint = data.decode("utf-8", "replace").strip() if code == 200 else ""
+        if not endpoint.startswith("https://"):
+            r.error("payment-endpoint", "protected packages are indexed but payment_endpoint is missing or not https")
+    elif code == 200 and not looks_like_html(data):
+        r.warn("payment-endpoint-unused", "payment_endpoint is published but no protected package is indexed")
+
+    # ---- repository icons (Sileo tries CydiaIcon@<scale>x.png, then CydiaIcon.png) and featured banners
+    for icon in ("CydiaIcon.png", "CydiaIcon@2x.png", "CydiaIcon@3x.png"):
+        code, data, _ = f.get(repo_public + icon)
+        if code != 200 or data[:8] != b"\x89PNG\r\n\x1a\n":
+            r.error("repo-icon", f"{icon} missing or not a PNG (HTTP {code})")
+    code, data, _ = f.get(repo_public + "sileo-featured.json")
+    if code == 200:
+        _check_featured(f, r, data, public_base, {debian.field(st, "Package") for st in stanzas})
     code, data, _ = f.get(public_base)
     if code != 200:
         r.error("site-missing", f"website root returns HTTP {code}")
@@ -265,14 +292,13 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
             if f'href="products/{product.key}/"'.encode() not in data:
                 r.error("site-product-link", f"website does not link the product page products/{product.key}/")
     if cfg:
-        _check_store_pages(f, r, cfg, public_base, repo_public, {debian.field(st, "Package") for st in stanzas})
+        _check_store_pages(f, r, cfg, public_base, {debian.field(st, "Package") for st in stanzas})
     res.checked_urls = f.log
     return res
 
 
-def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, repo_public: str,
-                       indexed: set[str]) -> None:
-    """Product pages link HCG Store, and never offer a download of a product that is not public."""
+def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, indexed: set[str]) -> None:
+    """Product pages link HCG Store, never link a .deb, and offer installation only for indexed packages."""
     for p in cfg.products:
         url = f"{public_base}products/{p.key}/"
         code, data, _ = f.get(url)
@@ -285,22 +311,13 @@ def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str,
                 r.error("product-page-store-link", f"{url} does not link the {what} page {link}")
         if INLINE_SCRIPT.search(text):
             r.error("product-page-inline-script", f"{url} contains an inline script")
-        if not p.public:
-            if "sileo://package/" in text or DEB_LINK.search(text):
-                r.error("product-page-install-link",
-                        f"{url} offers an install or .deb link, but {p.name} is {p.access}")
-            if NO_DOWNLOADS not in text:
-                r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
-        elif not set(p.package_ids) & indexed and NO_DOWNLOADS not in text:
+        if DEB_LINK.search(text):
+            r.error("product-page-install-link", f"{url} links a .deb; product pages never offer a direct download")
+        offered = set(re.findall(r"sileo://package/([^\"'<>\s]+)", text))
+        for pkg in sorted(offered - indexed):
+            r.error("product-page-install-link", f"{url} offers sileo://package/{pkg}, which is not in the index")
+        if not set(p.package_ids) & indexed and NO_DOWNLOADS not in text:
             r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
-
-    code, data, _ = f.get(repo_public + "payment_endpoint")
-    if cfg.payment_endpoint:
-        if code != 200 or data.decode("utf-8", "replace").strip() != cfg.payment_endpoint:
-            r.error("payment-endpoint", f"payment_endpoint must contain {cfg.payment_endpoint} (HTTP {code})")
-    elif code == 200:
-        r.error("payment-endpoint-unexpected",
-                "payment_endpoint is served but config/repo.toml [payments] endpoint is empty")
 
 
 def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:
@@ -328,6 +345,36 @@ def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:
             continue  # the repository supplies these (see repo.PRESENTATION_FIELDS)
         if debian.field(st, n) != v:
             r.error("stanza-control-mismatch", f"{label}: index field {n} differs from the package's control file")
+
+
+def looks_like_html(data: bytes) -> bool:
+    head = data[:512].lstrip().lower()
+    return head.startswith((b"<!doctype", b"<html", b"<head", b"<body", b"<?xml"))
+
+
+def _check_featured(f: "Fetcher", r: Report, data: bytes, public_base: str, indexed: set) -> None:
+    try:
+        d = json.loads(data)
+    except ValueError as exc:
+        r.error("featured-json", f"sileo-featured.json is not JSON: {exc}")
+        return
+    if d.get("class") != "FeaturedBannersView" or not isinstance(d.get("banners"), list) or not d["banners"]:
+        r.error("featured-shape", "sileo-featured.json must be a FeaturedBannersView with banners")
+        return
+    if not isinstance(d.get("itemSize"), str) or not isinstance(d.get("itemCornerRadius"), (int, float)):
+        r.error("featured-shape", "sileo-featured.json needs itemSize (string) and itemCornerRadius (number)")
+    for b in d["banners"]:
+        if not b.get("url") or not b.get("title"):
+            r.error("featured-banner", "every banner needs url and title (Sileo drops the view otherwise)")
+            continue
+        if not b["url"].startswith(public_base):
+            r.error("featured-url-base", f"banner image {b['url']} is not under {public_base}")
+            continue
+        code, img, _ = f.get(b["url"])
+        if code != 200 or not (img[:8] == b"\x89PNG\r\n\x1a\n" or img[:3] == b"\xff\xd8\xff" or img[8:12] == b"WEBP"):
+            r.error("featured-image", f"banner image {b['url']} missing or not an image (HTTP {code})")
+        if b.get("package") and b["package"] not in indexed:
+            r.error("featured-package", f"banner links package {b['package']}, which is not in the index")
 
 
 def _check_sileo_json(r: Report, label: str, data: bytes) -> None:

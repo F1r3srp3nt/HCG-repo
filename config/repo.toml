@@ -29,12 +29,6 @@ package_namespace = "com.hakmicapitalgroup."
 # to the standard, sandboxed App Store / TestFlight edition.
 reserved_bundle_ids = ["com.hakmicapitalgroup.hcgterminal"]
 
-# Repository infrastructure that is public by nature (anyone may download it) and is not an HCG
-# product, so it has no entry in config/products.toml. Every other package in package_namespace
-# must be mapped to a product there, and only `public` products may be published here; see
-# docs/STORE_INTEGRATION.md.
-public_packages = ["com.hakmicapitalgroup.repo-keyring"]
-
 [urls]
 # Public base URLs of the whole site (APT source = base + repo_subdir + "/").
 # Pick one with `--target pages|production`, or pass `--base-url` / HCG_REPO_BASE_URL.
@@ -52,6 +46,15 @@ required = false
 fingerprint = ""
 public_key_file = "keys/hcg-repo-archive-key.asc"
 
+[access]
+# Every package must declare [access] level = "public" | "connect" | "paid" in
+# packages/<id>/package.toml. connect/paid packages are never stored in this public repository
+# or served as public files (see docs/ACCESS.md).
+require_explicit = true
+# HTTPS base URL of the HCG Connect payment provider (Sileo Payment Provider API). Empty while
+# HCG Connect is not configured: connect/paid packages are then left out of the public index.
+payment_endpoint = ""
+
 [store]
 # HCG Store, where products are bought and access is granted. It is NOT live yet.
 # Product pages on this site (products/<key>/) link to <base_url>apps/<store_slug>[?edition=...]
@@ -59,10 +62,3 @@ public_key_file = "keys/hcg-repo-archive-key.asc"
 # signed-in visitor owns the product. Must be https. HCG_STORE_BASE_URL overrides it.
 # See docs/STORE_INTEGRATION.md.
 base_url = "https://store.hakmicapitalgroup.com/"
-
-[payments]
-# Sileo payment provider endpoint. Empty = disabled, which is the current state.
-# Set it only once HCG Store's Sileo payment provider is approved and live. The build then writes
-# <repo>/payment_endpoint containing this URL, which is where Sileo looks for it. It must be an
-# https:// URL under [store] base_url. See docs/STORE_INTEGRATION.md.
-endpoint = ""

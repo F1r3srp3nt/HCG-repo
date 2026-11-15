@@ -87,7 +87,7 @@ jobs:
           name: built-${{ matrix.request.id }}
           path: built/${{ matrix.request.id }}/*.deb
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 1   # deleted by the import job; a public repo's artifacts are downloadable by any GitHub user
 
   import:
     needs: [plan, build]
@@ -96,7 +96,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write   # commit the validated import back to this branch
-      actions: read     # download artifacts
+      actions: write    # download, then delete, this run's build artifacts
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -137,3 +137,16 @@ jobs:
             echo "## Import results"; echo '```'; grep -E '^(IMPORTED|SKIPPED|REJECTED|  ERROR|  warn)' import.log; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit $rc
+
+      - name: Delete this run's build artifacts (protected packages must not stay downloadable)
+        if: always() && needs.plan.outputs.builds != '[]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ids=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" \
+            | python3 -c 'import json,sys;[print(a["id"]) for a in json.load(sys.stdin)["artifacts"] if a["name"].startswith("built-")]')
+          for id in $ids; do
+            curl -fsS -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$id" && echo "deleted artifact $id"
+          done

@@ -19,8 +19,7 @@ from hcgrepo.config import load_config  # noqa: E402
 
 NS = "com.hakmicapitalgroup."
 
-# Test packages are mapped to a `public` product, because the validator refuses any in-namespace
-# package that is unmapped or belongs to a login-required / paid product.
+# A product listing the test packages, so product pages and "Product page" links can be tested.
 FIXTURE_IDS = ("testtool", "testapp", "libcore", "other", "ww", "suid", "scr", "noplist", "dep", "own")
 FIXTURE_PRODUCT = (
     '\n[[products]]\nkey = "test-fixtures"\nname = "Test fixtures"\nstore_slug = "test-fixtures"\n'
@@ -43,6 +42,9 @@ class RepoTestCase(unittest.TestCase):
         (self.root / "packages").mkdir()
         (self.root / "pool").mkdir()
         (self.root / "repo-lock.json").write_text('{"packages": [], "schema": 1}\n')
+        # Fixture packages have no package.toml; strict access declarations are tested separately.
+        cfgp = self.root / "config" / "repo.toml"
+        cfgp.write_text(cfgp.read_text().replace("require_explicit = true", "require_explicit = false"))
         self.work = self.tmp / "work"
         self.work.mkdir()
         self.cfg = load_config(self.root)

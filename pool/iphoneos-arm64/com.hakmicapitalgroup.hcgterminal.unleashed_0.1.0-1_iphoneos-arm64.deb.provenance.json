@@ -2,9 +2,10 @@
   "architecture": "iphoneos-arm64",
   "builder_run_url": "https://github.com/F1r3srp3nt/HCG-repo/actions/runs/43673491962",
   "commit": "ddc51977c95f499a0568bee02aa1f0ba6b87ded7",
+  "control": "Package: com.hakmicapitalgroup.hcgterminal.unleashed\nName: HCG Terminal Unleashed\nVersion: 0.1.0-1\nArchitecture: iphoneos-arm64\nMaintainer: Hakmi Capital Group\nAuthor: Hakmi Capital Group\nSection: Terminal_Support\nDepends: firmware (>= 17.0)\nDescription: HCG Terminal Unleashed 0.1.0 (1), revision ddc51977c95f. Uses only the access the device already grants; never elevates by itself.\n",
   "entitlements_file": "HCGTerminal-Support/Unleashed-optional-entitlements.example.plist",
   "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgterminal.unleashed_0.1.0-1_iphoneos-arm64.deb",
-  "imported_at": "2026-11-15T03:46:01Z",
+  "imported_at": "2026-11-15T04:27:39Z",
   "importer": "hcgrepo 1.0.0",
   "inspection": {
     "apps": [
@@ -100,14 +101,18 @@
     "version": "0.1.0-1"
   },
   "layout": "rootless",
+  "md5": "d74dc96dcafddf049ef8a8c9d8f8de8a",
   "package": "com.hakmicapitalgroup.hcgterminal.unleashed",
+  "protected_at": "2026-11-15T04:27:39Z",
   "recipe": "hcg-terminal-unleashed",
   "repository": "F1r3srp3nt/HCG-Terminal",
   "request": "hcg-terminal-unleashed-0.1.0-1-rootless",
   "schema": 1,
+  "sha1": "a80a119b7595cdb1f3d35ed6acfa694e1d603a9e",
   "sha256": "7fdb735e74e551fa05a23a81714ff537f97556a67d600f49f090b543ef1d42bf",
   "sha512": "8e2b5d17b19a6ec3eeb7268f259bca85ba9c158185c8f6a6beb22829beb796345e23837933258afa938aa008b61e359aa3237fea9d9a12dc6c9ac29ed453e465",
   "size": 6463750,
   "source": "source-build",
+  "storage": "protected: this .deb is not stored in this public repository",
   "version": "0.1.0-1"
 }

@@ -11,14 +11,15 @@ and command-line tools.
 | Website | `https://repo.hakmicapitalgroup.com/` |
 | HTTPS | **Not working yet:** GitHub has not issued a certificate for the domain, so the site is served over http. Fix: `docs/TRANSPORT.md` |
 | Metadata signing | Implemented; **no archive key yet**, so `Release` is unsigned. Prerequisites: `docs/SIGNING.md` |
-| Packages | **None.** HCG Nexus 0.2.0 and HCG Terminal Unleashed 0.1.0-1 were imported, then withdrawn under the release policy (both are `login-required`). See `docs/STORE_INTEGRATION.md` |
+| Packages | HCG Nexus 0.2.0 (**paid**) and HCG Terminal Unleashed 0.1.0-1 (**HCG Connect sign-in**): validated, held as **protected** (not stored or served publicly). Not installable until HCG Connect delivery is live. See `docs/ACCESS.md` |
+| Public index | Empty until a public package is published or the HCG Connect payment endpoint is live |
 
 ## Status
 
 - **Website:** the "HCG Futuristic" design, using the approved banner and square icon. It is generated from the real index.
-- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums, then withdrawn with `bin/hcgrepo withdraw` because both products are `login-required`. Their lock entries are kept as `withdrawn`; the `.deb` files remain in git history (removing them would need a history rewrite, not done).
+- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums. Both require HCG Connect, so they are recorded as protected: their `.deb` files are not in this repository and are not deployed. See `docs/ACCESS.md` for the Sileo payment-provider integration HCG Connect must provide.
 - **In development:** HCG Sentinel has no jailbreak package. It is listed under "In development" with no install action.
-- **HCG Store:** each product has a page at `products/<key>/` linking to its HCG Store page (the store is not live yet). Every product is currently `login-required`, and the validator refuses any HCG package that is not `public`. See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
+- **HCG Store:** each product has a page at `products/<key>/` with “Sign in to check access” and “View in HCG Store” links (the store is not live yet). See [docs/STORE_INTEGRATION.md](docs/STORE_INTEGRATION.md).
 - **Device testing:** none yet. Use `docs/DEVICE_CHECKLIST.md`. Nothing is marked device-tested without recorded evidence.
 
 ## Quick start
@@ -63,7 +64,7 @@ imports/                          pinned import requests (one .toml per package 
 tools/recipes/                    build recipes that run a project's own documented packaging command
 ```
 
-Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`, and `payment_endpoint` only once `[payments] endpoint` is set). The output also includes `products/<key>/index.html` and `build-info.json`.
+Generated output, which is never committed: `_site/` holds the website, and `_site/repo/` holds the APT source (`Release`, `Packages{,.gz,.bz2,.xz}`, optionally `Release.gpg` and `InRelease`, plus `debs/`, `depictions/<id>/{index.html,sileo.json}`, `assets/<id>/`, `CydiaIcon*.png`, and `payment_endpoint` and `sileo-featured.json` as described in `docs/ACCESS.md`). The output also includes `products/<key>/index.html` and `build-info.json`.
 
 ## Publishing
 
@@ -75,7 +76,8 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 ## Documentation
 
 - [docs/PUBLICATION_PLAN.md](docs/PUBLICATION_PLAN.md): exactly which package, version and variant is ready, and the steps to publish.
-- [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis and the settings fix.
+- [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis, the settings fix, phone-side 522 checks and Sileo refresh steps.
+- [docs/ACCESS.md](docs/ACCESS.md): public / HCG Connect / paid access levels and the protected-delivery contract.
 - [imports/README.md](imports/README.md): pinned import requests and the **Prepare packages** workflow.
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): importing, provenance, immutability, building, publishing, withdrawing.
 - [docs/ROOTLESS_ROOTFUL.md](docs/ROOTLESS_ROOTFUL.md): architectures, paths, libroot, separate sources.
