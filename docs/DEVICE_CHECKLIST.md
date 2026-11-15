@@ -15,7 +15,7 @@ execution works, without the evidence below.
 | Jailbreak, version, layout (rootless/rootful) | |
 | Bootstrap (e.g. Procursus) and `dpkg --print-architecture` | |
 | Sileo version | |
-| Source URL used | `https://f1r3srp3nt.github.io/HCG-repo/repo/` |
+| Source URL used | `https://repo.hakmicapitalgroup.com/repo/` (the old `https://f1r3srp3nt.github.io/HCG-repo/repo/` redirects to it) |
 | Package version and SHA-256 (from the website) | |
 
 Before starting, delete any sideloaded **HCG Terminal Unleashed** (from Xcode, an IPA or TrollStore), because it has the same bundle id. The standard **HCG Terminal** from TestFlight or the App Store can stay installed. Its data must not be affected, and step 11 checks that.
@@ -28,6 +28,7 @@ For each step, record pass/fail and a screenshot or the terminal output.
 
 1. **Add the source.** Open the website on the device and tap *Add to Sileo*. Sileo's Add Source prompt shows the exact URL; confirm it. (Alternative: *Sources → +*, paste the URL.)
 2. **Refresh.** The source appears as "HCG Repo" with the HCG icon, and the refresh finishes without errors. The source's package list matches the website.
+   - If the icon is generic, force-quit Sileo, reopen it and refresh again before anything else: Sileo fetches the icon once per launch (`docs/TRANSPORT.md`).
 3. **Find the package.** Open *HCG Terminal Unleashed* in Sileo and check:
    - the depiction (header, Details and Changelog tabs);
    - the version matches the website;
@@ -74,6 +75,33 @@ For each step, record pass/fail and a screenshot or the terminal output.
     - other apps and other Sileo sources are unchanged;
     - `apt`/`dpkg` report no broken packages (`dpkg --audit` prints nothing).
 12. **Source removal** (optional). Delete the source in Sileo and confirm nothing else changes.
+
+## Recorded results: source level
+
+These are source-level checks only. None of them is evidence that a package installs or runs.
+
+### 15 Nov 2026: HCG Repo source icon in Sileo
+
+| Field | Value |
+|---|---|
+| Date | 15 Nov 2026 |
+| Reported by | Repository owner, on their own device |
+| Device, iOS, jailbreak, Sileo version | Not recorded |
+| Source URL | `https://repo.hakmicapitalgroup.com/repo/` |
+| Live build | `3a8fe2e` (`build-info.json`) |
+| Server-side state at the time | **Check transport** run 43751687728 passed: Enforce HTTPS on, Let's Encrypt certificate valid until 13 Feb 2027, all three `CydiaIcon` variants identical to `branding/` |
+
+| Check | Result |
+|---|---|
+| Sources list shows the square HCG Repo icon (not the generic icon) | **Pass**, reported after a Sileo relaunch |
+| Source name "HCG Repo" | Not separately recorded in this report |
+| Banner (from `sileo-featured.json`) when opening the source | Not separately recorded in this report |
+| Package count | Expected 0: Nexus (paid) and Terminal Unleashed (HCG Connect sign-in) are protected and not in the public index (`docs/ACCESS.md`) |
+| Screenshot | Not attached |
+
+Background: until 12:13 UTC that day the certificate was not valid for the domain, so Sileo's once-per-launch icon download failed and the generic icon was shown. After the certificate was issued and Sileo was relaunched, the icon appeared.
+
+To complete this entry, add the device, iOS, jailbreak and Sileo version, a screenshot of the Sources list, and whether the name and banner were correct.
 
 ## HCG Nexus
 
