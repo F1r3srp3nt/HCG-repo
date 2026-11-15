@@ -156,6 +156,19 @@ def cmd_import_request(a, cfg) -> int:
     return rc
 
 
+def cmd_keyring_deb(a, cfg) -> int:
+    from .keyring import build_keyring_deb
+    from .sign import SignError
+    try:
+        for layout in a.layout:
+            deb = build_keyring_deb(cfg, layout, a.version, Path(a.out))
+            print(f"built {deb} (import it with: bin/hcgrepo import-deb {deb})")
+    except SignError as exc:
+        print(f"REFUSED: {exc}")
+        return 1
+    return 0
+
+
 def cmd_withdraw(a, cfg) -> int:
     from .importer import withdraw
     fn = withdraw(cfg, a.package, a.version, a.arch, a.reason)
@@ -297,6 +310,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--builder-run-url", help="URL of the CI run that built the package (provenance)")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(fn=cmd_import_request)
+
+    p = sp.add_parser("keyring-deb", help="build the package that installs the public archive key on devices")
+    p.add_argument("--layout", action="append", choices=["rootless", "rootful"], required=True)
+    p.add_argument("--version", required=True)
+    p.add_argument("--out", default="keyring-out")
+    p.set_defaults(fn=cmd_keyring_deb)
 
     p = sp.add_parser("withdraw", help="remove a version from the index; its lock record stays")
     p.add_argument("--package", required=True)

@@ -1,7 +1,15 @@
 # Migrating to `https://repo.hakmicapitalgroup.com/repo/`
 
-**Not done yet. Do not change DNS until you are ready to follow every step.** Until then the
-publish workflow uses `target: pages` and the test source is `https://f1r3srp3nt.github.io/HCG-repo/repo/`.
+**Status (15 Nov 2026):**
+- **Done (steps 2, 3 and 5):**
+  - DNS: `repo` → CNAME `f1r3srp3nt.github.io`.
+  - The custom domain is set in Settings → Pages.
+  - The publish target defaults to `production`.
+  - The old project URL redirects to the domain.
+- **Not done (step 4):**
+  - GitHub has not issued a certificate, so the site is served over plain http.
+  - The Pages source is still "Deploy from a branch".
+- The exact fix is in `docs/TRANSPORT.md`. Step 6 (testing old client URLs on a device) is still open.
 
 ## What changes
 

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HCG Repo">
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f8fa"/><stop offset="1" stop-color="#a9b5bc"/>
+    </linearGradient>
+    <linearGradient id="left" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9aa7af"/><stop offset="1" stop-color="#5d6a72"/>
+    </linearGradient>
+    <linearGradient id="right" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#47535b"/><stop offset="1" stop-color="#1c252b"/>
+    </linearGradient>
+  </defs>
+  <path d="M19 2h26l17 17v26L45 62H19L2 45V19z" fill="#060a0d" stroke="#2fd3e6" stroke-width="3"/>
+  <g stroke="#2fd3e6" stroke-width="2.2" stroke-linejoin="round">
+    <path d="M32 12 50 22 32 32 14 22z" fill="url(#top)"/>
+    <path d="M14 22 32 32v20L14 42z" fill="url(#left)"/>
+    <path d="M50 22 32 32v20l18-10z" fill="url(#right)"/>
+  </g>
+</svg>

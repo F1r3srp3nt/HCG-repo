@@ -8,10 +8,10 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Public base URL to embed (pages = https://f1r3srp3nt.github.io/HCG-repo/, production = custom domain; only after docs/CUSTOM_DOMAIN.md)"
+        description: "Public base URL to embed (production = https://repo.hakmicapitalgroup.com/, pages = the old project URL, which now redirects)"
         type: choice
-        options: [pages, production]
-        default: pages
+        options: [production, pages]
+        default: production
       require_signature:
         description: "Fail unless Release is signed and the signature verifies"
         type: boolean

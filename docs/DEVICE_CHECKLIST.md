@@ -75,6 +75,23 @@ For each step, record pass/fail and a screenshot or the terminal output.
     - `apt`/`dpkg` report no broken packages (`dpkg --audit` prints nothing).
 12. **Source removal** (optional). Delete the source in Sileo and confirm nothing else changes.
 
+## HCG Nexus
+
+Target: iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Sileo. Use the same source steps (1–2) and record
+the same fields.
+1. Install **HCG Nexus** and accept the dependencies Sileo offers (PreferenceLoader, an injector). Save the log.
+2. Respring when you choose. Open **Settings › HCG Nexus**: *Status* shows version 0.2.0 and *SpringBoard: Running*. After installation no handle is visible.
+3. Turn on **Enable HCG Nexus** and run the full list in HCG-Nexus's `docs/DEVICE-CHECKLIST.md`:
+   - handle and panel;
+   - rotation and system gestures;
+   - keyboard;
+   - lock screen and cover sheet;
+   - shortcuts;
+   - disable paths;
+   - diagnostics counts;
+   - accessibility.
+4. Disable, then remove it in Sileo and respring. Confirm normal touch input and no leftover handle. The preferences file `/var/mobile/Library/Preferences/com.hakmicapitalgroup.hcgnexus.plist` remains by design.
+
 ## Recording a pass
 
 Store the evidence (screenshots, logs, command output) somewhere durable, e.g. `docs/device-tests/<date>-<device>.md` in this repository. Then add an entry to `packages/<id>/package.toml`:

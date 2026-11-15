@@ -62,6 +62,15 @@ class FileEntry:
     gid: int
     size: int
     linkname: str = ""
+    uname: str = ""
+    gname: str = ""
+
+    @property
+    def root_owned(self) -> bool:
+        # dpkg installs by owner *name* when the tar header has one (Theos on macOS writes the names
+        # root/wheel with the builder's numeric ids), falling back to the numeric id otherwise.
+        return (self.uname == "root" if self.uname else self.uid == 0) and \
+               (self.gname in ("wheel", "root", "admin") if self.gname else self.gid == 0)
 
 
 @dataclass
@@ -309,7 +318,7 @@ def inspect_deb(path: Path) -> DebInfo:
         name = _norm(m.name)
         kind = ("dir" if m.isdir() else "symlink" if m.issym() else "hardlink" if m.islnk()
                 else "file" if m.isfile() else "other")
-        info.files.append(FileEntry(name, kind, m.mode, m.uid, m.gid, m.size, m.linkname))
+        info.files.append(FileEntry(name, kind, m.mode, m.uid, m.gid, m.size, m.linkname, m.uname or "", m.gname or ""))
         if kind != "file":
             continue
         fobj = tf.extractfile(m)
@@ -412,7 +421,7 @@ def _check_payload(info: DebInfo, meta: PackageMeta, r: Report) -> None:
                 r.warn("path-setuid-reviewed", f"{p} is setuid/setgid ({oct(f.mode)}) and listed in review.allow_setuid")
         if f.kind in ("file", "dir") and f.mode & 0o002 and not (f.kind == "dir" and f.mode & 0o1000):
             r.error("path-world-writable", f"{p} is world-writable ({oct(f.mode)})")
-        if f.uid != 0 or f.gid != 0:
+        if not f.root_owned:
             not_root_owned += 1
         in_jb = p == ROOTLESS_PREFIX or p.startswith(ROOTLESS_PREFIX + "/")
         if arch == "iphoneos-arm64":
@@ -511,6 +520,18 @@ def _check_apps(info: DebInfo, cfg: RepoConfig, r: Report) -> None:
             elif debian.compare_versions(_vfix(lo), _vfix(app.min_os)) < 0:
                 r.error("firmware-too-low",
                         f"Depends allows firmware >= {lo} but {app.path} requires iOS {app.min_os}")
+    for app in info.apps:
+        exe = binaries.get(f"{app.path}/{app.executable}") if app.executable else None
+        if not exe or not exe.info or any(s.cms for s in exe.info.slices):
+            continue
+        for b in info.binaries:
+            if b is exe or not b.info or not b.path.startswith(app.path + "/"):
+                continue
+            teams = sorted({s.team for s in b.info.slices if s.cms})
+            if teams:
+                r.warn("app-mixed-signatures",
+                       f"{b.path} keeps a certificate signature (team {', '.join(teams) or '?'}) while the app executable is "
+                       "ad-hoc/ldid-signed; whether the jailbreak loads it must be verified on a device")
     if info.apps:
         post = info.scripts.get("postinst", (0, b""))[1].decode("utf-8", "replace")
         if "uicache" not in post:

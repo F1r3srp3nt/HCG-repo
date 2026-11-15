@@ -16,6 +16,7 @@ limitations = """
 - **Requires iOS 17.0 or later** (the package declares `firmware (>= 17.0)`). Sileo hides it on iOS 16 and earlier, including the iPhone 13 Pro on iOS 16.5 / Dopamine that HCG Nexus targets.
 - **Not yet run on a physical device.** Whether your jailbreak lets this signature and entitlement (`com.apple.private.security.no-sandbox`) start a shell is unverified.
 - Rootless only (`iphoneos-arm64`).
+- The app embeds Apple's `libswiftCompatibilitySpan.dylib` with Apple's original signature, while the app executable is `ldid`-signed. Whether your jailbreak loads that combination is part of the first device test.
 - The package's `postinst` calls `uicache` but does not declare `uikittools`. If the icon does not appear, run `uicache -a`.
 - Delete any sideloaded *HCG Terminal Unleashed* (Xcode, IPA, TrollStore) first: it uses the same bundle identifier.
 """

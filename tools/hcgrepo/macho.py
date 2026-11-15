@@ -54,6 +54,8 @@ class Slice:
     entitlements: dict | None = None
     encrypted: bool = False
     min_os: str | None = None   # iOS deployment target recorded in the binary
+    team: str = ""              # code-directory team identifier ("" for ad-hoc / ldid signatures)
+    cms: bool = False           # has a CMS (certificate) signature, i.e. signed by Apple or a developer
 
 
 @dataclass
@@ -140,7 +142,7 @@ def _parse_thin(data: bytes) -> Slice:
             dataoff, datasize = struct.unpack("<II", body[8:16])
             if dataoff + datasize > len(data):
                 raise MachOError("code signature extends past end of file (truncated?)")
-            sl.signed, sl.entitlements = _parse_signature(data[dataoff:dataoff + datasize])
+            sl.signed, sl.entitlements, sl.team, sl.cms = _parse_signature(data[dataoff:dataoff + datasize])
         elif cmd == LC_BUILD_VERSION and cmdsize >= 24:
             platform, minos = struct.unpack("<II", body[8:16])
             if platform == PLATFORM_IOS:
@@ -164,34 +166,45 @@ def _lc_str(body: bytes, offset: int) -> str:
     return raw.split(b"\0", 1)[0].decode("utf-8", "replace")
 
 
-def _parse_signature(blob: bytes) -> tuple[bool, dict | None]:
+def _parse_signature(blob: bytes) -> tuple[bool, dict | None, str, bool]:
     if len(blob) < 12:
-        return False, None
+        return False, None, "", False
     magic, _length, count = struct.unpack(">III", blob[:12])
     if magic != CSMAGIC_EMBEDDED_SIGNATURE:
-        return False, None
+        return False, None, "", False
     has_cd = False
     ents = None
+    team = ""
+    cms = False
     for i in range(min(count, 64)):
         typ, off = struct.unpack(">II", blob[12 + i * 8:20 + i * 8])
         if off + 8 > len(blob):
             continue
         bmagic, blen = struct.unpack(">II", blob[off:off + 8])
+        if typ == 0x10000:
+            cms = blen > 8
         if typ == CSSLOT_CODEDIRECTORY and bmagic == CSMAGIC_CODEDIRECTORY:
             has_cd = True
+            if blen >= 52:
+                version = struct.unpack(">I", blob[off + 8:off + 12])[0]
+                if version >= 0x20200:
+                    team_off = struct.unpack(">I", blob[off + 48:off + 52])[0]
+                    if team_off and off + team_off < len(blob):
+                        team = blob[off + team_off:off + team_off + 64].split(b"\0", 1)[0].decode("ascii", "replace")
         elif typ == CSSLOT_ENTITLEMENTS and bmagic == CSMAGIC_EMBEDDED_ENTITLEMENTS:
             try:
                 ents = plistlib.loads(blob[off + 8:off + blen])
             except Exception as exc:  # noqa: BLE001 - surface as a review problem
                 raise MachOError(f"embedded entitlements are not a valid plist: {exc}") from exc
-    return has_cd, ents
+    return has_cd, ents, team, cms
 
 
 # ---------------------------------------------------------------------------- test helper
 
 
 def build_test_macho(arch: str = "arm64", entitlements: dict | None = None, dylibs: list[str] | None = None,
-                     signed: bool = True, filetype: int = 2, min_os: str | None = None) -> bytes:
+                     signed: bool = True, filetype: int = 2, min_os: str | None = None,
+                     team: str | None = None) -> bytes:
     """Build a tiny, structurally valid (not runnable) thin Mach-O for tests."""
     cputype, sub = {"arm64": (CPU_TYPE_ARM64, 0), "arm64e": (CPU_TYPE_ARM64, 2),
                     "x86_64": (CPU_TYPE_X86_64, 3)}[arch]
@@ -209,8 +222,15 @@ def build_test_macho(arch: str = "arm64", entitlements: dict | None = None, dyli
         ncmds += 1
     sig = b""
     if signed:
-        cd = struct.pack(">II", CSMAGIC_CODEDIRECTORY, 8)
+        if team:
+            t = team.encode() + b"\0"
+            cd = struct.pack(">IIIIIIIIIBBBBIII", CSMAGIC_CODEDIRECTORY, 52 + len(t), 0x20200, 0, 0, 0, 0, 0, 0,
+                             0, 0, 0, 0, 0, 0, 52) + t
+        else:
+            cd = struct.pack(">II", CSMAGIC_CODEDIRECTORY, 8)
         blobs = [(CSSLOT_CODEDIRECTORY, cd)]
+        if team:  # a (dummy) CMS blob, as a certificate-signed binary carries
+            blobs.append((0x10000, struct.pack(">II", 0xFADE0B01, 16) + b"\x30\x82\0\0\0\0\0\0"))
         if entitlements is not None:
             x = plistlib.dumps(entitlements)
             blobs.append((CSSLOT_ENTITLEMENTS, struct.pack(">II", CSMAGIC_EMBEDDED_ENTITLEMENTS, 8 + len(x)) + x))

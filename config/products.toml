@@ -1,31 +1,31 @@
-# Products shown on the website in the "Planned" section.
+# Projects shown on the website under "In development".
 #
-# A product listed here is shown as NOT AVAILABLE, with no install button, unless a package with
+# A project listed here is shown as NOT INSTALLABLE, with no install action, unless a package with
 # one of its `package_ids` is actually present in the generated Packages index. In that case the
-# website shows the real indexed package instead and hides this planned entry.
+# website shows the real indexed package instead and hides this entry.
 #
 # Never describe build or device-test results here that have not happened.
 
 [[products]]
 name = "HCG Terminal Unleashed"
 package_ids = ["com.hakmicapitalgroup.hcgterminal.unleashed"]
-kind = "App"
+kind = "Jailbreak app"
 status = "Packaging under review"
 summary = "Jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal using the access the device already grants. Separate from the sandboxed App Store / TestFlight edition."
-detail = "No .deb has been imported yet. It will be listed here only after a build passes repository validation; it will be labelled Experimental until device tests are recorded."
+detail = "Listed under Available packages once a validated build is published."
 
 [[products]]
 name = "HCG Nexus"
-package_ids = []
-kind = "Planned"
-status = "Not available"
-summary = "Planned HCG package. Details will be published when a build is ready."
-detail = ""
+package_ids = ["com.hakmicapitalgroup.hcgnexus"]
+kind = "Jailbreak tweak"
+status = "Packaging under review"
+summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
+detail = "Listed under Available packages once a validated build is published."
 
 [[products]]
 name = "HCG Sentinel"
 package_ids = []
-kind = "Planned"
-status = "Not available"
-summary = "Planned HCG package. Details will be published when a build is ready."
-detail = ""
+kind = "App — no jailbreak package"
+status = "In development"
+summary = "Toolkit for authorised testing of your own devices, networks and services."
+detail = "Sentinel ships as a standard app. Its optional privileged helper exists only as a specification, so there is nothing to install from this repository yet."
