@@ -11,12 +11,13 @@ and command-line tools.
 | Website | `https://repo.hakmicapitalgroup.com/` |
 | HTTPS | **Not working yet:** GitHub has not issued a certificate for the domain, so the site is served over http. Fix: `docs/TRANSPORT.md` |
 | Metadata signing | Implemented; **no archive key yet**, so `Release` is unsigned. Prerequisites: `docs/SIGNING.md` |
-| Packages on the review branch | HCG Nexus 0.2.0 (rootless) and HCG Terminal Unleashed 0.1.0-1 (rootless): validated, **Experimental**, not yet published. See `docs/PUBLICATION_PLAN.md` |
+| Packages | HCG Nexus 0.2.0 (**paid**) and HCG Terminal Unleashed 0.1.0-1 (**HCG Connect sign-in**): validated, held as **protected** (not stored or served publicly). Not installable until HCG Connect delivery is live. See `docs/ACCESS.md` |
+| Public index | Empty until a public package is published or the HCG Connect payment endpoint is live |
 
 ## Status
 
 - **Website:** the "HCG Futuristic" design, using the approved banner and square icon. It is generated from the real index.
-- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums. They become public only after merge and a manual **Publish repository**.
+- **Packages:** two genuine packages were imported through pinned requests (`imports/`) with recorded provenance and checksums. Both require HCG Connect, so they are recorded as protected: their `.deb` files are not in this repository and are not deployed. See `docs/ACCESS.md` for the Sileo payment-provider integration HCG Connect must provide.
 - **In development:** HCG Sentinel has no jailbreak package. It is listed under "In development" with no install action.
 - **Device testing:** none yet. Use `docs/DEVICE_CHECKLIST.md`. Nothing is marked device-tested without recorded evidence.
 
@@ -74,7 +75,8 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 ## Documentation
 
 - [docs/PUBLICATION_PLAN.md](docs/PUBLICATION_PLAN.md): exactly which package, version and variant is ready, and the steps to publish.
-- [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis and the settings fix.
+- [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis, the settings fix, phone-side 522 checks and Sileo refresh steps.
+- [docs/ACCESS.md](docs/ACCESS.md): public / HCG Connect / paid access levels and the protected-delivery contract.
 - [imports/README.md](imports/README.md): pinned import requests and the **Prepare packages** workflow.
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): importing, provenance, immutability, building, publishing, withdrawing.
 - [docs/ROOTLESS_ROOTFUL.md](docs/ROOTLESS_ROOTFUL.md): architectures, paths, libroot, separate sources.

@@ -32,6 +32,7 @@ class PoolPackage:
     meta: PackageMeta
     rel: str            # path relative to the repository root, e.g. pool/iphoneos-arm64/x.deb
     report: Report
+    protected: bool = False   # connect/paid: delivered only through the payment provider, never as a public file
 
 
 def pool_files(cfg: RepoConfig) -> list[Path]:
@@ -69,6 +70,13 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
     # Per-package findings
     for p in pkgs:
         report.extend(p.report)
+        if p.meta.access != "public":
+            report.error("protected-in-public-pool",
+                         f"{p.rel}: {p.info.package} has access level '{p.meta.access}'; protected packages must not be "
+                         "stored in this public repository (run `bin/hcgrepo protect`)")
+        if cfg.access_require_explicit and not p.meta.access_explicit:
+            report.error("access-undeclared",
+                         f"{p.info.package}: declare [access] level = \"public\" | \"connect\" | \"paid\" in packages/{p.info.package}/package.toml")
 
     # Duplicates
     seen: dict[tuple[str, str, str], PoolPackage] = {}
@@ -104,6 +112,15 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
     for e in lock["packages"]:
         if e.get("status", "published") == "published" and e["filename"] not in pool_rels:
             report.error("lock-file-missing", f"repo-lock.json lists {e['filename']} but the file is missing from the pool")
+        if e.get("status") == "protected":
+            if e["filename"] in pool_rels or (cfg.root / e["filename"]).exists():
+                report.error("protected-in-public-pool", f"{e['filename']} is protected but its .deb is in the public pool")
+            prov = load_provenance(cfg, e["filename"])
+            if not prov.get("control"):
+                report.error("protected-control-missing", f"{e['filename']}: protected entry needs the control data in its provenance")
+            meta = load_package_meta(cfg, e["package"])
+            if meta.access == "public":
+                report.error("protected-but-public", f"{e['package']}: lock entry is protected but package.toml says access public")
     for k, entries in by_key.items():
         hashes = {e["sha256"] for e in entries}
         if len(hashes) > 1:
@@ -189,13 +206,64 @@ def package_stanza(cfg: RepoConfig, p: PoolPackage, repo_url: str) -> list[tuple
     return fields
 
 
+def load_provenance(cfg: RepoConfig, rel: str) -> dict:
+    import json
+    f = cfg.root / (rel + ".provenance.json")
+    try:
+        return json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+PROTECTED_PREFIX = "protected/"
+
+
+def protected_packages(cfg: RepoConfig) -> list[PoolPackage]:
+    """Protected (connect/paid) packages, reconstructed from their lock entry and recorded control data.
+    Their .deb is not in this repository; only metadata is."""
+    from .debinspect import DebInfo
+    out = []
+    for e in load_lock(cfg)["packages"]:
+        if e.get("status") != "protected":
+            continue
+        prov = load_provenance(cfg, e["filename"])
+        try:
+            control = debian.parse_control(prov.get("control", ""))
+        except debian.ControlError:
+            continue
+        info = DebInfo(path=cfg.root / e["filename"], size=e["size"], md5=prov.get("md5", ""), sha1=prov.get("sha1", ""),
+                       sha256=e["sha256"], sha512=prov.get("sha512", ""), members=[], control=control,
+                       control_text=prov["control"])
+        out.append(PoolPackage(info, load_package_meta(cfg, e["package"]), e["filename"], Report(e["package"]),
+                               protected=True))
+    return out
+
+
+def protected_stanza(cfg: RepoConfig, p: PoolPackage, repo_url: str) -> list[tuple[str, str]]:
+    """Index entry for a connect/paid package, used only while a payment endpoint is configured.
+    `Tag: cydia::commercial` makes Sileo fetch the file through the provider's authorize_download;
+    the Filename is a path that is never deployed, so the file cannot be fetched publicly."""
+    override = dict(presentation_fields(cfg, p.meta, repo_url))
+    fields = [(n, v) for n, v in p.info.control if n not in override and n not in REPO_FIELDS and n.lower() != "tag"]
+    tags = [t.strip() for t in (p.info.get("Tag") or "").split(",") if t.strip()]
+    if "cydia::commercial" not in tags:
+        tags.append("cydia::commercial")
+    fields.append(("Tag", ", ".join(tags)))
+    fields += list(override.items())
+    fields += [("Filename", f"{PROTECTED_PREFIX}{p.info.canonical_filename()}"), ("Size", str(p.info.size))]
+    fields += [(n, v) for n, v in (("MD5sum", p.info.md5), ("SHA1", p.info.sha1), ("SHA256", p.info.sha256),
+                                   ("SHA512", p.info.sha512)) if v]
+    return fields
+
+
 def sort_key(p: PoolPackage):
     import functools
     return (p.info.package, functools.cmp_to_key(debian.compare_versions)(p.info.version), p.info.architecture)
 
 
 def render_packages(cfg: RepoConfig, pkgs: list[PoolPackage], repo_url: str) -> str:
-    stanzas = [debian.format_stanza(package_stanza(cfg, p, repo_url)) for p in sorted(pkgs, key=sort_key)]
+    stanzas = [debian.format_stanza(protected_stanza(cfg, p, repo_url) if p.protected else package_stanza(cfg, p, repo_url))
+               for p in sorted(pkgs, key=sort_key)]
     return "\n".join(stanzas)
 
 
@@ -241,8 +309,9 @@ def git_revision(root: Path) -> str:
 
 
 def check_lock_history(base_lock: dict, head_lock: dict, report: Report) -> None:
-    """Entries already recorded on the base branch are immutable: they may only move from
-    'published' to 'withdrawn'. Nothing may be deleted or have its content changed."""
+    """Entries already recorded on the base branch are immutable: their content never changes and
+    they are never deleted. Status may move between 'published' and 'protected', and to
+    'withdrawn' (which is final)."""
     head = {e["filename"]: e for e in head_lock["packages"]}
     for b in base_lock["packages"]:
         h = head.get(b["filename"])
@@ -252,6 +321,8 @@ def check_lock_history(base_lock: dict, head_lock: dict, report: Report) -> None
         for k in ("package", "version", "architecture", "sha256", "size"):
             if h.get(k) != b.get(k):
                 report.error("lock-history-changed", f"{b['filename']}: recorded {k} changed from {b.get(k)!r} to {h.get(k)!r}")
+        if h.get("status", "published") not in ("published", "protected", "withdrawn"):
+            report.error("lock-history-status", f"{b['filename']}: unknown status {h.get('status')!r}")
         if b.get("status", "published") == "withdrawn" and h.get("status", "published") != "withdrawn":
             report.error("lock-history-republished", f"{b['filename']} was withdrawn and cannot be republished; use a new version")
 

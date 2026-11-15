@@ -45,3 +45,12 @@ required = false
 # Fingerprint of the published archive key (keys/hcg-repo-archive-key.asc). Empty = no key yet.
 fingerprint = ""
 public_key_file = "keys/hcg-repo-archive-key.asc"
+
+[access]
+# Every package must declare [access] level = "public" | "connect" | "paid" in
+# packages/<id>/package.toml. connect/paid packages are never stored in this public repository
+# or served as public files (see docs/ACCESS.md).
+require_explicit = true
+# HTTPS base URL of the HCG Connect payment provider (Sileo Payment Provider API). Empty while
+# HCG Connect is not configured: connect/paid packages are then left out of the public index.
+payment_endpoint = ""

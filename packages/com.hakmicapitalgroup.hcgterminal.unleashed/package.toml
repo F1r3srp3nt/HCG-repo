@@ -47,3 +47,7 @@ allow_setuid = []
 # status = "device-tested"
 # [[versions."0.1.0-1".device_tests]]
 # device = "…"; ios = "17.x"; jailbreak = "…"; date = "…"; result = "pass"; evidence = "docs/device-tests/…"
+
+[access]
+# Free for users signed in with HCG Connect. Never stored or served publicly here.
+level = "connect"
