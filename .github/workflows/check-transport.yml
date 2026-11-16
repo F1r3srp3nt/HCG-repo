@@ -63,11 +63,13 @@ jobs:
       # Release.gpg, icons, sileo-featured.json, payment_endpoint read regardless of status, and the provider's
       # info when one is configured) and keeps every response as evidence. The evidence holds only public
       # repository metadata and images; it never contains packages, tokens or device identifiers.
+      # --source-only: this branch's website configuration may differ from what is deployed (for example a prepared
+      # product page); Publish's own verification checks the website.
       - name: Sileo-style walk of the live source, with evidence
         if: always()
         run: |
           set +e
-          bin/hcgrepo verify --target production --no-debs --evidence evidence | tee sileo-walk.txt
+          bin/hcgrepo verify --target production --no-debs --source-only --evidence evidence | tee sileo-walk.txt
           rc=${PIPESTATUS[0]}
           { echo "## Sileo-style walk (evidence artifact: sileo-evidence)"; echo '```'; cat sileo-walk.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           cp sileo-walk.txt evidence/ 2>/dev/null
