@@ -77,11 +77,12 @@ not set here.
 
 ## What remains
 
-1. **Protected delivery.** Sign-in, ownership and signed downloads behind the payment provider
-   ([ACCESS.md](ACCESS.md)). Until then, protected packages stay out of the public index.
-2. **Store go-live.** The store, its sign-in, its access endpoint and its CORS policy for this site
-   must be live before any of the store links work.
-3. **HTTPS.** The site builds for `https://repo.hakmicapitalgroup.com/`, but HTTPS on the domain
-   does not work yet ([TRANSPORT.md](TRANSPORT.md)). The Store should link to
-   `https://repo.hakmicapitalgroup.com/products/<key>/`, and its CORS policy must allow that origin.
-   The access check cannot be relied on until the Repo is served over HTTPS.
+1. **Protected delivery.** Sign-in, ownership and signed downloads go through the Store's payment provider
+   ([ACCESS.md](ACCESS.md)). How approved Store releases reach the index, what is refused, the staging
+   results, the blockers and the companion changes are in [STORE_RELEASES.md](STORE_RELEASES.md).
+   Until then, protected packages stay out of the public index.
+2. **Store go-live.** The Store, its sign-in, its access endpoint and its CORS policy for this site
+   must be live before any of the Store links work.
+3. **HTTPS.** Done for HCG Repo: the domain serves a valid certificate and Enforce HTTPS is on
+   ([TRANSPORT.md](TRANSPORT.md)). The Store must also be served over https, because Sileo refuses
+   non-https payment endpoints and download URLs.
