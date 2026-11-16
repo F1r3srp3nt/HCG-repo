@@ -238,6 +238,21 @@ def cmd_build(a, cfg) -> int:
         return 1
     if res.report.warnings:
         print(res.report.render())
+    if a.diagnostics:
+        from .diagnostics import build_all, verify_all
+        build_all(cfg, base, res.out_dir)
+        if list((res.out_dir / "diag").rglob("*.deb")):
+            print("BUILD FAILED: a .deb file appeared under diag/")
+            return 1
+        failed = False
+        for key, rep in verify_all(cfg, base, res.out_dir.as_uri() + "/").items():
+            print(f"  diag/{key}: {'OK' if rep.ok else 'FAILED'} ({len(rep.errors)} errors, {len(rep.warnings)} warnings)")
+            if not rep.ok or rep.warnings:
+                print(rep.render())
+            failed |= not rep.ok
+        if failed:
+            print("BUILD FAILED: a diagnostic source failed verification")
+            return 1
     print(f"built {res.out_dir} for {res.repo_url}")
     print(f"  packages: {len(res.packages)}; files: {len(res.files)}")
     print(f"  metadata signature: {res.signature_detail if res.signed else 'unsigned'}")
@@ -394,6 +409,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default="_site")
     p.add_argument("--sign-key", help="gpg key id/fingerprint for Release.gpg and InRelease (or HCG_REPO_SIGNING_KEY)")
     p.add_argument("--require-signature", action="store_true")
+    p.add_argument("--diagnostics", action="store_true",
+                   help="also write the isolated Sileo diagnostic sources under diag/ (docs/SILEO_CRASH.md); never by default")
     p.set_defaults(fn=cmd_build)
 
     p = sp.add_parser("verify", help="verify a deployed or locally served repository like a client would")

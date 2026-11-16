@@ -184,7 +184,7 @@ def parse_release_hashes(fields: list[tuple[str, str]]) -> dict[str, dict[str, t
 
 def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pubkey: Path | None = None,
            require_signature: bool = False, check_debs: bool = True, evidence: Path | None = None,
-           check_provider: bool = False) -> VerifyResult:
+           check_provider: bool = False, site_checks: bool = True, icons: bool = True) -> VerifyResult:
     """Walk the repository as Sileo does. With `evidence`, every response body and a responses.json
     (status, redirect hops, headers, size, SHA-256) are saved there, so a report can be checked later."""
     from .config import normalize_base_url
@@ -197,7 +197,7 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
     f = Fetcher(public_base, fetch_base, evidence)
     r = Report(repo_public)
     res = VerifyResult(r)
-    _walk(f, r, res, public_base, repo_public, sub, cfg, pubkey, require_signature, check_debs)
+    _walk(f, r, res, public_base, repo_public, sub, cfg, pubkey, require_signature, check_debs, site_checks, icons)
     _check_payment_endpoint(f, r, cfg, repo_public, res.protected_indexed, check_provider)
     _check_transport(f, r, repo_public)
     res.checked_urls = f.log
@@ -207,7 +207,8 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
 
 
 def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_public: str, sub: str,
-          cfg: RepoConfig | None, pubkey: Path | None, require_signature: bool, check_debs: bool) -> None:
+          cfg: RepoConfig | None, pubkey: Path | None, require_signature: bool, check_debs: bool,
+          site_checks: bool = True, icons: bool = True) -> None:
 
     # ---- Release
     code, release_raw, _ = f.get(repo_public + "Release")
@@ -362,7 +363,7 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
     # ---- repository icons. Sileo (RepoManager._checkUpdatesInBackground) tries
     # <source>/CydiaIcon@<screen scale>x.png, then lower scales, then CydiaIcon.png, and stops at the
     # first download that returns any data, so every variant must be a real PNG of the right size.
-    for icon, side in REPO_ICONS.items():
+    for icon, side in (REPO_ICONS.items() if icons else ()):
         code, data, _ = f.get(repo_public + icon)
         problem = icon_problem(data, side) if code == 200 else f"HTTP {code}"
         if problem:
@@ -374,6 +375,8 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
     code, data, _ = f.get(repo_public + "sileo-featured.json")
     if code == 200:
         _check_featured(f, r, data, public_base, {debian.field(st, "Package") for st in stanzas})
+    if not site_checks:
+        return
     code, data, _ = f.get(public_base)
     if code != 200:
         r.error("site-missing", f"website root returns HTTP {code}")

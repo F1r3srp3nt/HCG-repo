@@ -16,6 +16,10 @@ on:
         description: "Fail unless Release is signed and the signature verifies"
         type: boolean
         default: false
+      diagnostics:
+        description: "Also deploy the isolated Sileo diagnostic sources under /diag/ (docs/SILEO_CRASH.md). Leaves /repo/ unchanged."
+        type: boolean
+        default: false
       confirm:
         description: "Type PUBLISH to deploy"
         required: true
@@ -75,12 +79,14 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           REQUIRE_SIG: ${{ inputs.require_signature }}
+          DIAGNOSTICS: ${{ inputs.diagnostics }}
           GNUPGHOME: ${{ steps.key.outputs.gnupghome }}
           HCG_REPO_SIGNING_KEY: ${{ steps.key.outputs.fpr }}
         run: |
           [ -n "$GNUPGHOME" ] || unset GNUPGHOME
           args=(--target "$TARGET" --out _site)
           [ "$REQUIRE_SIG" = "true" ] && args+=(--require-signature)
+          [ "$DIAGNOSTICS" = "true" ] && args+=(--diagnostics)
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build "${args[@]}"
           python3 -c 'import json;d=json.load(open("_site/build-info.json"));print("signed=" + str(d["signature_verified"]).lower())' >> "$GITHUB_OUTPUT"
           find _site -type f | sort

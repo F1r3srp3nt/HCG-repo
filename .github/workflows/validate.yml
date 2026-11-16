@@ -66,3 +66,14 @@ jobs:
           path: _site
           retention-days: 7
           include-hidden-files: true
+
+      # The same snapshot plus the isolated Sileo diagnostic sources (diag/), for review only. Publishing them
+      # needs the Publish workflow's "diagnostics" input; nothing here deploys.
+      - name: Build the diagnostic sources preview
+        run: SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build --target production --out _site_diag --diagnostics
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-preview
+          path: _site_diag/diag
+          retention-days: 7
