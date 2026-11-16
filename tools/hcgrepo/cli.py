@@ -215,7 +215,11 @@ def cmd_verify(a, cfg) -> int:
     base = _base(a, cfg)
     fetch = a.fetch_url or base
     pub = Path(a.pubkey) if a.pubkey else None
-    res = verify(base, fetch, cfg=cfg, pubkey=pub, require_signature=a.require_signature, check_debs=not a.no_debs)
+    ev = Path(a.evidence) if a.evidence else None
+    res = verify(base, fetch, cfg=cfg, pubkey=pub, require_signature=a.require_signature, check_debs=not a.no_debs,
+                 evidence=ev, check_provider=not a.no_provider)
+    if ev:
+        print(f"evidence: {len(res.exchanges)} responses saved in {ev} (responses.json lists status, redirects, headers, SHA-256)")
     if a.list_urls:
         for u in res.checked_urls:
             print("  GET", u)
@@ -357,6 +361,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--require-signature", action="store_true")
     p.add_argument("--no-debs", action="store_true", help="skip downloading packages")
     p.add_argument("--list-urls", action="store_true")
+    p.add_argument("--evidence", help="save every response body and responses.json (status, redirects, headers) here")
+    p.add_argument("--no-provider", action="store_true", help="do not call the payment provider's info endpoint")
     p.set_defaults(fn=cmd_verify)
 
     p = sp.add_parser("serve", help="serve a built site under its URL prefix for local testing")

@@ -44,6 +44,8 @@ class VerifyResult:
     packages: int = 0
     signed: bool = False
     signature_verified: bool = False
+    protected_indexed: bool = False
+    exchanges: list = field(default_factory=list)
 
     def summary(self) -> str:
         return (f"{len(self.checked_urls)} URLs fetched, {self.packages} packages, "
@@ -51,35 +53,118 @@ class VerifyResult:
                 f"{len(self.report.errors)} errors, {len(self.report.warnings)} warnings")
 
 
+# Sileo sends "<app>/<version> CoreFoundation/<cf> Darwin/<kernel>" (URLManager.urlRequest). The verifier
+# sends the same shape so a server or CDN that treats package managers differently is tested as Sileo
+# sees it. It sends no device identifiers (X-Unique-ID, X-Machine, X-Firmware): GitHub Pages ignores
+# them, and real identifiers must never be invented or leaked.
+SILEO_USER_AGENT = "Sileo/2.5 CoreFoundation/1953.100 Darwin/22.5.0 (hcgrepo-verify)"
+MAX_REDIRECTS = 5
+
+
+@dataclass
+class Exchange:
+    """One request as a client saw it: every redirect hop, the final status, headers and body digest."""
+    url: str
+    status: int
+    final_url: str
+    content_type: str
+    redirects: list[tuple[int, str]]
+    headers: dict[str, str]
+    size: int
+    sha256: str
+    error: str = ""
+    body_file: str = ""
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):  # noqa: D401 - urllib hook
+        return None
+
+
 class Fetcher:
-    def __init__(self, public_base: str, fetch_base: str):
+    def __init__(self, public_base: str, fetch_base: str, evidence: Path | None = None):
         self.public_base = public_base
         self.fetch_base = fetch_base
         host = urlsplit(fetch_base).hostname or ""
-        handlers = []
+        handlers: list = [_NoRedirect()]
         if host in ("127.0.0.1", "localhost", "::1") or fetch_base.startswith("file:"):
             handlers.append(urllib.request.ProxyHandler({}))
         self.opener = urllib.request.build_opener(*handlers)
         self.log: list[str] = []
+        self.exchanges: list[Exchange] = []
+        self.evidence = evidence
+        if evidence:
+            evidence.mkdir(parents=True, exist_ok=True)
 
     def map(self, url: str) -> str:
         if url.startswith(self.public_base):
             return self.fetch_base + url[len(self.public_base):]
         return url
 
-    def get(self, url: str) -> tuple[int, bytes, str]:
+    def _once(self, url: str, method: str, body: bytes | None) -> tuple[int, bytes, dict[str, str], str]:
+        headers = {"User-Agent": SILEO_USER_AGENT, "Cache-Control": "no-cache"}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=body, method=method, headers=headers)
+        try:
+            with self.opener.open(req, timeout=60) as resp:
+                return getattr(resp, "status", 200) or 200, resp.read(), dict(resp.headers.items()), ""
+        except urllib.error.HTTPError as exc:
+            # Keep error bodies: Sileo reads some responses (payment_endpoint) whatever the status.
+            try:
+                data = exc.read()
+            except Exception:  # noqa: BLE001
+                data = b""
+            return exc.code, data, dict(exc.headers.items()) if exc.headers else {}, ""
+        except (urllib.error.URLError, FileNotFoundError, IsADirectoryError, NotADirectoryError, OSError) as exc:
+            return 0 if not url.startswith("file:") else 404, b"", {}, str(getattr(exc, "reason", exc))
+
+    def request(self, url: str, method: str = "GET", body: bytes | None = None) -> tuple[Exchange, bytes]:
         real = self.map(url)
         if real.startswith("file:") and real.endswith("/"):
             real += "index.html"
-        self.log.append(real)
-        req = urllib.request.Request(real, headers={"User-Agent": "hcgrepo-verify", "Cache-Control": "no-cache"})
-        try:
-            with self.opener.open(req, timeout=60) as resp:
-                return getattr(resp, "status", 200) or 200, resp.read(), resp.headers.get("Content-Type", "")
-        except urllib.error.HTTPError as exc:
-            return exc.code, b"", ""
-        except (urllib.error.URLError, FileNotFoundError, IsADirectoryError, NotADirectoryError):
-            return 404, b"", ""
+        self.log.append(real if method == "GET" else f"{method} {real}")
+        hops: list[tuple[int, str]] = []
+        current, seen = real, {real}
+        while True:
+            code, data, headers, err = self._once(current, method, body)
+            location = next((v for k, v in headers.items() if k.lower() == "location"), "")
+            if code in (301, 302, 303, 307, 308) and location:
+                nxt = urljoin(current, location)
+                hops.append((code, nxt))
+                if nxt in seen or len(hops) > MAX_REDIRECTS:
+                    err = "redirect loop" if nxt in seen else f"more than {MAX_REDIRECTS} redirects"
+                    break
+                seen.add(nxt)
+                current = nxt
+                if code == 303:
+                    method, body = "GET", None
+                continue
+            break
+        ctype = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+        keep = {k: v for k, v in headers.items() if k.lower() in (
+            "content-type", "content-length", "location", "server", "cache-control", "etag", "last-modified",
+            "age", "x-cache", "via", "cf-ray", "access-control-allow-origin", "strict-transport-security")}
+        ex = Exchange(real, code, current, ctype, hops, keep, len(data), hashlib.sha256(data).hexdigest(), err)
+        if self.evidence is not None:
+            tail = "/".join(urlsplit(real).path.strip("/").split("/")[-2:]) or "root"
+            name = re.sub(r"[^A-Za-z0-9._@-]+", "_", tail)[:80]
+            ex.body_file = f"{len(self.exchanges):03d}-{method}-{name}"
+            (self.evidence / ex.body_file).write_bytes(data)
+        self.exchanges.append(ex)
+        return ex, data
+
+    def get(self, url: str) -> tuple[int, bytes, str]:
+        ex, data = self.request(url)
+        if ex.error and ex.status in (301, 302, 303, 307, 308):
+            return 0, b"", ""
+        return ex.status, data, ex.content_type
+
+    def write_evidence(self) -> None:
+        if self.evidence is None:
+            return
+        rows = [ex.__dict__ for ex in self.exchanges]
+        (self.evidence / "responses.json").write_text(json.dumps(rows, indent=2) + "\n")
 
 
 def parse_release_hashes(fields: list[tuple[str, str]]) -> dict[str, dict[str, tuple[str, int]]]:
@@ -98,7 +183,10 @@ def parse_release_hashes(fields: list[tuple[str, str]]) -> dict[str, dict[str, t
 
 
 def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pubkey: Path | None = None,
-           require_signature: bool = False, check_debs: bool = True) -> VerifyResult:
+           require_signature: bool = False, check_debs: bool = True, evidence: Path | None = None,
+           check_provider: bool = False) -> VerifyResult:
+    """Walk the repository as Sileo does. With `evidence`, every response body and a responses.json
+    (status, redirect hops, headers, size, SHA-256) are saved there, so a report can be checked later."""
     from .config import normalize_base_url
 
     public_base = normalize_base_url(public_base)
@@ -106,26 +194,34 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
         fetch_base += "/"
     sub = (cfg.repo_subdir if cfg else "repo") + "/"
     repo_public = public_base + sub
-    f = Fetcher(public_base, fetch_base)
+    f = Fetcher(public_base, fetch_base, evidence)
     r = Report(repo_public)
     res = VerifyResult(r)
+    _walk(f, r, res, public_base, repo_public, sub, cfg, pubkey, require_signature, check_debs)
+    _check_payment_endpoint(f, r, cfg, repo_public, res.protected_indexed, check_provider)
+    _check_transport(f, r, repo_public)
+    res.checked_urls = f.log
+    res.exchanges = f.exchanges
+    f.write_evidence()
+    return res
+
+
+def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_public: str, sub: str,
+          cfg: RepoConfig | None, pubkey: Path | None, require_signature: bool, check_debs: bool) -> None:
 
     # ---- Release
     code, release_raw, _ = f.get(repo_public + "Release")
     if code != 200:
         r.error("release-missing", f"Release: HTTP {code} at {f.map(repo_public + 'Release')}")
-        res.checked_urls = f.log
-        return res
+        return
     if looks_like_html(release_raw):
         r.error("release-html", "Release is an HTML page (error/login page?), not APT metadata")
-        res.checked_urls = f.log
-        return res
+        return
     try:
         release = debian.parse_control(release_raw.decode("utf-8"))
     except (debian.ControlError, UnicodeDecodeError) as exc:
         r.error("release-unparseable", f"Release: {exc}")
-        res.checked_urls = f.log
-        return res
+        return
     for name in ("Origin", "Suite", "Architectures", "Components", "Date", "SHA256"):
         if debian.field(release, name) is None:
             r.error("release-field", f"Release lacks {name}")
@@ -173,8 +269,7 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
             r.warn("index-extra", f"Release lists unexpected index {name}")
     if not texts:
         r.error("index-none", "no readable Packages index")
-        res.checked_urls = f.log
-        return res
+        return
     plain = texts.get("Packages", next(iter(texts.values())))
     for name, text in texts.items():
         if text != plain:
@@ -262,14 +357,7 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
                 r.error("presentation-image", f"{label}: {k} is not a PNG or JPEG")
     res.packages = len(stanzas)
 
-    # ---- payment provider (only when protected packages are indexed)
-    code, data, _ = f.get(repo_public + "payment_endpoint")
-    if protected_seen:
-        endpoint = data.decode("utf-8", "replace").strip() if code == 200 else ""
-        if not endpoint.startswith("https://"):
-            r.error("payment-endpoint", "protected packages are indexed but payment_endpoint is missing or not https")
-    elif code == 200 and not looks_like_html(data):
-        r.warn("payment-endpoint-unused", "payment_endpoint is published but no protected package is indexed")
+    res.protected_indexed = protected_seen
 
     # ---- repository icons. Sileo (RepoManager._checkUpdatesInBackground) tries
     # <source>/CydiaIcon@<screen scale>x.png, then lower scales, then CydiaIcon.png, and stops at the
@@ -300,8 +388,6 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
                 r.error("site-product-link", f"website does not link the product page products/{product.key}/")
     if cfg:
         _check_store_pages(f, r, cfg, public_base, {debian.field(st, "Package") for st in stanzas})
-    res.checked_urls = f.log
-    return res
 
 
 def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, indexed: set[str]) -> None:
@@ -420,3 +506,85 @@ def _check_sileo_json(r: Report, label: str, data: bytes) -> None:
     for t in d["tabs"]:
         if not t.get("tabname") or not t.get("class"):
             r.error("sileo-depiction-tab", f"{label}: every tab needs tabname and class (Sileo drops the whole view otherwise)")
+
+
+def sileo_payment_endpoint(body: bytes) -> str | None:
+    """What Sileo concludes from <source>/payment_endpoint (PaymentManager.getPaymentProvider).
+
+    Sileo ignores the HTTP status: it reads whatever body came back, trims whitespace, appends "/"
+    and accepts the result when it parses as an https URL. So a 404 page that happened to be a bare
+    https URL would register a payment provider. Returns the endpoint Sileo would use, or None."""
+    try:
+        text = body.decode("utf-8").strip()
+    except UnicodeDecodeError:
+        return None
+    if not text.endswith("/"):
+        text += "/"
+    parts = urlsplit(text)
+    if parts.scheme != "https" or not parts.netloc or any(c.isspace() for c in text) or "<" in text:
+        return None
+    return text
+
+
+def _check_payment_endpoint(f: "Fetcher", r: Report, cfg: RepoConfig | None, repo_public: str, protected_indexed: bool,
+                            check_provider: bool = False) -> None:
+    code, data, _ = f.get(repo_public + "payment_endpoint")
+    seen = sileo_payment_endpoint(data)
+    configured = (cfg.payment_endpoint if cfg else "") or ""
+    want = (configured.rstrip("/") + "/") if configured else None
+    if seen != want:
+        if want is None:
+            r.error("payment-endpoint-unexpected",
+                    f"Sileo would register payment provider {seen} from payment_endpoint (HTTP {code}), but none is configured")
+        elif seen is None:
+            r.error("payment-endpoint", f"payment_endpoint is configured as {want} but Sileo would not accept what is served (HTTP {code})")
+        else:
+            r.error("payment-endpoint", f"Sileo would use {seen}, but {want} is configured")
+    if protected_indexed and want is None:
+        r.error("payment-endpoint", "protected packages are indexed but no payment_endpoint is configured; Sileo could never download them")
+    if not protected_indexed and want is not None:
+        r.warn("payment-endpoint-unused", "payment_endpoint is published but no protected package is indexed")
+    if want is None or seen != want or not check_provider:
+        return
+    # Sileo's PaymentProvider.fetchInfo: GET <endpoint>info, JSON object with string name and description.
+    code, data, _ = f.get(want + "info")
+    try:
+        info = json.loads(data) if data else None
+    except ValueError:
+        info = None
+    if not isinstance(info, dict) or not isinstance(info.get("name"), str) or not isinstance(info.get("description"), str):
+        r.error("payment-info", f"{want}info (HTTP {code}) is not the JSON object Sileo needs (string name and description)")
+        return
+    if info.get("success") is False or isinstance(info.get("error"), str):
+        r.error("payment-info", f"{want}info reports an error: {info.get('error')}")
+    icon = info.get("icon")
+    if icon is not None and not (isinstance(icon, str) and icon.startswith("https://")):
+        r.error("payment-info", f"{want}info icon must be an https URL")
+    banner = info.get("authentication_banner")
+    if banner is not None and not (isinstance(banner, dict) and all(isinstance(v, str) for v in banner.values())):
+        r.error("payment-info", "authentication_banner must map strings to strings (Sileo casts it to [String: String])")
+
+
+# Files Sileo fetches while refreshing a source and drawing it in Sources. A redirect costs a hop and,
+# if it leaves https, exposes the request; text/html means an error or login page answered instead.
+_SILEO_FILES = ("Release", "Release.gpg", "Packages", "Packages.xz", "Packages.lzma", "Packages.bz2", "Packages.gz",
+                "Packages.zst", "CydiaIcon.png", "CydiaIcon@2x.png", "CydiaIcon@3x.png", "sileo-featured.json",
+                "payment_endpoint")
+
+
+def _check_transport(f: "Fetcher", r: Report, repo_public: str) -> None:
+    for ex in f.exchanges:
+        name = ex.url[len(f.map(repo_public)):] if ex.url.startswith(f.map(repo_public)) else None
+        if ex.error and ex.redirects:
+            r.error("redirect-loop", f"{ex.url}: {ex.error} ({' -> '.join(u for _, u in ex.redirects)})")
+        for _, hop in ex.redirects:
+            if ex.url.startswith("https://") and hop.startswith("http://"):
+                r.error("redirect-insecure", f"{ex.url} redirects to plain http ({hop})")
+        if name is None or name not in _SILEO_FILES:
+            continue
+        if ex.redirects and ex.status == 200:
+            r.warn("redirect", f"{name} is redirected ({len(ex.redirects)} hop(s) to {ex.final_url}); serve it directly")
+        if ex.status == 200 and ex.content_type.split(";")[0].strip().lower() == "text/html":
+            r.error("content-type-html", f"{name} is served as text/html; Sileo expects APT data or an image")
+        if ex.status == 0:
+            r.error("unreachable", f"{name}: {ex.error or 'no response'}")

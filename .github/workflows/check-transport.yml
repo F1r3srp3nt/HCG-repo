@@ -11,6 +11,7 @@ on:
     paths:
       - ".github/workflows/check-transport.yml"
       - "tools/transport_check.sh"
+      - "tools/hcgrepo/verify.py"
 
 permissions: {}
 
@@ -57,3 +58,25 @@ jobs:
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           [ $rc -eq 0 ] || echo "::error::HTTPS/APT delivery for $HOST is not correct (see the job summary)"
           exit $rc
+
+      # Walks the live source the way Sileo refreshes it (Release, the Packages variants in Sileo's order,
+      # Release.gpg, icons, sileo-featured.json, payment_endpoint read regardless of status, and the provider's
+      # info when one is configured) and keeps every response as evidence. The evidence holds only public
+      # repository metadata and images; it never contains packages, tokens or device identifiers.
+      - name: Sileo-style walk of the live source, with evidence
+        if: always()
+        run: |
+          set +e
+          bin/hcgrepo verify --target production --no-debs --evidence evidence | tee sileo-walk.txt
+          rc=${PIPESTATUS[0]}
+          { echo "## Sileo-style walk (evidence artifact: sileo-evidence)"; echo '```'; cat sileo-walk.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          cp sileo-walk.txt evidence/ 2>/dev/null
+          exit $rc
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: sileo-evidence
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
