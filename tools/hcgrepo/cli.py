@@ -83,6 +83,40 @@ def cmd_import_deb(a, cfg) -> int:
     return _import(cfg, Path(a.deb), prov, a.dry_run)
 
 
+def cmd_import_store(a, cfg) -> int:
+    """Record an HCG Store artifact that a person approved for public delivery to HCG Repo."""
+    from .debinspect import inspect_deb
+    from .importer import import_deb
+    from .repo import expected_pool_rel
+    from .store import check_release, load_release_record, provenance
+    rec, rec_sha = load_release_record(Path(a.release))
+    try:
+        info = inspect_deb(Path(a.deb))
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR: {a.deb}: {exc}")
+        return 1
+    report = check_release(cfg, rec, a.artifact, info)
+    if not report.ok:
+        return _print_report(report, "")
+    prov = provenance(rec, a.artifact, rec_sha, a.store_origin)
+    rel = expected_pool_rel(info)
+    existing = [e for e in load_lock(cfg)["packages"] if (e["package"], e["version"], e["architecture"]) == info.key]
+    if existing and existing[0]["sha256"] == info.sha256 and existing[0].get("status") == "protected":
+        # Already recorded from its build: keep that provenance and add the Store link next to it.
+        status, rep = import_deb(cfg, Path(a.deb), {}, dry_run=True, expect={"sha256": info.sha256})
+        if status not in ("validated", "already-present"):
+            return _print_report(rep, "")
+        if not a.dry_run:
+            pp = cfg.root / (rel + ".provenance.json")
+            data = json.loads(pp.read_text()) if pp.exists() else {}
+            data["hcg_store"] = prov
+            pp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"{info.package} {info.version} {info.architecture}: linked to Store release {rec.get('id')} "
+              f"artifact {a.artifact} (sha256 {info.sha256}){' [dry run]' if a.dry_run else ''}")
+        return 0
+    return _import(cfg, Path(a.deb), prov, a.dry_run)
+
+
 def cmd_import_release(a, cfg) -> int:
     from .importer import GitHub, ImportError_, fetch_release_asset, temp_workdir
     with temp_workdir() as tmp:
@@ -296,6 +330,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note", help="free-text provenance note")
     p.add_argument("--dry-run", action="store_true", help="validate only")
     p.set_defaults(fn=cmd_import_deb)
+
+    p = sp.add_parser("import-store-release", help="record an HCG Store artifact approved for public delivery to HCG Repo")
+    p.add_argument("--release", required=True, help="the Store's release record (JSON from GET /api/v1/publishing/releases/<id>)")
+    p.add_argument("--artifact", required=True, help="artifact id inside that release (art-...)")
+    p.add_argument("--deb", required=True, help="the artifact's bytes, downloaded through the Store's authorised review download")
+    p.add_argument("--store-origin", default="https://store.hakmicapitalgroup.com", help="Store the record came from (provenance)")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(fn=cmd_import_store)
 
     p = sp.add_parser("import-github-release", help="import one asset of a specific GitHub release")
     p.add_argument("--repo", required=True, help="OWNER/NAME")
