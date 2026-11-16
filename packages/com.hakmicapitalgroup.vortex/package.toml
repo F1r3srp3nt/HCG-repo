@@ -1,0 +1,32 @@
+# Presentation and review metadata for HCG Vortex (free experimental beta).
+# Package ID, version, architecture, dependencies, size and checksums always come from the imported .deb's
+# control file and bytes; nothing here can override them. See docs/VORTEX.md for the import steps.
+
+[release]
+channel = "beta"
+
+[access]
+level = "public"
+# HCG packages normally need HCG Connect sign-in. This is the only package exempted.
+exception = "Free experimental beta. Made public (no sign-in) by the owner on 16 Nov 2026 as an explicit exception for HCG Vortex only; every other product keeps its access level."
+
+[display]
+# summary is intentionally empty: the listing uses the Description from the .deb's control file, so it
+# always describes the build that is actually published.
+icon = "icon.png"
+tint = "#2FD3E6"
+notes = """
+HCG Vortex is a free **experimental beta**. It is published so it can be tested; it may change, break or be withdrawn.
+"""
+known_issues = """
+- None recorded yet. What has been tested is listed under Tested devices; any problem found there is listed here
+  with the exact device, iOS version and jailbreak.
+"""
+limitations = """
+- Rootless jailbreaks only (`iphoneos-arm64`). There is no rootful build.
+- Beta: settings and behaviour may change between versions without a migration.
+"""
+
+[review]
+# Paths allowed to be setuid/setgid inside the package. A tweak needs none.
+allow_setuid = []

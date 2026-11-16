@@ -402,9 +402,11 @@ def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str,
             r.error("product-page-missing", f"product page {url} returns HTTP {code}")
             continue
         text = data.decode("utf-8", "replace")
-        for what, link in (("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p))):
+        for what, link in ((("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p))) if p.in_store else ()):
             if f'href="{html.escape(link)}"' not in text:
                 r.error("product-page-store-link", f"{url} does not link the {what} page {link}")
+        if not p.in_store and cfg.store_base_url and cfg.store_base_url in text:
+            r.error("product-page-store-link", f"{url} links HCG Store, but {p.key} is not in HCG Store")
         if INLINE_SCRIPT.search(text):
             r.error("product-page-inline-script", f"{url} contains an inline script")
         if DEB_LINK.search(text):
@@ -509,6 +511,39 @@ def _check_sileo_json(r: Report, label: str, data: bytes) -> None:
     for t in d["tabs"]:
         if not t.get("tabname") or not t.get("class"):
             r.error("sileo-depiction-tab", f"{label}: every tab needs tabname and class (Sileo drops the whole view otherwise)")
+    _check_sileo_view(r, label, d, "root")
+
+
+# Required keys and types of each depiction view, from each class's init?(dictionary:) guards in Sileo 2.5.1
+# (Sileo/UI/PackageViewController/DepictionView). A missing key makes that view return nil; a stack or tab
+# child without a "class" string makes Sileo drop the WHOLE stack.
+SILEO_VIEWS = {
+    "DepictionTabView": {"tabs": list},
+    "DepictionStackView": {"views": list},
+    "DepictionMarkdownView": {"markdown": str},
+    "DepictionSeparatorView": {},
+    "DepictionHeaderView": {"title": str},
+    "DepictionSubheaderView": {"title": str},
+    "DepictionTableTextView": {"title": str, "text": str},
+    "DepictionTableButtonView": {"title": str, "action": str},
+    "DepictionScreenshotsView": {"itemSize": str, "screenshots": list},
+}
+
+
+def _check_sileo_view(r: Report, label: str, d, where: str) -> None:
+    if not isinstance(d, dict) or not isinstance(d.get("class"), str):
+        r.error("sileo-depiction-class", f"{label}: {where} has no class string; Sileo drops the enclosing stack")
+        return
+    cls = d["class"]
+    need = SILEO_VIEWS.get(cls)
+    if need is None:
+        r.error("sileo-depiction-class", f"{label}: {where} uses {cls!r}, which this repository does not check against Sileo")
+        return
+    for key, typ in need.items():
+        if not isinstance(d.get(key), typ):
+            r.error("sileo-depiction-field", f"{label}: {where} ({cls}) needs {key} as {typ.__name__}; Sileo would draw nothing")
+    for i, child in enumerate(d.get("tabs") or d.get("views") or []):
+        _check_sileo_view(r, label, child, f"{where}/{cls}[{i}]")
 
 
 def sileo_payment_endpoint(body: bytes) -> str | None:

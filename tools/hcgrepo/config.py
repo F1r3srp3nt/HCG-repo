@@ -90,11 +90,12 @@ SLUG_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 @dataclass
 class Product:
-    """One entry of config/products.toml: a product page at products/<key>/ and its HCG Store link."""
+    """One entry of config/products.toml: a product page at products/<key>/ and, when it is sold or
+    licensed through HCG Store, its HCG Store link. An empty store_slug means it is not in HCG Store."""
 
     key: str
     name: str
-    store_slug: str
+    store_slug: str = ""
     store_edition: str = ""
     access: str = ""
     package_ids: list[str] = field(default_factory=list)
@@ -103,6 +104,10 @@ class Product:
     status: str = "Not available"
     summary: str = ""
     detail: str = ""
+
+    @property
+    def in_store(self) -> bool:
+        return bool(self.store_slug)
 
     @property
     def restricted(self) -> bool:
@@ -121,17 +126,21 @@ def parse_products(raw: list) -> list[Product]:
         where = f"config/products.toml product #{i + 1}"
         if not isinstance(d, dict):
             raise ConfigError(f"{where}: must be a table")
-        for k in ("key", "name", "store_slug"):
+        for k in ("key", "name"):
             if not str(d.get(k, "")).strip():
                 raise ConfigError(f"{where}: `{k}` is required")
         p = Product(
-            key=d["key"], name=d["name"], store_slug=d["store_slug"], store_edition=d.get("store_edition", ""),
+            key=d["key"], name=d["name"], store_slug=d.get("store_slug", ""), store_edition=d.get("store_edition", ""),
             access=d.get("access", ""), package_ids=list(d.get("package_ids", [])),
             layouts=list(d.get("layouts", [])), kind=d.get("kind", ""), status=d.get("status", "Not available"),
             summary=d.get("summary", ""), detail=d.get("detail", ""),
         )
         where = f"config/products.toml product {p.key!r}"
-        for k in ("key", "store_slug") + (("store_edition",) if p.store_edition else ()):
+        if p.store_edition and not p.store_slug:
+            raise ConfigError(f"{where}: `store_edition` needs `store_slug`")
+        if p.restricted and not p.store_slug:
+            raise ConfigError(f"{where}: connect/paid products need `store_slug` (access is granted by HCG Store)")
+        for k in ("key",) + (("store_slug",) if p.store_slug else ()) + (("store_edition",) if p.store_edition else ()):
             if not SLUG_RE.fullmatch(getattr(p, k)):
                 raise ConfigError(f"{where}: `{k}` must be lowercase letters, digits and '-', got {getattr(p, k)!r}")
         if p.access not in PRODUCT_ACCESS:
@@ -278,6 +287,8 @@ STATUSES = ("experimental", "device-tested")
 # connect/paid packages are never stored in this public repository or deployed as public files.
 ACCESS_LEVELS = ("public", "connect", "paid")
 REQUIRED_TEST_FIELDS = ("device", "ios", "jailbreak", "date", "result", "evidence")
+TEST_RESULTS = ("pass", "fail", "partial")
+CHANNELS = ("", "beta")
 
 
 @dataclass
@@ -299,6 +310,9 @@ class PackageMeta:
     screenshots: list[dict] = field(default_factory=list)  # [{file, caption}]
     access: str = "public"
     access_explicit: bool = False
+    access_exception: str = ""   # [access] exception: why an HCG package is public (an explicit, approved exception)
+    channel: str = ""            # [release] channel: "" or "beta"
+    known_issues: str = ""       # [display] known_issues (markdown); required for a beta
 
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
@@ -328,6 +342,8 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
         limitations=disp.get("limitations", ""), install=disp.get("install", ""), removal=disp.get("removal", ""),
         screenshots=list(disp.get("screenshots", [])),
         access=data.get("access", {}).get("level", "public"), access_explicit="level" in data.get("access", {}),
+        access_exception=str(data.get("access", {}).get("exception", "")).strip(),
+        channel=str(data.get("release", {}).get("channel", "")).strip(), known_issues=disp.get("known_issues", ""),
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
         versions=data.get("versions", {}),
@@ -367,9 +383,22 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
             report.error("meta-screenshot", "every screenshot needs file and caption (used as alt text)")
     if meta.access not in ACCESS_LEVELS:
         report.error("meta-bad-access", f"[access] level must be one of {ACCESS_LEVELS}, got {meta.access!r}")
+    if meta.channel not in CHANNELS:
+        report.error("meta-bad-channel", f"[release] channel must be \"beta\" or absent, got {meta.channel!r}")
+    if meta.channel == "beta" and not meta.known_issues.strip():
+        report.error("meta-beta-known-issues", "a beta must state its known issues in [display] known_issues "
+                     "(say plainly if none have been found yet and whether it has been tested)")
+    if meta.access_exception and meta.access != "public":
+        report.error("meta-exception-unused", "[access] exception only applies to level = \"public\"")
     if meta.tint and not re.fullmatch(r"#[0-9A-Fa-f]{6}", meta.tint):
         report.error("meta-bad-tint", f"tint must be #RRGGBB, got {meta.tint!r}")
     for ver, v in meta.versions.items():
+        if any(t.get("result") in ("fail", "partial") for t in v.get("device_tests", [])) and \
+                (not meta.known_issues.strip() or "none recorded" in meta.known_issues.lower()):
+            report.error("meta-known-issues-stale", f"version {ver} has a failed or partial device test; describe it in [display] known_issues")
+        for t in v.get("device_tests", []):
+            if t.get("result") not in TEST_RESULTS:
+                report.error("meta-device-test-result", f"version {ver}: device test result must be one of {TEST_RESULTS}")
         st = v.get("status", "experimental")
         if st not in STATUSES:
             report.error("meta-bad-status", f"version {ver}: status must be one of {STATUSES}, got {st!r}")

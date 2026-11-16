@@ -174,15 +174,58 @@ def status_badge(status: str) -> str:
     return '<span class="badge badge-warn">Experimental</span>'
 
 
+def channel_badge(p: PoolPackage) -> str:
+    return '<span class="badge badge-beta">Beta</span>' if p.meta.channel == "beta" else ""
+
+
+RESULT_TEXT = {"pass": "Works", "fail": "Does not work", "partial": "Partly works"}
+
+
+def status_text(p: PoolPackage) -> str:
+    """One honest line: beta or not, and whether ANY device test exists. Never says "working" without one."""
+    st = "Device-tested" if p.meta.status(p.info.version) == "device-tested" else "Experimental"
+    if p.meta.channel == "beta":
+        st = "Beta, " + st[0].lower() + st[1:]
+    if not p.meta.device_tests(p.info.version):
+        st += ", not yet tested on any device"
+    return st
+
+
+def tested_devices(p: PoolPackage) -> list[dict]:
+    """Every recorded device test of this version (pass, partial and fail), exactly as recorded."""
+    return p.meta.device_tests(p.info.version)
+
+
+def tested_devices_html(p: PoolPackage) -> str:
+    tests = tested_devices(p)
+    if not tests:
+        return ('<p class="card note note-warn"><strong>Not yet tested on any device.</strong> '
+                "No device, iOS version or jailbreak is known to work with this build.</p>")
+    rows = "".join(f"<tr><td>{e(t.get('device', ''))}</td><td>iOS {e(str(t.get('ios', '')))}</td><td>{e(t.get('jailbreak', ''))}</td>"
+                   f"<td>{e(RESULT_TEXT.get(t.get('result'), str(t.get('result'))))}</td><td>{e(str(t.get('date', '')))}</td></tr>"
+                   for t in tests)
+    return ('<div class="table-wrap"><table><caption class="sr-only">Device tests of this version</caption>'
+            '<thead><tr><th scope="col">Device</th><th scope="col">iOS</th><th scope="col">Jailbreak</th>'
+            f'<th scope="col">Result</th><th scope="col">Date</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            '<p class="small muted">Only these exact combinations have been tested. Others are untested.</p>')
+
+
 def passing_tests(p: PoolPackage) -> list[dict]:
     return [t for t in p.meta.device_tests(p.info.version) if t.get("result") == "pass"]
 
 
 def tests_text(p: PoolPackage) -> str:
+    """Never implies a build works beyond its recorded device tests, and never hides a failed one."""
+    every = p.meta.device_tests(p.info.version)
     tests = passing_tests(p)
+    if not every:
+        return "Not yet tested on any device."
     if not tests:
-        return "Not yet tested on a physical device."
-    return "Tested on " + "; ".join(f"{t['device']}, iOS {t['ios']}, {t['jailbreak']} ({t['date']})" for t in tests) + "."
+        return f"Tested on {len(every)} device setup(s); none passed. See Tested devices."
+    text = "Works on " + "; ".join(f"{t['device']}, iOS {t['ios']}, {t['jailbreak']} ({t['date']})" for t in tests) + "."
+    if len(tests) < len(every):
+        text += f" {len(every) - len(tests)} other tested setup(s) did not fully work; see Tested devices."
+    return text
 
 
 def provenance(cfg: RepoConfig, p: PoolPackage) -> dict:
@@ -314,7 +357,8 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     layouts = ", ".join(f"{describe_arch(v.info.architecture)} <span class=\"muted\">({e(v.info.architecture)})</span>" for v in current)
     ios_short, _ = ios_requirement(p)
     statuses = {v.meta.status(v.info.version) for v in current}
-    badge = status_badge("device-tested" if statuses == {"device-tested"} else "experimental") + access_badge(p.meta.access)
+    badge = (channel_badge(p) + status_badge("device-tested" if statuses == {"device-tested"} else "experimental")
+             + access_badge(p.meta.access))
     detail = f"{repo_rel}depictions/{e(pkg)}/"
     product = cfg.product_for_package(pkg)
     product_link = f'\n    <a class="btn btn-metal" href="products/{e(product.key)}/">Product page</a>' if product else ""
@@ -459,7 +503,7 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
     return page("HCG Repo", body, "", "HCG Repo: jailbreak apps, tweaks and tools by Hakmi Capital Group for Sileo.", base)
 
 
-ACCESS_LABELS = {"connect": "HCG Connect sign-in", "paid": "Paid · HCG Store"}
+ACCESS_LABELS = {"public": "Free · no sign-in", "connect": "HCG Connect sign-in", "paid": "Paid · HCG Store"}
 
 
 def access_badge(level: str) -> str:
@@ -546,6 +590,10 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
 <span class="small muted">{v.info.size:,} bytes</span><br>
 <span class="small">SHA-256 <code class="hash">{v.info.sha256}</code></span><br>
 <span class="small muted">Source: {provenance_html(provenance(cfg, v))}</span></li>""" for v in all_versions)
+    issues = (f'<section class="section-tight" aria-labelledby="iss-h"><h2 id="iss-h">Known issues</h2>'
+              f'<div class="card note note-warn">{md_block(p.meta.known_issues)}</div></section>') if p.meta.known_issues else ""
+    beta = ('<p class="card note note-warn" role="note"><strong>Experimental beta.</strong> Free to install. It may change, '
+            "break or be withdrawn, and it has only been tested where the table below says so.</p>") if p.meta.channel == "beta" else ""
     limits = (f'<section class="section-tight" aria-labelledby="lim-h"><h2 id="lim-h">Limitations</h2>'
               f'<div class="card note note-warn">{md_block(p.meta.limitations)}</div></section>') if p.meta.limitations else ""
     body = f"""
@@ -556,7 +604,7 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
   {icon}
   <div>
     <h1>{e(display_name(p))}</h1>
-    <p class="pkg-id"><code>{e(pkg)}</code> · version <strong>{e(p.info.version)}</strong> · {status_badge(p.meta.status(p.info.version))}</p>
+    <p class="pkg-id"><code>{e(pkg)}</code> · version <strong>{e(p.info.version)}</strong> · {channel_badge(p)}{status_badge(p.meta.status(p.info.version))}</p>
     <p class="lead">{e(p.meta.summary or summary)}</p>
   </div>
 </div>
@@ -565,7 +613,7 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
   <a class="btn btn-metal" href="sileo://source/{e(repo_url)}">Add source first</a>
 </div>
 <p class="hint">“Install in Sileo” opens this package once the HCG Repo source has been added.</p>
-
+{beta}
 <section class="section-tight" aria-labelledby="about-h">
 <h2 id="about-h">About</h2>
 {md_block(long) if long and long != summary else f"<p>{e(summary)}</p>"}
@@ -580,6 +628,12 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
 <thead><tr><th scope="col">Build</th><th scope="col">Status</th><th scope="col">Download</th></tr></thead>
 <tbody>{builds_rows}</tbody></table></div>
 </section>
+
+<section class="section-tight" aria-labelledby="dev-h">
+<h2 id="dev-h">Tested devices</h2>
+{tested_devices_html(p)}
+</section>
+{issues}
 {shots}
 <section class="section-tight" aria-labelledby="inst-h">
 <h2 id="inst-h">Installation</h2>
@@ -608,9 +662,11 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
     p = versions[0]
     pkg = p.info.package
     summary, long = short_description(p)
-    status = "Device-tested" if p.meta.status(p.info.version) == "device-tested" else "Experimental"
+    status = status_text(p)
     _, ios_long = ios_requirement(p)
-    about = "\n\n".join(x for x in (p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
+    beta_note = ("**Experimental beta.** Free to install. It may change, break or be withdrawn, and it has only been "
+                 "tested where Tested devices says so.") if p.meta.channel == "beta" else ""
+    about = "\n\n".join(x for x in (beta_note, p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
     details = [
         {"class": "DepictionMarkdownView", "markdown": about, "useSpacing": True},
         {"class": "DepictionSeparatorView"},
@@ -626,6 +682,19 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
         details.append({"class": "DepictionScreenshotsView", "itemSize": "{160, 346}", "itemCornerRadius": 8,
                         "screenshots": [{"url": f"{repo_url}assets/{pkg}/{s['file']}", "accessibilityText": s["caption"]}
                                         for s in p.meta.screenshots]})
+    details.append({"class": "DepictionHeaderView", "title": "Tested devices"})
+    tests = tested_devices(p)
+    if tests:
+        details += [{"class": "DepictionTableTextView", "title": f"{t.get('device')}",
+                     "text": f"iOS {t.get('ios')}, {t.get('jailbreak')}: {RESULT_TEXT.get(t.get('result'), t.get('result'))}"}
+                    for t in tests]
+        details.append({"class": "DepictionMarkdownView", "markdown": "Only these exact combinations have been tested.", "useSpacing": True})
+    else:
+        details.append({"class": "DepictionMarkdownView", "useSpacing": True,
+                        "markdown": "**Not yet tested on any device.** No device, iOS version or jailbreak is known to work with this build."})
+    if p.meta.known_issues:
+        details += [{"class": "DepictionHeaderView", "title": "Known issues"},
+                    {"class": "DepictionMarkdownView", "markdown": p.meta.known_issues, "useSpacing": True}]
     if p.meta.limitations:
         details += [{"class": "DepictionHeaderView", "title": "Limitations"},
                     {"class": "DepictionMarkdownView", "markdown": p.meta.limitations, "useSpacing": True}]
@@ -692,8 +761,8 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
     p = product
     rel = "../../"
     level = cfg.product_level(p)
-    store_url = cfg.store_product_url(p)
-    login_url = cfg.store_login_url(p)
+    store_url = cfg.store_product_url(p) if p.in_store else ""
+    login_url = cfg.store_login_url(p) if p.in_store else ""
     installable = [pkg for pkg in p.package_ids if pkg in groups]
     pkgs = (", ".join(f"<code>{e(x)}</code>" for x in p.package_ids) if p.package_ids
             else "None. This product has no Debian package.")
@@ -722,6 +791,18 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
             reason = "No package has been published yet."
         install = f'<div class="card note note-warn" role="note"><p><strong>{NO_DOWNLOADS}</strong> {e(reason)}</p></div>'
     heading = "Buy Product" if level == "paid" else "Get access"
+    store_section = f"""<section class="section-tight card store" aria-labelledby="store-h" data-store-access data-store-base="{e(cfg.store_base_url)}"
+  data-access-url="{e(cfg.store_access_url(p))}" data-store-url="{e(store_url)}"
+  data-repo-url="{e(repo_url)}" data-product-name="{e(p.name)}" data-access-level="{e(level)}">
+<h2 id="store-h">{heading}</h2>
+<p class="muted">Purchases and access are handled by HCG Store and HCG Connect. HCG Repo never asks for your password.</p>
+<div class="actions" data-store-actions>
+  <a class="btn btn-primary" href="{e(login_url)}">Sign in to check access</a>
+  <a class="btn btn-metal" href="{e(store_url)}">View in HCG Store</a>
+</div>
+<p class="hint" data-store-status></p>
+</section>
+""" if p.in_store else ""
     body = f"""
 <article class="dep prose product">
 <p class="crumbs"><a href="{rel}">HCG Repo</a> <span aria-hidden="true">›</span> <a href="{rel}#{'sign-in-required' if p.restricted else 'in-development'}">Products</a></p>
@@ -741,20 +822,9 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
 <h2 id="inst-h">Install</h2>
 {install}
 </section>
-<section class="section-tight card store" aria-labelledby="store-h" data-store-access data-store-base="{e(cfg.store_base_url)}"
-  data-access-url="{e(cfg.store_access_url(p))}" data-store-url="{e(store_url)}"
-  data-repo-url="{e(repo_url)}" data-product-name="{e(p.name)}" data-access-level="{e(level)}">
-<h2 id="store-h">{heading}</h2>
-<p class="muted">Purchases and access are handled by HCG Store and HCG Connect. HCG Repo never asks for your password.</p>
-<div class="actions" data-store-actions>
-  <a class="btn btn-primary" href="{e(login_url)}">Sign in to check access</a>
-  <a class="btn btn-metal" href="{e(store_url)}">View in HCG Store</a>
-</div>
-<p class="hint" data-store-status></p>
-</section>
-</article>"""
+{store_section}</article>"""
     return page(f"{p.name} · HCG Repo", body, rel, p.summary or p.name, f"{base}products/{p.key}/",
-                scripts=("store-access.js",))
+                scripts=("store-access.js",) if p.in_store else ())
 
 
 # ---------------------------------------------------------------------------- build

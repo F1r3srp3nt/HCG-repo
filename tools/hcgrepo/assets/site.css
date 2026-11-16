@@ -215,6 +215,7 @@ main:focus { outline: none; }
 .badge-ok { color: var(--ok); background: rgba(79, 207, 145, 0.08); }
 .badge-warn { color: var(--warn); background: rgba(231, 184, 102, 0.08); }
 .badge-muted { color: var(--muted); }
+.badge-beta { color: #c9a2ff; background: rgba(201, 162, 255, 0.10); margin-right: 6px; }
 .badge-access { color: var(--cyan); background: var(--cyan-soft); margin-left: 6px; }
 .restricted-card { border-color: rgba(47, 211, 230, 0.28); border-style: solid; }
 

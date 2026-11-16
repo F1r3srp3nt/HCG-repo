@@ -22,6 +22,7 @@ from .debinspect import DebInfo, InspectError, inspect_deb, validate_deb
 # Presentation fields the repository may add to a Packages stanza. They never change what is
 # installed, so they come from packages/<id>/package.toml rather than from the .deb.
 PRESENTATION_FIELDS = ("Icon", "Depiction", "SileoDepiction", "Header")
+HCG_NAMESPACE = "com.hakmicapitalgroup."
 REPO_FIELDS = ("Filename", "Size", "MD5sum", "SHA1", "SHA256", "SHA512")
 INDEX_NAMES = ("Packages", "Packages.gz", "Packages.bz2", "Packages.xz")
 
@@ -67,6 +68,20 @@ def load_pool(cfg: RepoConfig, report: Report, extra: list[tuple[DebInfo, str]] 
 
 
 def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, lock: dict | None = None) -> None:
+
+    # Metadata of packages that are not imported yet (a listing prepared before its release) is checked too,
+    # so a prepared listing cannot carry an invalid access, channel or device-test record.
+    imported = {p.info.package for p in pkgs}
+    if cfg.packages_meta_dir.exists():
+        for d in sorted(cfg.packages_meta_dir.iterdir()):
+            if d.is_dir() and (d / "package.toml").exists() and d.name not in imported:
+                mr = Report(f"packages/{d.name}")
+                meta = load_package_meta(cfg, d.name)
+                check_package_meta(meta, mr)
+                if (cfg.access_require_explicit and meta.access == "public" and d.name.startswith(HCG_NAMESPACE)
+                        and not meta.access_exception):
+                    mr.error("access-public-exception", f"{d.name}: a public HCG package needs [access] exception")
+                report.extend(mr)
     lock = lock if lock is not None else load_lock(cfg)
     # Per-package findings
     for p in pkgs:
@@ -78,6 +93,12 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
         if cfg.access_require_explicit and not p.meta.access_explicit:
             report.error("access-undeclared",
                          f"{p.info.package}: declare [access] level = \"public\" | \"connect\" | \"paid\" in packages/{p.info.package}/package.toml")
+        # HCG's own packages need HCG Connect sign-in unless an explicit, recorded exception makes one free.
+        if (cfg.access_require_explicit and p.meta.access == "public" and p.info.package.startswith(HCG_NAMESPACE)
+                and not p.meta.access_exception):
+            report.error("access-public-exception",
+                         f"{p.info.package}: HCG packages require sign-in; a public one needs [access] exception = \"<who approved "
+                         "it, when, and why>\" in its package.toml")
 
     # Duplicates
     seen: dict[tuple[str, str, str], PoolPackage] = {}

@@ -64,7 +64,7 @@ Each is handled by the code above. They are still the first things the ladder be
 
 ## 3. Isolated diagnostic sources
 
-`bin/hcgrepo build --diagnostics` writes seven separate flat sources under `/diag/`. Each adds **one**
+`bin/hcgrepo build --diagnostics` writes eight separate flat sources under `/diag/`. Each adds **one**
 component to a minimal source, using the same build functions as production.
 - **Never in production by default.** They exist only on the site when the Publish workflow is run
   with **diagnostics** ticked, which defaults to off.
@@ -84,8 +84,10 @@ Each variant has its own name (`HCG Repo Diagnostic N - …`), except the contro
 | d5-depiction | `…/diag/d5-depiction/` | d4 plus HCG Nexus's Sileo and web depiction, icon and header | Opening a package |
 | d6-payment | `…/diag/d6-payment/` | d4 plus `payment_endpoint`, and a static provider that answers only `info`. Every other provider request fails | Account and payment |
 | d7-production-copy | `…/diag/d7-production-copy/` | Production's `/repo/` files, byte for byte, at another URL (name "HCG Repo") | The control |
+| d8-candidate | `…/diag/d8-candidate/` | The *next* production source, built from a review branch's pool (name "HCG Repo Candidate"), for example with HCG Vortex | Refresh and listing before `/repo/` changes |
 
 **Notes:**
+- **Publish candidate (diagnostics only)** puts `/diag/` online from a review branch while rebuilding `/repo/` from `main` byte for byte. It refuses if production does not already serve `main`.
 - Production `/repo/` serves exactly d1 + d2 + d3 today.
 - d4–d6 are the only way to exercise packages, depictions and a provider, because production lists none yet.
 

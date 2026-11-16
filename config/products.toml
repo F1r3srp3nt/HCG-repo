@@ -10,7 +10,7 @@
 #
 # Product page and HCG Store fields:
 #   key            product page route products/<key>/ and the HCG Store access-check key
-#   store_slug     HCG Store product page <store>apps/<store_slug>
+#   store_slug     HCG Store product page <store>apps/<store_slug>; omit for a product that is not in HCG Store
 #   store_edition  optional; appended as ?edition=<store_edition>
 #   layouts        optional; architectures the product's packaging declares
 #
@@ -51,3 +51,17 @@ status = "In development"
 summary = "Toolkit for authorised testing of your own devices, networks and services."
 detail = "Sentinel ships as a standard app. Its optional privileged helper exists only as a specification, so there is nothing to install from this repository yet."
 store_slug = "hcg-sentinel"
+
+[[products]]
+# Free experimental beta, public by an explicit exception (packages/com.hakmicapitalgroup.vortex/package.toml).
+# Not sold or licensed through HCG Store, so it has no store_slug and its page shows no Store actions.
+# Listed as not installable until a verified .deb with this package ID is imported (docs/VORTEX.md).
+key = "hcg-vortex"
+name = "HCG Vortex"
+package_ids = ["com.hakmicapitalgroup.vortex"]
+layouts = ["iphoneos-arm64"]
+kind = "Jailbreak tweak"
+access = "public"
+status = "Experimental beta, not yet released"
+summary = "Free experimental tweak by Hakmi Capital Group. Its description comes from the released package."
+detail = "Free, no sign-in. Rootless (iphoneos-arm64). Not released yet and not yet tested on any device."
