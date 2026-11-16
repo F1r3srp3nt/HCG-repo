@@ -122,7 +122,8 @@ def ios_requirement(p: PoolPackage) -> tuple[str, str]:
     need = p.info.binary_min_os
     if lo:
         short = f"iOS {lo}+" + (f" ({hi})" if hi else "")
-        return short, f"iOS {lo} or later, declared by the package" + (f"; firmware {hi}" if hi else "") + "."
+        return short, (f"The package installs on iOS {lo} or later" + (f" (firmware {hi})" if hi else "")
+                       + ". This is the declared install minimum, not tested compatibility; see Tested devices.")
     if need:
         return (f"iOS {need}+ (binary)",
                 f"The package declares no iOS range; its binaries are built for iOS {need} or later.")

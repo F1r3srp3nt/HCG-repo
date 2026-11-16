@@ -88,7 +88,7 @@ jobs:
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           printf '{"candidate_ref": "%s", "candidate_sha": "%s"}\n' "$CANDIDATE_REF" "$sha" > ../_cand/diag/candidate.json
-          [ -z "$(find ../_cand/diag -name '*.deb' -path '*/d[1-7]-*')" ] || { echo "::error::a .deb appeared in d1-d7"; exit 1; }
+          [ -z "$(find ../_cand/diag -name '*.deb' -path '*/d[1-6]-*')" ] || { echo "::error::a .deb appeared in d1-d6"; exit 1; }
         env:
           CANDIDATE_REF: ${{ inputs.candidate_ref }}
 

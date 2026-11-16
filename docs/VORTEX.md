@@ -1,8 +1,12 @@
 # HCG Vortex: free experimental beta
 
-**Status:** listing prepared; the 0.1.0~beta1 import is pinned and runs through **Prepare packages** on the review
-branch. Nothing is published. No compatibility claim is made: the listing says **Not yet device-tested** until
-device evidence is recorded.
+**Status:** 0.1.0~beta1 is imported on the review branch by **Prepare packages** (run 43975978906, commit `b523c16`).
+- The pool file's SHA-256 is `bb0af727…07673eea`, matching the pin.
+- Provenance records run 43970942708, commit `7d5e5b9`, artifact 14278312698 and GitHub's digest of the artifact zip.
+- `inspect` and `validate` pass: entitlements are null on both binaries; it links system frameworks and CydiaSubstrate only; `postrm` only.
+
+Nothing is published. No compatibility claim is made: the listing says **Not yet device-tested** until device
+evidence is recorded. The iOS line says 15.0 is the declared install minimum, not tested compatibility.
 
 **Source project:** `F1r3srp3nt/HCG-Jailbreak-Research`, directory `HCGVortex/`, on branch
 `claude/optimistic-sagan-xsa3b2`. The repository's `main` has only an initial commit. That is why a code search,

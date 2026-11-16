@@ -241,8 +241,13 @@ def cmd_build(a, cfg) -> int:
     if a.diagnostics:
         from .diagnostics import build_all, verify_all
         build_all(cfg, base, res.out_dir)
-        if list((res.out_dir / "diag").rglob("*.deb")):
-            print("BUILD FAILED: a .deb file appeared under diag/")
+        from .diagnostics import VARIANTS
+        from .repo import protected_packages
+        stray = [p for v in VARIANTS for p in (res.out_dir / "diag" / v.key).rglob("*.deb")]   # d1-d6 carry no files
+        names = {p.info.canonical_filename() for p in protected_packages(cfg)}
+        leaked = [p for p in (res.out_dir / "diag").rglob("*.deb") if p.name in names]       # nor any protected one
+        if stray or leaked:
+            print(f"BUILD FAILED: package files under diag/: {[str(p) for p in stray + leaked]}")
             return 1
         failed = False
         for key, rep in verify_all(cfg, base, res.out_dir.as_uri() + "/").items():
