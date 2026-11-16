@@ -53,9 +53,10 @@ detail = "Sentinel ships as a standard app. Its optional privileged helper exist
 store_slug = "hcg-sentinel"
 
 [[products]]
-# Free experimental beta, public by an explicit exception (packages/com.hakmicapitalgroup.vortex/package.toml).
-# Not sold or licensed through HCG Store, so it has no store_slug and its page shows no Store actions.
-# Listed as not installable until a verified .deb with this package ID is imported (docs/VORTEX.md).
+# Free experimental beta (proprietary freeware, no sign-in), public by an explicit exception scoped to the approved
+# versions in packages/com.hakmicapitalgroup.vortex/package.toml. No HCG Store product page exists yet, so there is no
+# store_slug and the page shows no Store actions; add one when a real Store page exists (future versions may offer
+# optional premium features through HCG Store). Not installable until the verified .deb is imported (docs/VORTEX.md).
 key = "hcg-vortex"
 name = "HCG Vortex"
 package_ids = ["com.hakmicapitalgroup.vortex"]
@@ -63,5 +64,5 @@ layouts = ["iphoneos-arm64"]
 kind = "Jailbreak tweak"
 access = "public"
 status = "Experimental beta, not yet released"
-summary = "Free experimental tweak by Hakmi Capital Group. Its description comes from the released package."
-detail = "Free, no sign-in. Rootless (iphoneos-arm64). Not released yet and not yet tested on any device."
+summary = "Home Screen page transitions that move independently of your swipe: Reverse Slide, Vertical Rise, Vertical Fall and custom directions."
+detail = "Free experimental beta, no sign-in. Rootless (iphoneos-arm64). Not released yet and not yet device-tested."

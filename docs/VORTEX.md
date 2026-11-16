@@ -1,99 +1,94 @@
 # HCG Vortex: free experimental beta
 
-**Status (16 Nov 2026): listing prepared, nothing released or published.** No Vortex `.deb`, release or
-import manifest exists in any repository this project can see. The product page says "Experimental beta, not yet
-released" and offers nothing to install. No placeholder package exists, and none will be made.
+**Status:** listing prepared; the 0.1.0~beta1 import is pinned and runs through **Prepare packages** on the review
+branch. Nothing is published. No compatibility claim is made: the listing says **Not yet device-tested** until
+device evidence is recorded.
 
-## Decisions recorded
+**Source project:** `F1r3srp3nt/HCG-Jailbreak-Research`, directory `HCGVortex/`, on branch
+`claude/optimistic-sagan-xsa3b2`. The repository's `main` has only an initial commit. That is why a code search,
+which covers default branches only, found nothing earlier.
 
-| | Value | Where |
+## Builds
+
+| | 0.1.0~beta1 (to import) | 0.1.0~alpha (historical only) |
 |---|---|---|
-| Access | **Public, no sign-in.** An explicit exception to the rule that HCG packages need HCG Connect sign-in. It applies to this package only | `packages/com.hakmicapitalgroup.vortex/package.toml` `[access] exception` |
-| Package ID | `com.hakmicapitalgroup.vortex` | `config/products.toml` (`hcg-vortex`) |
-| Kind | Jailbreak tweak | `config/products.toml` |
-| Layout | Rootless only, `iphoneos-arm64` | `config/products.toml`; the `.deb` decides the real architecture |
-| Channel | Beta | `[release] channel = "beta"` |
-| HCG Store | Not sold or licensed there, so there is no `store_slug` and the page shows no Store actions | `config/products.toml` |
+| Commit | `7d5e5b9153e9e7246d87e6f3bf4f7c6927d42ad4` "Release candidate: HCG Vortex 0.1.0~beta1" | `9a5316b0682b36a94d8145f9e2240ffe423ce563` |
+| CI run | 43970942708, macOS, Xcode 16.4 | 43931303552 |
+| Artifact | `hcg-vortex-rootless-deb` (kept until 2027-02-14, per the project) | — |
+| `.deb` | `com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb` | `com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb` |
+| SHA-256 | `bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea`, as reported by the project's CI and handoff | `3933e2b3c9c47a50c5eb3dc0f09168cca31faf3f8fe6f4be440df7c4d2053379` |
+| Use | `imports/hcg-vortex-0.1.0-beta1-rootless.toml` | **Never imported, never relabelled as beta1** |
 
-Every other product keeps its access level: HCG Nexus `paid`, Terminal Unleashed `connect`, Sentinel none. A test
-checks this.
+`control` at 7d5e5b9 says: Package `com.hakmicapitalgroup.vortex`, Name "HCG Vortex (Beta)", Version
+`0.1.0~beta1`, Architecture `iphoneos-arm64`, Depends `mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 15.0)`.
+The listing takes all of these from the imported file, not from this table.
 
-## What the listing shows
+**How the import is verified.** This session could not read that repository's GitHub API: attaching it with
+credentials was not permitted. So the artifact is fetched by **Prepare packages** with the workflow token, the
+same way HCG Nexus was imported from its public repository. Before anything enters the pool, it checks:
+- the run built exactly that commit and succeeded;
+- the artifact is the only one with that name, and its zip matches GitHub's digest;
+- the `.deb` matches the pinned SHA-256;
+- the control file says that package, version and architecture;
+- the package passes the full review: entitlements, Mach-O, layout, dependencies, and the access exception below.
 
-It was prepared now and is filled in from the `.deb` at import.
-- **Identity.** Package ID, name, version, architecture, dependencies, size, MD5/SHA1/SHA256/SHA512 and the
-  description come **only from the imported `.deb`**. `package.toml` cannot override them, and its `summary` is left
-  empty on purpose.
-- **Badges.** **Beta**, **Experimental**, and **Free · no sign-in**.
-  - It becomes **Device-tested** only with a passing device test that has evidence; the validator enforces this.
-  - A failed test never upgrades it.
-- **Tested devices.** A table of every recorded test for that version: device, iOS, jailbreak, result (*Works*,
-  *Partly works*, *Does not work*) and date. With none, it says "**Not yet tested on any device.** No device, iOS
-  version or jailbreak is known to work with this build." The same appears in the Sileo depiction.
-- **Known issues.** These are required for a beta. A failed or partial device test must be described there; the
-  validator refuses "None recorded yet" next to one.
-- **Icon.** A **proposed** 180×180 icon in the HCG Repo style (`packages/com.hakmicapitalgroup.vortex/icon.png`).
-  Replace it with official Vortex art if the project supplies some, keeping the same name, PNG format and size.
-- **Header.** None: Sileo shows the HCG Repo banner.
+Any mismatch refuses the import. The result is committed to the review branch only.
 
-## Inputs still required
+## Access and commercial policy
 
-1. **The verified release artifact.** The `.deb` for `com.hakmicapitalgroup.vortex`, `iphoneos-arm64`, from a
-   pinned source: a GitHub release asset at an exact tag and commit, a workflow-run artifact, or a build recipe.
-2. **The import manifest.** Its fields go into `imports/hcg-vortex-<version>.toml` in this repository's request
-   format:
+- **Free beta.** This beta is **proprietary freeware, free with no sign-in**: `[access] level = "public"`.
+- **Scoped exception.** It is an explicit exception to the rule that HCG packages need HCG Connect sign-in, and it
+  covers **only the versions in `exception_versions`** (now `["0.1.0~beta1"]`). Any other Vortex version is
+  refused by `import` and `validate` (`access-exception-version`) until someone decides its access and lists it.
+  That includes a later beta, a release, or a build with premium features. A future paid or premium artifact can
+  therefore never become public automatically.
+- **HCG Store.** There is no Store product page yet, so `config/products.toml` has no `store_slug` and the
+  product page shows no Store actions. Future versions may offer a free core plus optional premium features
+  through HCG Store; add the `store_slug` when a real Store page exists.
+- **Other products are unchanged:** HCG Nexus is `paid`, Terminal Unleashed is `connect`.
 
-   ```toml
-   [request]
-   package = "com.hakmicapitalgroup.vortex"
-   version = "<exact Version in the .deb>"
-   architecture = "iphoneos-arm64"
+## Listing
 
-   [source]
-   kind = "github-release"                    # or "github-artifact" (run_id + artifact)
-   repository = "<owner>/<vortex repository>"
-   tag = "<exact tag, never latest>"
-   asset = "<file name>.deb"
-   commit = "<40-character commit the tag points to>"
-   sha256 = "<SHA-256 of the verified .deb>"
-   ```
+- **Text.** Adapted from the Vortex project's own proposal (`HCGVortex/distribution/hcg-repo/`, commit `29d8565`):
+  notes, known issues, tested and untested setups, install, removal and recovery, and the changelog.
+- **Identity.** Description, name, version, dependencies and checksums come from the `.deb`.
+- **Badges and status.** **Beta**, **Experimental**, **Free · no sign-in**. Device testing reads
+  **Not yet device-tested** until a device test is recorded. Every recorded test, including failures, is shown
+  with its exact device, iOS version and jailbreak.
+- **Known-issue rule.** A failed or partial test must be described under Known issues, naming that device; the
+  validator enforces this.
+- **Artwork.** `icon.png` is still a **stand-in**. The official square artwork was mentioned but has not been
+  received. When it arrives, export it at 180×180 PNG as `packages/com.hakmicapitalgroup.vortex/icon.png`.
+  The project's own spiral icon and BETA header are not used until the official artwork is confirmed.
 
-   If the manifest gives a SHA-256, the import refuses any other file. It also refuses a different package ID,
-   version or architecture.
-3. **A changelog entry** for that version: `packages/com.hakmicapitalgroup.vortex/CHANGELOG.md`, `## <version>`.
-4. **Device-test evidence** for any compatibility claim, recorded as described in `docs/DEVICE_CHECKLIST.md`. It
-   is added to `package.toml` under `[versions."<version>"]`, with `device_tests` entries:
-   - fields: device, ios, jailbreak, date, result, evidence;
-   - status stays `experimental` until a test passes;
-   - real problems found go into `known_issues`.
+## Two separate tests
 
-With these four inputs, nothing else in this repository needs to change.
+1. **Sileo source and depiction test, without installing.** This belongs to the suspected Sileo crash
+   (`docs/SILEO_CRASH.md`). With the import committed on the review branch:
+   - run **Publish candidate (diagnostics only)** for that branch;
+   - in Sileo, add `https://repo.hakmicapitalgroup.com/diag/d8-candidate/`, refresh, open the source, then open
+     HCG Vortex's page;
+   - **do not install.** Record each step's result.
+2. **Vortex runtime test, after installation.** Separately, follow the project's
+   `HCGVortex/docs/DEVICE_TEST_HANDOFF.md`, starting with the kill switch on. Record the result under
+   `[versions."0.1.0~beta1"]` in `package.toml`, pass or fail, with evidence. A failure also goes into
+   `known_issues`.
 
-## Steps once the inputs exist
+## Prerequisite: publishing `main` (dbb3e01) over live (3a8fe2e)
 
-1. **Import.** Commit the request file on a branch. **Prepare packages** fetches the pinned artifact, validates it
-   and commits it to the pool for review.
-   - Locally the equivalent is:
-     `bin/hcgrepo import-deb <file.deb> --built-from <owner/repo>@<commit>`.
-   - The checks: identity, architecture, Mach-O and entitlement review, setuid, layout, dependencies, and the
-     public-access exception.
-2. **Source-level check before publication (the suspected Sileo crash).** This is kept separate from Vortex's own
-   runtime test. Vortex makes HCG Repo's index non-empty and adds a depiction and an icon. These are exactly the
-   components the crash ladder isolates (d4, d5).
-   - Run **Publish candidate (diagnostics only)** with the review branch.
-     - It serves the next production source at `https://repo.hakmicapitalgroup.com/diag/d8-candidate/`
-       (named "HCG Repo Candidate").
-     - It also serves the ladder d1 to d7.
-     - It refuses to run unless `/repo/` stays byte-identical.
-   - On the device: add the candidate source, refresh it, open it, and open the HCG Vortex entry.
-   - Record each step's result as in `docs/SILEO_CRASH.md`. Do not install yet.
-3. **Vortex runtime test, separately.** Install from the candidate source on a rootless device and record the
-   result in `package.toml`, pass or fail, with evidence. Any problem goes into `known_issues`.
-4. **Review and publish.** Review the branch. Merge. Run **Publish** with diagnostics unticked to replace `/diag/`.
-   Then run **Check transport**.
+**Publish candidate** refuses to run unless production already serves `main`. Publishing `main` as it is now,
+before this branch is merged, is **not** a no-change operation. Both commits were built with their own
+`SOURCE_DATE_EPOCH`. Rebuilding 3a8fe2e reproduces the live `Release` byte for byte. Against it, `dbb3e01`
+changes exactly three files:
 
-## Not covered
+| File | Change | Effect |
+|---|---|---|
+| `/repo/Release` | `Date:` 15 Nov 2026 05:34:33 → 16 Nov 2026 14:31:54 GMT; nothing else | Sileo downloads a `Release` with a new hash on its next refresh. Every `Packages*` file and every checksum listed in `Release` is unchanged, so the index is not re-read as different |
+| `/build-info.json` | revision 3a8fe2e → dbb3e01, date as above | Identifies the new build |
+| `/index.html` | the "Built … from" line | Website only |
 
-- What HCG Vortex does. The listing will use the `.deb`'s own description; nothing about its function was written
-  in advance.
-- Whether Vortex works on any device. Nothing is claimed until device evidence exists.
+Unchanged: `Packages`, `.xz`, `.gz`, `.bz2`, the icons, `sileo-featured.json`, the banner, `payment_endpoint`
+(still absent), the product pages and the 404 page. Commits after 3a8fe2e changed only tooling, tests and
+documentation: the Sileo-style verifier, Store release import, staging tools and docs. Publishing the review
+branch instead would also add the Vortex product page. After the import it would add the Vortex package to
+`/repo/`, which must wait for both tests above.

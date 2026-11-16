@@ -1,32 +1,53 @@
 # Presentation and review metadata for HCG Vortex (free experimental beta).
-# Package ID, version, architecture, dependencies, size and checksums always come from the imported .deb's
-# control file and bytes; nothing here can override them. See docs/VORTEX.md for the import steps.
+# Package ID, name, version, architecture, dependencies, size and checksums always come from the imported .deb;
+# nothing here can override them. Listing text adapted from the Vortex project's proposal
+# (F1r3srp3nt/HCG-Jailbreak-Research, HCGVortex/distribution/hcg-repo/, commit 29d8565). See docs/VORTEX.md.
 
 [release]
 channel = "beta"
 
 [access]
 level = "public"
-# HCG packages normally need HCG Connect sign-in. This is the only package exempted.
-exception = "Free experimental beta. Made public (no sign-in) by the owner on 16 Nov 2026 as an explicit exception for HCG Vortex only; every other product keeps its access level."
+# HCG packages normally need HCG Connect sign-in. This exception is the approved free-release policy for HCG Vortex:
+# proprietary freeware, free with no sign-in, for the versions listed below ONLY. Any other version (a later beta,
+# a release, or a build with premium features sold through HCG Store) is refused until it is approved and listed.
+exception = "Free experimental beta, proprietary freeware with no sign-in. Approved by the owner on 16 Nov 2026 for the versions in exception_versions only. Future versions may offer a free core plus optional premium features through HCG Store and need their own access decision."
+exception_versions = ["0.1.0~beta1"]
 
 [display]
-# summary is intentionally empty: the listing uses the Description from the .deb's control file, so it
-# always describes the build that is actually published.
+# summary is intentionally empty: the listing uses the Description from the .deb's control file.
 icon = "icon.png"
-tint = "#2FD3E6"
+tint = "#00E5FF"
 notes = """
-HCG Vortex is a free **experimental beta**. It is published so it can be tested; it may change, break or be withdrawn.
+**Free experimental beta.** Expect rough edges and report problems.
+
+HCG Vortex changes how Home Screen page transitions look without changing how navigation works. Swipe left and you still land on the next page, but the transition can run in reverse, rise from below, fall from above, or follow any of eight directions.
+
+Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
 """
 known_issues = """
-- None recorded yet. What has been tested is listed under Tested devices; any problem found there is listed here
-  with the exact device, iOS version and jailbreak.
+- Beta: the safety checks reduce but cannot rule out SpringBoard crashes.
+- Animated page jumps (tapping the page dots) may use the stock animation.
 """
 limitations = """
-- Rootless jailbreaks only (`iphoneos-arm64`). There is no rootful build.
-- Beta: settings and behaviour may change between versions without a migration.
+- **Tested:** only what Tested devices lists. Until a device test is recorded, no configuration has been tested.
+- **Untested** (may work, not verified): any other device, iOS version or jailbreak; iPad; landscape Home Screen; use alongside other tweaks that change Home Screen paging (install only one).
+- The package's minimum of iOS 15.0 is a build setting, not a compatibility claim. Vortex was designed from iOS 17 SpringBoard headers. On any version it installs no hooks unless every SpringBoard method it needs is present; Settings › HCG Vortex › *Engine Status* then reads *Incompatible*.
+- Rootless only (`iphoneos-arm64`). Needs ElleKit (or another Substrate-compatible injector) and PreferenceLoader.
+"""
+install = """
+1. Install **HCG Vortex (Beta)** and accept the dependencies offered (PreferenceLoader, an injector).
+2. Respring when you choose.
+3. Open **Settings › HCG Vortex**. *Engine Status* should read *Active*. *Incompatible* means your iOS build lacks something Vortex needs: it stays inactive and your Home Screen is unchanged.
+4. Pick an **Animation Preset**. Changes apply immediately.
+"""
+removal = """
+1. **Turn it off:** Settings › HCG Vortex › Enable Vortex → off. Stock animation immediately.
+2. **Uninstall:** remove **HCG Vortex (Beta)** in your package manager, then respring.
+3. Settings remain in `/var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.plist`. Purge the package or delete the file to erase them.
+4. **If SpringBoard keeps crashing:** after 3 quick crashes Vortex stops loading itself (*Engine Status: Auto-disabled*). Otherwise, over SSH: `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.disabled` and respring. If you can't get in, reboot: Dopamine is semi-untethered, so the phone starts without tweaks; remove HCG Vortex before re-enabling tweak injection.
 """
 
 [review]
-# Paths allowed to be setuid/setgid inside the package. A tweak needs none.
+# No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
 allow_setuid = []

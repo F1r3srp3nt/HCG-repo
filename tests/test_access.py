@@ -44,7 +44,7 @@ class AccessTests(RepoTestCase):
         status, r = import_deb(self.cfg, tool_deb(self.work), {"source": "t"})
         self.assertEqual(status, "rejected")   # HCG packages need sign-in unless an exception is recorded
         self.assertIn("access-public-exception", r.codes())
-        self.write_meta(PKG, '[display]\nsummary = "x"\n[access]\nlevel = "public"\nexception = "Free test package (owner, 16 Nov 2026)."\n')
+        self.write_meta(PKG, '[display]\nsummary = "x"\n[access]\nlevel = "public"\nexception = "Free test package (owner, 16 Nov 2026)."\nexception_versions = ["1.0.0"]\n')
         status, r = import_deb(self.cfg, tool_deb(self.work), {"source": "t"})
         self.assertEqual(status, "imported", r.render())
         self.assertTrue(self.validate().ok, self.validate().render())

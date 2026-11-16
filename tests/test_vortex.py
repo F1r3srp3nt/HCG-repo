@@ -77,12 +77,13 @@ class VortexTests(RepoTestCase):
 
         web = (site / "repo" / "depictions" / PKG / "index.html").read_text()
         self.assertIn('class="badge badge-beta">Beta<', web)
-        self.assertIn("Not yet tested on any device.", web)
+        self.assertIn("Not yet device-tested.", web)
         self.assertIn("Known issues", web)
-        self.assertNotRegex(re.sub(r"<[^>]+>", " ", web.split("Known issues")[0]), WORKING)
+        self.assertIn("<dt>Device testing</dt><dd>Not yet device-tested.</dd>", web)
+        self.assertNotIn("badge-ok", web)                      # no Device-tested badge without evidence
         dep = json.loads((site / "repo" / "depictions" / PKG / "sileo.json").read_text())
         text = json.dumps(dep)
-        self.assertIn("Beta, experimental, not yet tested on any device", text)
+        self.assertIn("Beta, experimental, not yet device-tested", text)
         self.assertIn("Known issues", text)
         card = (site / "index.html").read_text()
         self.assertIn("Free · no sign-in", card)
@@ -107,6 +108,13 @@ class VortexTests(RepoTestCase):
         self.assertTrue(v.report.ok, v.report.render())
         self.assertEqual(v.packages, 1)
 
+    def test_exception_covers_only_the_approved_versions(self):
+        deb = tool_deb(self.work, package=PKG, version="0.2.0")      # e.g. a later build that may carry premium features
+        status, rep = import_deb(self.cfg, deb, {"source": "test-fixture"})
+        self.assertEqual(status, "rejected")
+        self.assertIn("access-exception-version", rep.codes())
+        self.assertEqual(load_package_meta(self.cfg, PKG).access_exception_versions, ["0.1.0~beta1"])
+
     def test_device_results_are_shown_exactly(self):
         deb = tool_deb(self.work, package=PKG, version="0.1.0~beta1")
         self.assertEqual(import_deb(self.cfg, deb, {"source": "test-fixture"})[0], "imported")
@@ -126,13 +134,13 @@ evidence = "docs/device-tests/2026-11-20-vortex.md"
         r = Report("meta")
         check_package_meta(load_package_meta(self.reload(), PKG), r)
         self.assertIn("meta-known-issues-stale", r.codes())   # a failed test must be described
-        toml.write_text(toml.read_text().replace("- None recorded yet.", "- Crashes SpringBoard on iPhone 13 Pro, iOS 16.5 (Dopamine)."))
+        toml.write_text(toml.read_text().replace('known_issues = """\n', 'known_issues = """\n- Crashes SpringBoard on iPhone 13 Pro, iOS 16.5 (Dopamine).\n'))
         self.reload()
         site = self.site("site2")
         web = (site / "repo" / "depictions" / PKG / "index.html").read_text()
         self.assertIn("iPhone 13 Pro (A15)", web)
         self.assertIn("Does not work", web)
-        self.assertNotIn("Not yet tested on any device.", web)
+        self.assertNotIn("Not yet device-tested.", web)
         self.assertIn("none passed", web)
         self.assertIn("Crashes SpringBoard", web)
         self.assertIn('badge-warn">Experimental<', web)     # a failed test never makes it device-tested

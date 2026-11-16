@@ -187,7 +187,7 @@ def status_text(p: PoolPackage) -> str:
     if p.meta.channel == "beta":
         st = "Beta, " + st[0].lower() + st[1:]
     if not p.meta.device_tests(p.info.version):
-        st += ", not yet tested on any device"
+        st += ", not yet device-tested"
     return st
 
 
@@ -199,7 +199,7 @@ def tested_devices(p: PoolPackage) -> list[dict]:
 def tested_devices_html(p: PoolPackage) -> str:
     tests = tested_devices(p)
     if not tests:
-        return ('<p class="card note note-warn"><strong>Not yet tested on any device.</strong> '
+        return ('<p class="card note note-warn"><strong>Not yet device-tested.</strong> '
                 "No device, iOS version or jailbreak is known to work with this build.</p>")
     rows = "".join(f"<tr><td>{e(t.get('device', ''))}</td><td>iOS {e(str(t.get('ios', '')))}</td><td>{e(t.get('jailbreak', ''))}</td>"
                    f"<td>{e(RESULT_TEXT.get(t.get('result'), str(t.get('result'))))}</td><td>{e(str(t.get('date', '')))}</td></tr>"
@@ -219,7 +219,7 @@ def tests_text(p: PoolPackage) -> str:
     every = p.meta.device_tests(p.info.version)
     tests = passing_tests(p)
     if not every:
-        return "Not yet tested on any device."
+        return "Not yet device-tested."
     if not tests:
         return f"Tested on {len(every)} device setup(s); none passed. See Tested devices."
     text = "Works on " + "; ".join(f"{t['device']}, iOS {t['ios']}, {t['jailbreak']} ({t['date']})" for t in tests) + "."
@@ -691,7 +691,7 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
         details.append({"class": "DepictionMarkdownView", "markdown": "Only these exact combinations have been tested.", "useSpacing": True})
     else:
         details.append({"class": "DepictionMarkdownView", "useSpacing": True,
-                        "markdown": "**Not yet tested on any device.** No device, iOS version or jailbreak is known to work with this build."})
+                        "markdown": "**Not yet device-tested.** No device, iOS version or jailbreak is known to work with this build."})
     if p.meta.known_issues:
         details += [{"class": "DepictionHeaderView", "title": "Known issues"},
                     {"class": "DepictionMarkdownView", "markdown": p.meta.known_issues, "useSpacing": True}]

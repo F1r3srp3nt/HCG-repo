@@ -99,6 +99,11 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
             report.error("access-public-exception",
                          f"{p.info.package}: HCG packages require sign-in; a public one needs [access] exception = \"<who approved "
                          "it, when, and why>\" in its package.toml")
+        elif (cfg.access_require_explicit and p.meta.access == "public" and p.info.package.startswith(HCG_NAMESPACE)
+                and p.info.version not in p.meta.access_exception_versions):
+            report.error("access-exception-version",
+                         f"{p.info.package} {p.info.version}: the free-release exception covers only "
+                         f"{p.meta.access_exception_versions}; this version needs its own approval before it can be public")
 
     # Duplicates
     seen: dict[tuple[str, str, str], PoolPackage] = {}

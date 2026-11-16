@@ -311,6 +311,9 @@ class PackageMeta:
     access: str = "public"
     access_explicit: bool = False
     access_exception: str = ""   # [access] exception: why an HCG package is public (an explicit, approved exception)
+    # [access] exception_versions: the exact versions that approval covers. A new version is NOT public by default;
+    # it needs its own approval, so a later paid or premium build can never become public by accident.
+    access_exception_versions: list[str] = field(default_factory=list)
     channel: str = ""            # [release] channel: "" or "beta"
     known_issues: str = ""       # [display] known_issues (markdown); required for a beta
 
@@ -343,6 +346,7 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
         screenshots=list(disp.get("screenshots", [])),
         access=data.get("access", {}).get("level", "public"), access_explicit="level" in data.get("access", {}),
         access_exception=str(data.get("access", {}).get("exception", "")).strip(),
+        access_exception_versions=[str(v) for v in data.get("access", {}).get("exception_versions", [])],
         channel=str(data.get("release", {}).get("channel", "")).strip(), known_issues=disp.get("known_issues", ""),
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
@@ -390,12 +394,18 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
                      "(say plainly if none have been found yet and whether it has been tested)")
     if meta.access_exception and meta.access != "public":
         report.error("meta-exception-unused", "[access] exception only applies to level = \"public\"")
+    if meta.access_exception and not meta.access_exception_versions:
+        report.error("meta-exception-scope", "[access] exception needs exception_versions: the exact free versions it approves")
+    if meta.access_exception_versions and not meta.access_exception:
+        report.error("meta-exception-scope", "[access] exception_versions without an exception text")
     if meta.tint and not re.fullmatch(r"#[0-9A-Fa-f]{6}", meta.tint):
         report.error("meta-bad-tint", f"tint must be #RRGGBB, got {meta.tint!r}")
     for ver, v in meta.versions.items():
-        if any(t.get("result") in ("fail", "partial") for t in v.get("device_tests", [])) and \
-                (not meta.known_issues.strip() or "none recorded" in meta.known_issues.lower()):
-            report.error("meta-known-issues-stale", f"version {ver} has a failed or partial device test; describe it in [display] known_issues")
+        for t in v.get("device_tests", []):
+            model = str(t.get("device", "")).split(" (")[0].strip()
+            if t.get("result") in ("fail", "partial") and model and model.lower() not in meta.known_issues.lower():
+                report.error("meta-known-issues-stale", f"version {ver} has a {t.get('result')} device test on {model}; "
+                             "describe it in [display] known_issues, naming that device")
         for t in v.get("device_tests", []):
             if t.get("result") not in TEST_RESULTS:
                 report.error("meta-device-test-result", f"version {ver}: device test result must be one of {TEST_RESULTS}")

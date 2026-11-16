@@ -1,0 +1,19 @@
+# HCG Vortex 0.1.0~beta1 (free experimental beta), rootless.
+# Pinned to the release candidate named by the Vortex project's handoff (F1r3srp3nt/HCG-Jailbreak-Research,
+# HCGVortex/distribution/HCG-REPO-HANDOFF.md at commit 29d8565): commit 7d5e5b9, macOS CI run 43970942708,
+# artifact hcg-vortex-rootless-deb. The SHA-256 is the CI-reported value; Prepare packages refuses any other bytes.
+# Historical alpha provenance (run 43931303552, commit 9a5316b, 0.1.0~alpha, sha256 3933e2b3...2053379) is NOT this
+# build and must never be imported as beta1.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 43970942708
+commit = "7d5e5b9153e9e7246d87e6f3bf4f7c6927d42ad4"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea"
