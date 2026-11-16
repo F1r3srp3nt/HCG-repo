@@ -33,6 +33,7 @@ class PoolPackage:
     rel: str            # path relative to the repository root, e.g. pool/iphoneos-arm64/x.deb
     report: Report
     protected: bool = False   # connect/paid: delivered only through the payment provider, never as a public file
+    store_release: str = ""   # protected: the HCG Store release approved to deliver exactly this file, if recorded
 
 
 def pool_files(cfg: RepoConfig) -> list[Path]:
@@ -234,8 +235,9 @@ def protected_packages(cfg: RepoConfig) -> list[PoolPackage]:
         info = DebInfo(path=cfg.root / e["filename"], size=e["size"], md5=prov.get("md5", ""), sha1=prov.get("sha1", ""),
                        sha256=e["sha256"], sha512=prov.get("sha512", ""), members=[], control=control,
                        control_text=prov["control"])
+        link = prov.get("hcg_store") or (prov if prov.get("source") == "hcg-store" else {})
         out.append(PoolPackage(info, load_package_meta(cfg, e["package"]), e["filename"], Report(e["package"]),
-                               protected=True))
+                               protected=True, store_release=str(link.get("store_release") or "")))
     return out
 
 

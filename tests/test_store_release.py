@@ -123,6 +123,20 @@ class StoreReleaseTests(RepoTestCase):
         self.assertEqual(prov["hcg_store"]["store_release"], "rel-0123456789abcdef")
         self.assertEqual(len(load_lock(self.reload())["packages"]), 1)
 
+    def test_only_store_approved_protected_packages_are_indexed(self):
+        from hcgrepo.site import build
+        import_deb(self.cfg, self.deb, {"source": "source-build"})   # protected, but no Store release yet
+        p = self.root / "config" / "repo.toml"
+        p.write_text(p.read_text().replace('payment_endpoint = ""', 'payment_endpoint = "https://store.example/repo-api/v1/sileo/"'))
+        site = build(self.reload(), "https://repo.hakmicapitalgroup.com/", self.tmp / "a").out_dir
+        self.assertNotIn(f"Package: {PKG}", (site / "repo" / "Packages").read_text())
+        self.assertEqual(self.run_cli(record(self.info)), 0)
+        site = build(self.reload(), "https://repo.hakmicapitalgroup.com/", self.tmp / "b").out_dir
+        packages = (site / "repo" / "Packages").read_text()
+        self.assertIn(f"Package: {PKG}", packages)
+        self.assertIn(f"SHA256: {self.info.sha256}", packages)
+        self.assertFalse(list(site.rglob("*.deb")))
+
     def test_dry_run_changes_nothing(self):
         self.assertEqual(self.run_cli(copy.deepcopy(record(self.info)), "--dry-run"), 0)
         self.assertEqual(load_lock(self.reload())["packages"], [])

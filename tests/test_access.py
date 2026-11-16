@@ -75,7 +75,7 @@ class AccessTests(RepoTestCase):
 
     def test_payment_endpoint_mode_indexes_commercial_without_file(self):
         self.set_access("connect")
-        import_deb(self.cfg, tool_deb(self.work), {"source": "t"})
+        import_deb(self.cfg, tool_deb(self.work), {"source": "hcg-store", "store_release": "rel-0000000000000001"})
         self.set_cfg('payment_endpoint = ""', 'payment_endpoint = "https://connect.example.invalid/sileo"')
         res = build(self.cfg, PROD, self.tmp / "site")
         packages = (res.out_dir / "repo" / "Packages").read_text()

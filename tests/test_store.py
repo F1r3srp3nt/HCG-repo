@@ -129,7 +129,7 @@ class StoreTests(RepoTestCase):
 
     def test_protected_product_with_payment_endpoint(self):
         self.write_meta(NS + "testtool", '[access]\nlevel = "connect"\n')
-        self.assertEqual(import_deb(self.cfg, tool_deb(self.work), PROV)[0], "protected")
+        self.assertEqual(import_deb(self.cfg, tool_deb(self.work), {**PROV, "hcg_store": {"store_release": "rel-0000000000000001"}})[0], "protected")
         self.edit_repo_toml('payment_endpoint = ""', 'payment_endpoint = "https://connect.example.invalid/sileo"')
         self.reload()
         site = build(self.cfg, PROD, self.tmp / "site").out_dir

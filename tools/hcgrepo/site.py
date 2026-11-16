@@ -777,7 +777,10 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
     from .repo import protected_packages
     protected = protected_packages(cfg)
     if cfg.payment_endpoint:
-        pkgs = pkgs + protected   # indexed as cydia::commercial; files are never deployed
+        # Indexed as cydia::commercial (files are never deployed), but only when a person approved this exact
+        # file for public delivery in HCG Store (import-store-release). Otherwise Sileo would list a package that
+        # the provider can never deliver; drafts, rejected and unapproved releases stay out of the index.
+        pkgs = pkgs + [p for p in protected if p.store_release]
 
     out_dir = Path(out_dir).resolve()
     out_dir.parent.mkdir(parents=True, exist_ok=True)
