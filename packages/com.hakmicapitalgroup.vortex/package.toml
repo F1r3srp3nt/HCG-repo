@@ -12,7 +12,7 @@ level = "public"
 # proprietary freeware, free with no sign-in, for the versions listed below ONLY. Any other version (a later beta,
 # a release, or a build with premium features sold through HCG Store) is refused until it is approved and listed.
 exception = "Free experimental beta, proprietary freeware with no sign-in. Approved by the owner on 16 Nov 2026 for the versions in exception_versions only. Future versions may offer a free core plus optional premium features through HCG Store and need their own access decision."
-exception_versions = ["0.1.0~beta1"]
+exception_versions = ["0.1.0~beta1", "0.1.0~beta2"]   # 0.1.0~beta2 approved by the owner on 17 Nov 2026 as a free public candidate demo
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
@@ -26,7 +26,8 @@ HCG Vortex changes how Home Screen page transitions look without changing how na
 Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
 """
 known_issues = """
-- **Installation fails on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x** (17 Nov 2026): the download succeeds, then unpacking stops with `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`. Nothing is installed. The cause is being diagnosed with the Vortex project; until a fixed build is published, do not expect 0.1.0~beta1 to install.
+- **0.1.0~beta1 failed to install** on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x (17 Nov 2026): the download worked, then unpacking stopped with `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`. Nothing was installed. The cause is still under investigation.
+- **0.1.0~beta2 is a packaging compatibility candidate.** It is the same tweak repackaged with gzip (`data.tar.gz`) and has not yet been installed on any device. Installation and runtime are not yet device-verified.
 - **May crash SpringBoard.** Vortex hooks SpringBoard; its safety checks reduce but cannot rule out SpringBoard crashes. Recovery steps are under Removal.
 - Animated page jumps (tapping the page dots) may use the stock animation.
 """
@@ -64,3 +65,8 @@ date = "2026-11-17"
 stage = "install"
 result = "fail"
 evidence = "docs/device-tests/vortex-0.1.0-beta1.md"
+
+[versions."0.1.0~beta2"]
+status = "experimental"
+label = "Packaging compatibility candidate — installation and runtime not yet device-verified."
+# No device_tests entry until a phone has attempted the install. Install and runtime are recorded separately.

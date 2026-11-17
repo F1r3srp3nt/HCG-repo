@@ -1,0 +1,20 @@
+# HCG Vortex 0.1.0~beta2, rootless. Packaging compatibility candidate — installation fix not yet device-verified.
+# Packaging-only rebuild of 0.1.0~beta1 with gzip members (data.tar.gz). Same tweak source, hooks and dependencies.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit b212cdb, macOS CI run 44012915117 (Xcode 16.4, Theos 8167f59),
+# artifact hcg-vortex-rootless-deb (ID 14297382250). The SHA-256 was recomputed from a fresh download by the handoff
+# workflow. Prepare packages refuses any other bytes. 0.1.0~beta1 (sha256 bb0af727...07673eea) is a different, unchanged
+# build and must never be replaced or relabelled.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.1.0~beta2"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44012915117
+commit = "b212cdbdcda98fdda0d7a924cb8acd388a2183ed"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "a326759a697899ee938b3db3ccc62521994c01084880b43802c0769f90179395"
