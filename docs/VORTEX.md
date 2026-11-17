@@ -92,3 +92,32 @@ reference, `main` at `dbb3e01` differs from live in three files:
 - the homepage's "Built … from" line.
 
 That is decided separately, as part of the production publication of Vortex.
+
+## Production publication (prepared, not done)
+
+**When:** after both tests are recorded in `docs/device-tests/vortex-0.1.0-beta1.md`, and the device result (pass
+or fail) is in `package.toml`.
+
+**Steps:**
+1. Merge the review branch.
+2. Run **Publish** with diagnostics unticked. This also removes `/diag/`.
+3. Run **Check transport**.
+
+**What it changes against the live `3a8fe2e`.** This was computed from a rebuild of the branch at `371cd1c`.
+
+- **Added:**
+  - `/repo/debs/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb`;
+  - `/repo/depictions/com.hakmicapitalgroup.vortex/` (web and Sileo);
+  - `/repo/assets/com.hakmicapitalgroup.vortex/icon.png`;
+  - `/products/hcg-vortex/`.
+- **Changed:**
+  - `/repo/Packages`, `.xz`, `.gz` and `.bz2` now list exactly one package, HCG Vortex (Beta), with the SHA-256 above;
+  - `/repo/Release`: `Date:` and the index checksums;
+  - `/index.html`: the Vortex card and the build line;
+  - `/build-info.json`;
+  - `/assets/site.css`: the Beta badge style.
+- **Unchanged:** the HCG Nexus, Terminal Unleashed and Sentinel product pages, the source icons, the banner,
+  `sileo-featured.json`, `payment_endpoint` (absent) and `404.html`.
+
+The results of the device test change only `package.toml`: `[versions."0.1.0~beta1"]` and `known_issues`.
+They do not change the package.
