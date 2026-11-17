@@ -102,6 +102,34 @@ for spec in CydiaIcon.png:60 CydiaIcon@2x.png:120 CydiaIcon@3x.png:180; do
   rm -f "$tmp"
 done
 echo
+echo "## Candidate source: every served .deb against its live Packages entry"
+echo
+echo "| Package | Version | URL | Size (index / served) | SHA-256 (index / served) | Verdict |"
+echo "|---|---|---|---|---|---|"
+cbase="https://$HOST${REPO_PATH}candidate/"
+ctmp=$(mktemp -d)
+if curl -fsS -m 20 -o "$ctmp/Packages" "${cbase}Packages"; then
+  python3 - "$ctmp/Packages" "$cbase" "$ctmp" <<'PY' || fail=1
+import hashlib, sys, urllib.request
+pk, base, tmp = sys.argv[1], sys.argv[2], sys.argv[3]
+bad = 0
+for st in open(pk, encoding="utf-8").read().strip().split("\n\n"):
+    if not st.strip():
+        continue
+    f = dict(l.split(": ", 1) for l in st.splitlines() if ": " in l and not l.startswith(" "))
+    url = base + f["Filename"]
+    data = urllib.request.urlopen(urllib.request.Request(url, headers={"Cache-Control": "no-cache"}), timeout=60).read()
+    sha = hashlib.sha256(data).hexdigest()
+    ok = len(data) == int(f["Size"]) and sha == f["SHA256"]
+    bad += not ok
+    print(f"| {f['Package']} | {f['Version']} | `{url}` | {f['Size']} / {len(data)} | `{f['SHA256']}` / `{sha}` | {'OK' if ok else 'FAIL'} |")
+sys.exit(1 if bad else 0)
+PY
+else
+  echo "| - | - | \`${cbase}Packages\` | - | - | FAIL (not served) |"; fail=1
+fi
+rm -rf "$ctmp"
+echo
 echo "## Protected or withdrawn packages must not be downloadable (http and https)"
 echo
 echo "| URL | Status | Verdict |"

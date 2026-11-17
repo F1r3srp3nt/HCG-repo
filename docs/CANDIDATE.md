@@ -23,7 +23,7 @@
   ([ACCESS.md](ACCESS.md), free-demo policy). Free demos of paid or sign-in products are refused in stable.
 - **Public packages only.** The candidate has no payment provider, so protected (`connect` or `paid`) packages can
   never be put in it: `channel` refuses, and `validate` reports `candidate-protected`.
-  - Vortex's free exception is scoped to `exception_versions` (now `0.1.0~beta1`).
+  - Vortex's free exception is scoped to `exception_versions` (now `0.1.0~beta1` and `0.1.0~beta2`).
   - It cannot make any other package, or any other Vortex version, public.
 - **Verified on every Publish.** Both sources are verified offline before deployment and online afterwards.
   **Check transport** walks both sources and downloads every candidate `.deb` to check its checksum.
@@ -58,7 +58,7 @@ iOS jailbreak `.deb`:
 
 | Product | Package / version | Source of the build | Access | Candidate | Why |
 |---|---|---|---|---|---|
-| HCG Vortex (Beta) | `com.hakmicapitalgroup.vortex` 0.1.0~beta1, iphoneos-arm64 | HCG-Jailbreak-Research `7d5e5b9`, run 43970942708, artifact 14278312698, SHA-256 `bb0af727…07673eea` | public (scoped exception) | **Included** | A real, verified artifact. **Installation failed** on iPhone 11 Pro Max, iOS 17.4 (dpkg-deb Bus error 10). Listed as "Installation failed in testing" for reproduction and diagnosis. Not offered as a normal install |
+| HCG Vortex (Beta) | `com.hakmicapitalgroup.vortex` **0.1.0~beta2** (offered) and 0.1.0~beta1, iphoneos-arm64 | beta2: HCG-Jailbreak-Research `b212cdb`, run 44012915117, artifact 14297382250, SHA-256 `a326759a…90179395` (gzip). beta1: `7d5e5b9`, run 43970942708, SHA-256 `bb0af727…07673eea` (legacy lzma) | public: free exception for beta1 and beta2 (owner, 16 and 17 Nov 2026) | **Included** | beta2 is a packaging compatibility candidate: installation and runtime are not yet device-verified. beta1 failed to unpack on iPhone 11 Pro Max, iOS 17.4 (dpkg-deb Bus error 10). Its record and provenance are kept, and it stays listed as an older version. Package managers offer beta2, the highest version |
 | HCG Nexus (Beta) | `com.hakmicapitalgroup.hcgnexus` **0.2.1~beta1**, iphoneos-arm64 | HCG-Nexus `58e2dbd`, run 44019802883 (#13), artifact `hcg-nexus-rootless-deb`, SHA-256 `948465ea…8ac17af`: the 0.2.0 code of run #10 with gzip packaging | paid, with a free exception for 0.2.1~beta1 only (owner, 17 Nov 2026) | **Included** | Repackaged as a new version because 0.2.0 uses the same `data.tar.lzma` (64 MiB dictionary) as the failing Vortex build, and 0.2.0 is already recorded (run #9). Not yet device-tested. 0.2.0 stays paid, protected and out of both indexes |
 | HCG Terminal Unleashed | `com.hakmicapitalgroup.hcgterminal.unleashed` 0.1.0-1, iphoneos-arm64 | Built from HCG-Terminal with the `hcg-terminal-unleashed` recipe. HCG-Terminal's own CI does not upload its `.deb` | connect | **Blocked** | Needs HCG Connect sign-in, and no sign-in delivery is live. Requires iOS 17 |
 | HCG Sentinel | — | Not applicable | — | **Pending** | No jailbreak package exists. The app is an IPA, and the privileged helper is only a specification |

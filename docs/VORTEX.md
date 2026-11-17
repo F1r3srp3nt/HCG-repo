@@ -64,20 +64,20 @@ Any mismatch refuses the import. The result is committed to the review branch on
 - **Artwork.** `icon.png` is the official spiral artwork, confirmed on 17 Nov 2026. It is a 180×180 export of the project's
   `HCGVortex/distribution/icon-512.png`, and the same image as the Settings icon inside the `.deb`.
 
-## Status of 0.1.0~beta1
+## Status (17 Nov 2026)
 
-- **Channel.** It is in the **candidate** channel only (`https://repo.hakmicapitalgroup.com/repo/candidate/`), never
-  in the stable source (`docs/CANDIDATE.md`).
-- **Installation failed** on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x, on 17 Nov 2026:
-  `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`.
-  - The record and evidence are in `docs/device-tests/vortex-0.1.0-beta1.md`.
-  - The listing shows "Installation failed in testing" and offers no normal install.
-- **Runtime behaviour is untested.**
-- **Diagnosis** with the Vortex project: `docs/vortex/INSTALL-FAILURE-0.1.0-beta1.md`. The leading hypothesis is the
-  legacy `data.tar.lzma` member with a 64 MiB dictionary. The suggested fix is a new **0.1.0~beta2** built with gzip
-  or a small xz preset, with the same package ID. It sorts after beta1 and before 0.1.0, so testers are offered it.
-- **The failing artifact's provenance is retained:** commit `7d5e5b9`, run 43970942708, artifact 14278312698,
-  SHA-256 `bb0af727…07673eea`.
+- **0.1.0~beta2 is the offered candidate.** Label: "Packaging compatibility candidate — installation and runtime
+  not yet device-verified."
+  - The free public candidate demo was approved by the owner on 17 Nov 2026 (`exception_versions`).
+  - It is the same tweak repackaged with gzip.
+  - Imported from the Vortex handoff's pinned request: commit `b212cdbdcda98fdda0d7a924cb8acd388a2183ed`, run
+    44012915117, artifact 14297382250, 136,634 bytes, SHA-256 `a326759a…90179395`. The handoff run was 44013411517.
+  - Verification before import is recorded in `docs/device-tests/vortex-0.1.0-beta1.md`.
+- **0.1.0~beta1 is kept unchanged**, with its provenance, as an older candidate version.
+  - Its **installation failed** on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x, Zebra 1.1.x (dpkg-deb Bus error 10).
+    That is recorded in `package.toml` (`stage = "install"`, `result = "fail"`).
+  - Diagnosis: `docs/vortex/INSTALL-FAILURE-0.1.0-beta1.md`.
+- **Never in the stable source.**
 
 ## Two separate tests (for the next build)
 

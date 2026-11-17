@@ -60,3 +60,30 @@ The diagnosis handoff to the Vortex project is in [../vortex/INSTALL-FAILURE-0.1
 
 It can only run once a build installs. The procedure is HCG-Jailbreak-Research
 `HCGVortex/docs/DEVICE_TEST_HANDOFF.md`, steps 0 and A–G, with recovery in §7.
+
+## 0.1.0~beta2: not yet attempted
+
+**Packaging compatibility candidate — installation and runtime not yet device-verified.**
+
+This is a packaging-only rebuild with gzip members (`control.tar.gz`, `data.tar.gz`).
+- Commit `b212cdbdcda98fdda0d7a924cb8acd388a2183ed`, Xcode run 44012915117, artifact 14297382250 (`hcg-vortex-rootless-deb`).
+- `com.hakmicapitalgroup.vortex_0.1.0~beta2_iphoneos-arm64.deb`, 136,634 bytes, SHA-256
+  `a326759a697899ee938b3db3ccc62521994c01084880b43802c0769f90179395`.
+
+**Checked before import (server side):**
+- Size, SHA-256, run → commit and artifact digest all match.
+- Control: `0.1.0~beta2`, `iphoneos-arm64`, with the same `Depends` as beta1.
+- Both members pass `gzip -t` and decompress fully: `data.tar.gz` gives 560,640 bytes, and all 9 files are read to the end.
+- `dpkg-deb --fsys-tarfile` exits 0.
+- Against beta1, the payload has the same 19 paths; 16 files are byte-identical. In the dylib and the Settings
+  binary, the only differences are:
+  - the embedded version string (`0.1.0-beta1` → `0.1.0-beta2`, as ASCII and UTF-16);
+  - each slice's Mach-O UUID;
+  - the code signatures.
+
+  `Info.plist` differs only in its version. File sizes are unchanged.
+
+| Step | Observed |
+|---|---|
+| Install | not done |
+| Runtime | not done |
