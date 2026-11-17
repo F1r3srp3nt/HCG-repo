@@ -38,7 +38,7 @@ def _now() -> str:
 
 
 def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = False,
-               expect: dict | None = None) -> tuple[str, Report]:
+               expect: dict | None = None, channel: str = "stable") -> tuple[str, Report]:
     """Validate `path` together with the existing pool and, if everything passes, add it.
 
     `expect` may pin package/version/architecture/sha256; any mismatch rejects the import.
@@ -82,6 +82,9 @@ def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = Fa
     pool_report = Report("repository")
     pkgs = load_pool(cfg, pool_report, extra=[(info, rel)])
     new_entries = [] if same_key else [_lock_entry(info, rel)]  # identical bytes: restore under the existing entry
+    if channel != "stable":
+        for ent in new_entries:
+            ent["channel"] = channel
     trial_lock = {"schema": 1, "packages": lock["packages"] + new_entries}
     check_repository(cfg, pkgs, pool_report, lock=trial_lock)
     for level, code, msg in pool_report.items:
@@ -373,6 +376,9 @@ def set_channel(cfg: RepoConfig, package: str, version: str, architecture: str, 
     e = hits[0]
     if e.get("status") == "protected" and channel == "candidate":
         raise ImportError_("protected packages cannot be in the public candidate channel")
+    if channel == "stable" and load_package_meta(cfg, package).is_free_demo(version):
+        raise ImportError_(f"{package} {version} is a free demo of a sign-in/paid package; free demos stay in the "
+                           "candidate channel. Release a separate build at the package's own access level instead")
     before = entry_channel(e)
     if channel == "stable":
         e.pop("channel", None)
@@ -467,8 +473,8 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
                 "commit": src["commit"].lower(), "layout": src["layout"], "entitlements_file": src["entitlements"]}
         prov.update(builder or {})
     prov["request"] = r["id"]
-    status, rep = import_deb(cfg, path, prov, dry_run=dry_run, expect=expect)
     ch = req.get("channel", "stable")
+    status, rep = import_deb(cfg, path, prov, dry_run=dry_run, expect=expect, channel=ch)
     if status == "imported" and not dry_run and ch != "stable":
         set_channel(cfg, req["package"], req["version"], req["architecture"], ch)
     return status, rep

@@ -91,6 +91,12 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
             report.error("lock-channel", f"{e['filename']}: channel must be one of {LOCK_CHANNELS}, got {ch!r}")
         elif ch == "candidate" and e.get("status", "published") == "protected":
             report.error("candidate-protected", f"{e['filename']}: protected packages cannot be in the public candidate channel")
+        # Free-demo policy: a free build of a sign-in/paid package lives in the candidate channel only, so the
+        # stable (production) source never offers a paid product for free.
+        if (ch == "stable" and e.get("status", "published") == "published"
+                and load_package_meta(cfg, e["package"]).is_free_demo(e["version"])):
+            report.error("free-demo-stable", f"{e['filename']}: a free demo of a sign-in/paid package can only be in "
+                                             "the candidate channel")
     # Per-package findings
     for p in pkgs:
         report.extend(p.report)

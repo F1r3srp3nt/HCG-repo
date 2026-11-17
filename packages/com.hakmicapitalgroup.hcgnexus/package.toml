@@ -21,6 +21,8 @@ tint = "#2FD3E6"
 notes = """
 HCG Nexus adds a cyan edge handle to SpringBoard. Tap or swipe it to open a command panel with searchable shortcuts, workspaces and recent actions, and launch installed apps or links from it.
 
+**Free public demo:** this candidate build needs no sign-in and no payment. Device compatibility is unverified until tested.
+
 **It is off after installation.** Turn it on in *Settings › HCG Nexus*. The package has no install scripts and never resprings by itself.
 """
 limitations = """
@@ -53,5 +55,5 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free candidate beta for device testing in HCG Repo Candidate, approved by the owner on 17 Nov 2026 for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
 exception_versions = ["0.2.1~beta1"]

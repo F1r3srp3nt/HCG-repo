@@ -347,6 +347,11 @@ class PackageMeta:
             return "public"
         return self.access
 
+    def is_free_demo(self, version: str) -> bool:
+        """A version of a sign-in or paid package made public by an approved exception: a free public demo.
+        Free demos may only be in the candidate channel (docs/ACCESS.md, free-demo policy)."""
+        return self.access != "public" and self.access_for(version) == "public"
+
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
 
