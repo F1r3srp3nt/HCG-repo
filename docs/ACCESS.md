@@ -12,6 +12,18 @@ Repository metadata and branding are public. That covers `Release`, `Packages`, 
 
 Every package must declare its level (`config/repo.toml` → `[access] require_explicit = true`).
 
+**Free-demo policy for candidate builds (owner, 17 Nov 2026).** Every HCG candidate build the owner approves is a
+**free public demo**: no HCG Connect sign-in and no payment, installable by anyone from HCG Repo Candidate
+(`/repo/candidate/`). The rules:
+
+- **Approval is per version.** Record it as that version in the package's `exception_versions`. No other version
+  becomes free.
+- **Candidate only.** A free demo of a `connect` or `paid` package can never be in the stable (production) source.
+  - An import into stable is rejected (`free-demo-stable`).
+  - So is a promotion with `hcgrepo channel … stable`, or a hand-edited lock.
+  - The product's releases keep their own access level.
+- **Not a compatibility claim.** Device compatibility stays **unverified** until the owner records a device test.
+
 **Per-version exceptions.** `[access] exception` (who approved it, when, why) plus `exception_versions` makes exactly
 those versions public; every other version keeps the package's level (`PackageMeta.access_for`). A paid package can
 therefore have one approved free candidate beta while its releases stay paid and protected. An unlisted version is

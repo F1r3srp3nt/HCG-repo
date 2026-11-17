@@ -19,6 +19,8 @@
   appears in the stable `debs/`.
 - **The stable source does not see the candidate.** Package managers read only the `Packages` index of the source
   URL. Nesting `/repo/candidate/` under `/repo/` exposes nothing: `/repo/Packages` never names a candidate file.
+- **Free public demos.** Owner-approved candidate builds are free, with no sign-in and no payment
+  ([ACCESS.md](ACCESS.md), free-demo policy). Free demos of paid or sign-in products are refused in stable.
 - **Public packages only.** The candidate has no payment provider, so protected (`connect` or `paid`) packages can
   never be put in it: `channel` refuses, and `validate` reports `candidate-protected`.
   - Vortex's free exception is scoped to `exception_versions` (now `0.1.0~beta1`).

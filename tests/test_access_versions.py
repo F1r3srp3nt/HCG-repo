@@ -38,9 +38,8 @@ class PerVersionAccessTests(RepoTestCase):
     def test_paid_release_protected_and_approved_beta_public_in_candidate(self):
         self.assertEqual(import_deb(self.cfg, tool_deb(self.work, version="1.0.0"), {"source": "t"})[0], "protected")
         beta = tool_deb(self.work, version="1.0.1~beta1")
-        status, r = import_deb(self.cfg, beta, {"source": "t"})
+        status, r = import_deb(self.cfg, beta, {"source": "t"}, channel="candidate")
         self.assertEqual(status, "imported", r.render())
-        set_channel(self.cfg, PKG, "1.0.1~beta1", "iphoneos-arm64", "candidate")
         self.reload()
         self.assertTrue(self.validate().ok, self.validate().render())
         stored = sorted(p.name for p in self.root.glob("pool/**/*.deb"))
@@ -59,7 +58,7 @@ class PerVersionAccessTests(RepoTestCase):
         self.assertFalse(list(self.root.glob("pool/**/*.deb")))
 
     def test_withdrawing_the_approval_is_an_error(self):
-        self.assertEqual(import_deb(self.cfg, tool_deb(self.work, version="1.0.1~beta1"), {"source": "t"})[0], "imported")
+        self.assertEqual(import_deb(self.cfg, tool_deb(self.work, version="1.0.1~beta1"), {"source": "t"}, channel="candidate")[0], "imported")
         self.write_meta(PKG, PAID_WITH_BETA.replace('"1.0.1~beta1"', '"1.0.1~beta9"'))
         self.reload()
         self.assertIn("protected-in-public-pool", self.validate().codes())
@@ -71,9 +70,26 @@ class PerVersionAccessTests(RepoTestCase):
         self.assertIn("protected-but-public", self.validate().codes())
 
     def test_protect_refuses_an_approved_public_version(self):
-        self.assertEqual(import_deb(self.cfg, tool_deb(self.work, version="1.0.1~beta1"), {"source": "t"})[0], "imported")
+        self.assertEqual(import_deb(self.cfg, tool_deb(self.work, version="1.0.1~beta1"), {"source": "t"}, channel="candidate")[0], "imported")
         with self.assertRaises(ImportError_):
             protect(self.cfg, PKG, "1.0.1~beta1", "iphoneos-arm64", self.tmp / "out")
+
+    def test_free_demo_cannot_be_imported_into_stable(self):
+        status, r = import_deb(self.cfg, tool_deb(self.work, version="1.0.1~beta1"), {"source": "t"})
+        self.assertEqual(status, "rejected")
+        self.assertIn("free-demo-stable", r.codes())
+        self.assertFalse(list(self.root.glob("pool/**/*.deb")))
+
+    def test_free_demo_cannot_be_promoted_to_stable(self):
+        self.assertEqual(import_deb(self.cfg, tool_deb(self.work, version="1.0.1~beta1"), {"source": "t"}, channel="candidate")[0], "imported")
+        with self.assertRaises(ImportError_):
+            set_channel(self.cfg, PKG, "1.0.1~beta1", "iphoneos-arm64", "stable")
+        lock = load_lock(self.cfg)                   # a hand-edited lock is caught by validation
+        for e in lock["packages"]:
+            e.pop("channel", None)
+        (self.root / "repo-lock.json").write_text(__import__("json").dumps(lock))
+        self.reload()
+        self.assertIn("free-demo-stable", self.validate().codes())
 
     def test_exception_still_needs_versions(self):
         self.write_meta(PKG, PAID_WITH_BETA.replace('exception_versions = ["1.0.1~beta1"]\n', ''))
