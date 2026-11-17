@@ -21,3 +21,18 @@ This record holds only what was observed. A step that was not done stays **not d
 | Runtime (Status, handle, panel, lock, rotation, disable, kill switch, uninstall) | not done |
 
 The step-by-step checklist is HCG-Nexus `docs/DEVICE-CHECKLIST.md` (branch `claude/nexus-0.2.1-beta1`).
+
+## Owner report, 17 Nov 2026 (partial; not a completed checklist)
+
+The owner reported that HCG Nexus **visibly runs** on the intended device (iPhone 13 Pro, iOS 16.5, Dopamine rootless):
+
+| Observed by the owner | |
+|---|---|
+| Panel opens | yes |
+| Workspaces switch | yes |
+| Settings are accessible | yes |
+| Installed version | **not stated in the report** (the only candidate build is 0.2.1~beta1); confirm in Settings › HCG Nexus › Status before recording a test result |
+| Handle, lock screen, rotation, disable, kill switch, uninstall | not reported: **not done** |
+
+This is partial device evidence. It is not recorded as a `[[tested]]` result until the version is confirmed and the
+checklist's remaining items are done; the status above stays "NOT YET DEVICE-TESTED" until then.
