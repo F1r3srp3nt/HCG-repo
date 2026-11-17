@@ -87,7 +87,7 @@ Each variant has its own name (`HCG Repo Diagnostic N - …`), except the contro
 | d8-candidate | `…/diag/d8-candidate/` | The *next* production source, built from a review branch's pool (name "HCG Repo Candidate"), for example with HCG Vortex | Refresh and listing before `/repo/` changes |
 
 **Notes:**
-- **Publish candidate (diagnostics only)** puts `/diag/` online from a review branch while rebuilding `/repo/` from `main` byte for byte. It refuses if production does not already serve `main`.
+- **Publish candidate (diagnostics only)** puts `/diag/` online from a review branch. It rebuilds everything production serves from the live commit and refuses unless every file is byte-identical.
 - Production `/repo/` serves exactly d1 + d2 + d3 today.
 - d4–d6 are the only way to exercise packages, depictions and a provider, because production lists none yet.
 

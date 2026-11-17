@@ -1,7 +1,8 @@
 # HCG Vortex: listing assets
 
-- `icon.png` (180×180) is a **stand-in** drawn for this listing. Replace it with a 180×180 PNG export of the official
-  square Vortex artwork (same file name). The Vortex project's own spiral icon and BETA header
-  (`HCGVortex/distribution/` in F1r3srp3nt/HCG-Jailbreak-Research) are not used until the official artwork is confirmed.
-- No header image: Sileo shows the HCG Repo banner.
+- `icon.png` (180×180 PNG): the official HCG Vortex artwork, the cyan-violet spiral, confirmed as official on
+  17 Nov 2026. It is exported (Lanczos) from `HCGVortex/distribution/icon-512.png` in
+  F1r3srp3nt/HCG-Jailbreak-Research (added in commit 991ea8a). It is the same image as the Settings icon inside
+  the 0.1.0~beta1 `.deb`.
+- No header image: Sileo shows the HCG Repo banner. The Vortex project's BETA header is not used.
 - Listing text: the `.deb`'s control `Description`, plus `package.toml` (adapted from the Vortex project's proposal).

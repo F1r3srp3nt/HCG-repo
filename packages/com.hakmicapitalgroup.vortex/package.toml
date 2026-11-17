@@ -26,7 +26,7 @@ HCG Vortex changes how Home Screen page transitions look without changing how na
 Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
 """
 known_issues = """
-- Beta: the safety checks reduce but cannot rule out SpringBoard crashes.
+- **May crash SpringBoard.** Vortex hooks SpringBoard; its safety checks reduce but cannot rule out SpringBoard crashes. Recovery steps are under Removal.
 - Animated page jumps (tapping the page dots) may use the stock animation.
 """
 limitations = """

@@ -1,10 +1,10 @@
-# Manual: put the isolated Sileo diagnostic sources, including the CANDIDATE source built from a review
-# branch (diag/d8-candidate), on the live site WITHOUT changing the production source.
+# Manual: put the isolated Sileo diagnostic sources on the live site, including the CANDIDATE source built
+# from a review branch (diag/d8-candidate), WITHOUT changing anything production serves.
 #
-# /repo/ and the website are rebuilt from main exactly as the last Publish did (same commit, same
-# SOURCE_DATE_EPOCH, so the same bytes). The run refuses unless the live site already serves main, so it can
-# never publish anything new under /repo/. Only /diag/ comes from the branch. See docs/SILEO_CRASH.md and
-# docs/VORTEX.md. Remove the diagnostics again by running Publish without "diagnostics".
+# Production (/repo/, the website, build-info.json, 404.html) is rebuilt from the exact commit the live site
+# reports in build-info.json, with that commit's SOURCE_DATE_EPOCH, and every rebuilt file is compared with the
+# live file byte for byte. Any difference stops the run before deployment. Only /diag/ is new, and it comes from
+# the candidate ref. See docs/SILEO_CRASH.md and docs/VORTEX.md. Remove /diag/ again by running Publish.
 name: Publish candidate (diagnostics only)
 
 on:
@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       confirm:
-        description: "Type PUBLISH DIAGNOSTICS to deploy /diag/ (production /repo/ stays byte-identical)"
+        description: "Type PUBLISH DIAGNOSTICS to deploy /diag/ (everything production serves stays byte-identical)"
         required: true
         type: string
 
@@ -25,24 +25,37 @@ concurrency:
   group: pages-publish
   cancel-in-progress: false
 
+env:
+  SITE: https://repo.hakmicapitalgroup.com/
+
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: read
     outputs:
       candidate_sha: ${{ steps.cand.outputs.sha }}
+      live_sha: ${{ steps.live.outputs.sha }}
     steps:
       - name: Confirm
         env:
           CONFIRM: ${{ inputs.confirm }}
         run: '[ "$CONFIRM" = "PUBLISH DIAGNOSTICS" ] || { echo "::error::Type PUBLISH DIAGNOSTICS to confirm"; exit 1; }'
 
+      - name: Which commit does production serve?
+        id: live
+        run: |
+          sha=$(curl -fsSL -H 'Cache-Control: no-cache' "${SITE}build-info.json?nocache=$RANDOM" | python3 -c 'import json,sys;print(json.load(sys.stdin)["revision"])')
+          echo "$sha" | grep -Eq '^[0-9a-f]{40}$' || { echo "::error::cannot read the live revision"; exit 1; }
+          echo "Production serves $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          path: main
+          ref: ${{ steps.live.outputs.sha }}
+          path: live
           lfs: false
           persist-credentials: false
 
@@ -53,34 +66,31 @@ jobs:
           lfs: false
           persist-credentials: false
 
-      - name: Refuse unless production already serves main, unsigned
-        working-directory: main
+      - name: Rebuild production from the live commit
+        working-directory: live
         run: |
-          fpr=$(python3 -c 'import tomllib;print(tomllib.load(open("config/repo.toml","rb"))["signing"]["fingerprint"].strip())')
-          [ -z "$fpr" ] || { echo "::error::signed repositories are not supported here; it would drop Release.gpg from /repo/"; exit 1; }
-          base=$(python3 -c "import sys;sys.path.insert(0,'tools');from hcgrepo.config import load_config;print(load_config().base_url('production'))")
-          live=$(curl -fsSL -H 'Cache-Control: no-cache' "${base}build-info.json?nocache=$RANDOM" | python3 -c 'import json,sys;print(json.load(sys.stdin)["revision"])')
-          [ "$live" = "$GITHUB_SHA" ] || { echo "::error::production serves $live, not main ($GITHUB_SHA). Run Publish first; this workflow never changes /repo/."; exit 1; }
-
-      - name: Rebuild production from main exactly as Publish did
-        working-directory: main
-        run: |
-          python3 -m unittest discover -s tests
+          fpr=$(python3 -c 'import tomllib;print(tomllib.load(open("config/repo.toml","rb")).get("signing",{}).get("fingerprint","").strip())')
+          [ -z "$fpr" ] || { echo "::error::signed production is not supported here (signatures are not reproducible)"; exit 1; }
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build --target production --out ../_site
 
-      - name: Prove /repo/ is unchanged against the live site
+      - name: Prove every production file is byte-identical to the live site
         run: |
-          base=https://repo.hakmicapitalgroup.com/repo/
-          for f in Release Packages Packages.xz Packages.gz Packages.bz2 sileo-featured.json CydiaIcon@3x.png; do
-            a=$(sha256sum "_site/repo/$f" | cut -d' ' -f1)
-            b=$(curl -fsSL -H 'Cache-Control: no-cache' "$base$f" | sha256sum | cut -d' ' -f1)
-            [ "$a" = "$b" ] || { echo "::error::$f would change ($a vs live $b); refusing"; exit 1; }
-            echo "unchanged: $f"
-          done
+          cd _site
+          n=0
+          while IFS= read -r f; do
+            url="${SITE}${f#./}"
+            a=$(sha256sum "$f" | cut -d' ' -f1)
+            b=$(curl -fsSL -H 'Cache-Control: no-cache' "$url" | sha256sum | cut -d' ' -f1)
+            [ "$a" = "$b" ] || { echo "::error::$url differs from the rebuild ($b live, $a rebuilt); refusing"; exit 1; }
+            n=$((n+1))
+          done < <(find . -type f ! -name '.*' | sort)
+          echo "All $n production files are byte-identical to the live site."
 
       - name: Build the diagnostic sources from the candidate ref
         id: cand
         working-directory: candidate
+        env:
+          CANDIDATE_REF: ${{ inputs.candidate_ref }}
         run: |
           python3 -m unittest discover -s tests
           bin/hcgrepo validate
@@ -88,15 +98,14 @@ jobs:
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           printf '{"candidate_ref": "%s", "candidate_sha": "%s"}\n' "$CANDIDATE_REF" "$sha" > ../_cand/diag/candidate.json
-          [ -z "$(find ../_cand/diag -name '*.deb' -path '*/d[1-6]-*')" ] || { echo "::error::a .deb appeared in d1-d6"; exit 1; }
-        env:
-          CANDIDATE_REF: ${{ inputs.candidate_ref }}
 
-      - name: Assemble production site + /diag/
+      - name: Add /diag/ to the unchanged production site
         run: |
+          [ ! -e _site/diag ] || { echo "::error::production already has diag/"; exit 1; }
           cp -R _cand/diag _site/diag
-          # The control must be the live production source (main), not the candidate's.
+          # The control (d7) must be the live production source, not the candidate's.
           rm -rf _site/diag/d7-production-copy && cp -R _site/repo _site/diag/d7-production-copy
+          [ -z "$(find _site/diag -name '*.deb' -path '*/d[1-6]-*')" ] || { echo "::error::a .deb appeared in d1-d6"; exit 1; }
           find _site/diag -type f | sort
 
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
@@ -126,13 +135,7 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          path: main
-          lfs: false
-          persist-credentials: false
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
           ref: ${{ needs.build.outputs.candidate_sha }}
-          path: candidate
           lfs: false
           persist-credentials: false
       - name: Wait for these diagnostics to be served
@@ -140,16 +143,19 @@ jobs:
           SHA: ${{ needs.build.outputs.candidate_sha }}
         run: |
           for i in $(seq 1 30); do
-            got=$(curl -fsSL -H 'Cache-Control: no-cache' "https://repo.hakmicapitalgroup.com/diag/candidate.json?nocache=$i" | python3 -c 'import json,sys;print(json.load(sys.stdin)["candidate_sha"])' || true)
+            got=$(curl -fsSL -H 'Cache-Control: no-cache' "${SITE}diag/candidate.json?nocache=$i" | python3 -c 'import json,sys;print(json.load(sys.stdin)["candidate_sha"])' || true)
             [ "$got" = "$SHA" ] && break
             echo "waiting for the diagnostics of $SHA (got '${got:-nothing}')"; sleep 20
           done
           [ "$got" = "$SHA" ] || { echo "::error::the live site does not serve these diagnostics"; exit 1; }
-      - name: Production source unchanged (checked with main's configuration)
-        working-directory: main
-        run: bin/hcgrepo verify --target production --no-debs --evidence ../evidence/production
-      - name: Every diagnostic source served as built (candidate's configuration)
-        working-directory: candidate
+      - name: Production still serves the same commit; its source walks cleanly
+        env:
+          LIVE: ${{ needs.build.outputs.live_sha }}
+        run: |
+          rev=$(curl -fsSL -H 'Cache-Control: no-cache' "${SITE}build-info.json?nocache=$RANDOM" | python3 -c 'import json,sys;print(json.load(sys.stdin)["revision"])')
+          [ "$rev" = "$LIVE" ] || { echo "::error::production now reports $rev, expected $LIVE"; exit 1; }
+          bin/hcgrepo verify --target production --no-debs --source-only --evidence evidence/production
+      - name: Every diagnostic source is served as built
         run: |
           python3 - <<'PY'
           import sys; sys.path.insert(0, "tools")
@@ -159,7 +165,7 @@ jobs:
           cfg = load_config()
           base = cfg.base_url("production")
           bad = 0
-          for key, rep in verify_all(cfg, base, base, evidence=Path("../evidence")).items():
+          for key, rep in verify_all(cfg, base, base, evidence=Path("evidence")).items():
               print(f"diag/{key}: {'OK' if rep.ok else 'FAILED'}")
               if not rep.ok or rep.warnings:
                   print(rep.render())

@@ -61,9 +61,8 @@ Any mismatch refuses the import. The result is committed to the review branch on
   with its exact device, iOS version and jailbreak.
 - **Known-issue rule.** A failed or partial test must be described under Known issues, naming that device; the
   validator enforces this.
-- **Artwork.** `icon.png` is still a **stand-in**. The official square artwork was mentioned but has not been
-  received. When it arrives, export it at 180×180 PNG as `packages/com.hakmicapitalgroup.vortex/icon.png`.
-  The project's own spiral icon and BETA header are not used until the official artwork is confirmed.
+- **Artwork.** `icon.png` is the official spiral artwork, confirmed on 17 Nov 2026. It is a 180×180 export of the project's
+  `HCGVortex/distribution/icon-512.png`, and the same image as the Settings icon inside the `.deb`.
 
 ## Two separate tests
 
@@ -78,21 +77,18 @@ Any mismatch refuses the import. The result is committed to the review branch on
    `[versions."0.1.0~beta1"]` in `package.toml`, pass or fail, with evidence. A failure also goes into
    `known_issues`.
 
-## Prerequisite: publishing `main` (dbb3e01) over live (3a8fe2e)
+## Candidate deployment leaves production unchanged
 
-**Publish candidate** refuses to run unless production already serves `main`. Publishing `main` as it is now,
-before this branch is merged, is **not** a no-change operation. Both commits were built with their own
-`SOURCE_DATE_EPOCH`. Rebuilding 3a8fe2e reproduces the live `Release` byte for byte. Against it, `dbb3e01`
-changes exactly three files:
+**Publish candidate (diagnostics only)** rebuilds production from the commit the live site reports in
+`build-info.json` (now `3a8fe2e`), using that commit's `SOURCE_DATE_EPOCH`. Every rebuilt file is compared with the
+live file byte for byte, and any difference stops the run before deployment. Only `/diag/` is added. A local
+rebuild of `3a8fe2e` already matches the saved live responses exactly: the homepage, all three product pages,
+`404.html`, the banner, `sileo-featured.json` and `Release`.
 
-| File | Change | Effect |
-|---|---|---|
-| `/repo/Release` | `Date:` 15 Nov 2026 05:34:33 → 16 Nov 2026 14:31:54 GMT; nothing else | Sileo downloads a `Release` with a new hash on its next refresh. Every `Packages*` file and every checksum listed in `Release` is unchanged, so the index is not re-read as different |
-| `/build-info.json` | revision 3a8fe2e → dbb3e01, date as above | Identifies the new build |
-| `/index.html` | the "Built … from" line | Website only |
+Publishing `main` to production is therefore **not** needed for the candidate. That would be a real change. For
+reference, `main` at `dbb3e01` differs from live in three files:
+- `/repo/Release`: the `Date:` line only;
+- `/build-info.json`: revision and date;
+- the homepage's "Built … from" line.
 
-Unchanged: `Packages`, `.xz`, `.gz`, `.bz2`, the icons, `sileo-featured.json`, the banner, `payment_endpoint`
-(still absent), the product pages and the 404 page. Commits after 3a8fe2e changed only tooling, tests and
-documentation: the Sileo-style verifier, Store release import, staging tools and docs. Publishing the review
-branch instead would also add the Vortex product page. After the import it would add the Vortex package to
-`/repo/`, which must wait for both tests above.
+That is decided separately, as part of the production publication of Vortex.
