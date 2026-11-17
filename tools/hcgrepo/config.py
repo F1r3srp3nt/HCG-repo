@@ -358,6 +358,10 @@ class PackageMeta:
     def device_tests(self, version: str) -> list[dict]:
         return list(self.versions.get(version, {}).get("device_tests", []))
 
+    def label(self, version: str) -> str:
+        """An owner-worded status label for one version, e.g. what a packaging-only rebuild does and does not claim."""
+        return str(self.versions.get(version, {}).get("label", "")).strip()
+
 
 def rel_path(p: str) -> str:
     """'./var/jb/x' or '/var/jb/x' → 'var/jb/x'."""
@@ -445,6 +449,9 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
             if t.get("result") not in TEST_RESULTS:
                 report.error("meta-device-test-result", f"version {ver}: device test result must be one of {TEST_RESULTS}")
         st = v.get("status", "experimental")
+        lab = str(v.get("label", ""))
+        if lab and (len(lab) > 160 or "\n" in lab):
+            report.error("meta-bad-label", f"version {ver}: label must be one line of at most 160 characters")
         if st not in STATUSES:
             report.error("meta-bad-status", f"version {ver}: status must be one of {STATUSES}, got {st!r}")
         if st == "device-tested":

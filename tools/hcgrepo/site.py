@@ -199,6 +199,11 @@ def install_failed(p: PoolPackage) -> list[dict]:
     return [] if ok or runtime else fails
 
 
+def label_html(p: PoolPackage) -> str:
+    lab = p.meta.label(p.info.version)
+    return f'<p class="card note note-warn" role="note"><strong>{e(lab)}</strong></p>' if lab else ""
+
+
 def install_failure_html(p: PoolPackage) -> str:
     fails = install_failed(p)
     if not fails:
@@ -215,6 +220,9 @@ def status_text(p: PoolPackage) -> str:
     if p.meta.channel == "beta":
         st = "Beta, " + st[0].lower() + st[1:]
     tests = p.meta.device_tests(p.info.version)
+    label = p.meta.label(p.info.version)
+    if label and not tests:
+        return ("Beta: " if p.meta.channel == "beta" else "") + label
     if not tests:
         st += ", not yet device-tested"
     elif install_failed(p):
@@ -417,6 +425,7 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     <div><dt>iOS</dt><dd>{e(ios_short)}</dd></div>
     <div><dt>Requires</dt><dd>{e(dependency_text(p))}</dd></div>
   </dl>
+  {f'<p class="pkg-tested"><strong>{e(p.meta.label(p.info.version))}</strong></p>' if p.meta.label(p.info.version) else ''}
   <p class="pkg-tested">{e(tests_text(p))}</p>
   <div class="actions">
     {install_btn}
@@ -662,7 +671,7 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
     <p class="lead">{e(p.meta.summary or summary)}</p>
   </div>
 </div>
-{install_failure_html(p)}
+{install_failure_html(p)}{label_html(p)}
 <div class="actions actions-primary">
   <a class="btn {'btn-metal' if install_failed(p) else 'btn-primary'}" href="sileo://package/{e(pkg)}">{'Open in Sileo' if install_failed(p) else 'Install in Sileo'}</a>
   <a class="btn btn-metal" href="sileo://source/{e(repo_url)}">Add source first</a>
@@ -725,7 +734,9 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
     if install_failed(p):
         where = "; ".join(f"{t.get('device')}, iOS {t.get('ios')}, {t.get('jailbreak')}" for t in install_failed(p))
         fail_note = (f"**Installation failed in testing** on {where}. Listed for testing and diagnosis only; see Known issues.")
-    about = "\n\n".join(x for x in (fail_note, beta_note, p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
+    lab = p.meta.label(p.info.version)
+    lab_note = f"**{lab}**" if lab else ""
+    about = "\n\n".join(x for x in (fail_note, lab_note, beta_note, p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
     details = [
         {"class": "DepictionMarkdownView", "markdown": about, "useSpacing": True},
         {"class": "DepictionSeparatorView"},

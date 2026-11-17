@@ -357,7 +357,17 @@ def validate_deb(info: DebInfo, cfg: RepoConfig, meta: PackageMeta) -> Report:
     _check_apps(info, cfg, r)
     _check_scripts(info, r)
     _check_min_os(info, r)
+    _check_compression(info, r)
     return r
+
+
+def _check_compression(info: DebInfo, r: Report) -> None:
+    """HCG Vortex 0.1.0~beta1 (data.tar.lzma, 64 MiB dictionary) downloaded but failed to unpack on an iPhone 11 Pro Max,
+    iOS 17.4 (dpkg-deb Bus error 10). The cause is unconfirmed; flag the format so a new build does not repeat it."""
+    for name, _ in info.members:
+        if name.startswith("data.tar.lzma") or name.startswith("control.tar.lzma"):
+            r.warn("legacy-lzma-member", f"{name}: legacy LZMA package member. A build in this format failed to unpack on a "
+                   "device (docs/device-tests/vortex-0.1.0-beta1.md); prefer gzip (data.tar.gz) or a small xz preset")
 
 
 def _check_min_os(info: DebInfo, r: Report) -> None:
