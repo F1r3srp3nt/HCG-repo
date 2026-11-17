@@ -94,20 +94,21 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
     # Per-package findings
     for p in pkgs:
         report.extend(p.report)
-        if p.meta.access != "public":
+        access = p.meta.access_for(p.info.version)
+        if access != "public":
             report.error("protected-in-public-pool",
-                         f"{p.rel}: {p.info.package} has access level '{p.meta.access}'; protected packages must not be "
+                         f"{p.rel}: {p.info.package} {p.info.version} has access level '{access}'; protected packages must not be "
                          "stored in this public repository (run `bin/hcgrepo protect`)")
         if cfg.access_require_explicit and not p.meta.access_explicit:
             report.error("access-undeclared",
                          f"{p.info.package}: declare [access] level = \"public\" | \"connect\" | \"paid\" in packages/{p.info.package}/package.toml")
         # HCG's own packages need HCG Connect sign-in unless an explicit, recorded exception makes one free.
-        if (cfg.access_require_explicit and p.meta.access == "public" and p.info.package.startswith(HCG_NAMESPACE)
+        if (cfg.access_require_explicit and access == "public" and p.info.package.startswith(HCG_NAMESPACE)
                 and not p.meta.access_exception):
             report.error("access-public-exception",
                          f"{p.info.package}: HCG packages require sign-in; a public one needs [access] exception = \"<who approved "
                          "it, when, and why>\" in its package.toml")
-        elif (cfg.access_require_explicit and p.meta.access == "public" and p.info.package.startswith(HCG_NAMESPACE)
+        elif (cfg.access_require_explicit and access == "public" and p.info.package.startswith(HCG_NAMESPACE)
                 and p.info.version not in p.meta.access_exception_versions):
             report.error("access-exception-version",
                          f"{p.info.package} {p.info.version}: the free-release exception covers only "
@@ -154,8 +155,9 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
             if not prov.get("control"):
                 report.error("protected-control-missing", f"{e['filename']}: protected entry needs the control data in its provenance")
             meta = load_package_meta(cfg, e["package"])
-            if meta.access == "public":
-                report.error("protected-but-public", f"{e['package']}: lock entry is protected but package.toml says access public")
+            if meta.access_for(e["version"]) == "public":
+                report.error("protected-but-public", f"{e['package']} {e['version']}: lock entry is protected but "
+                             "package.toml makes this version public")
     for k, entries in by_key.items():
         hashes = {e["sha256"] for e in entries}
         if len(hashes) > 1:

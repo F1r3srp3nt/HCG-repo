@@ -395,7 +395,7 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     ios_short, _ = ios_requirement(p)
     statuses = {v.meta.status(v.info.version) for v in current}
     badge = (channel_badge(p) + status_badge("device-tested" if statuses == {"device-tested"} else "experimental")
-             + access_badge(p.meta.access))
+             + access_badge(p.meta.access_for(p.info.version)))
     detail = f"{repo_rel}depictions/{e(pkg)}/"
     product = cfg.product_for_package(pkg)
     product_link = f'\n    <a class="btn btn-metal" href="products/{e(product.key)}/">Product page</a>' if product else ""
@@ -1102,7 +1102,14 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             raise BuildError(f"protected package files in the public output: {leaked}")
         if not cfg.payment_endpoint:
             home = (tmp / "index.html").read_text(encoding="utf-8")
-            exposed = [p.info.package for p in protected if f"sileo://package/{p.info.package}" in home]
+            # A package ID may have an approved public build (e.g. a free candidate beta of a paid tweak) next
+            # to protected releases; its install link then opens the public build. Only an install link for a
+            # package with no public build in this output exposes a protected one.
+            public_ids = {p.info.package for p in pkgs}
+            if cand:   # the home page also lists the candidate channel's public builds
+                public_ids |= {p.info.package for p in cand["packages"]}
+            exposed = sorted({p.info.package for p in protected
+                              if p.info.package not in public_ids and f"sileo://package/{p.info.package}" in home})
             if exposed:
                 raise BuildError(f"install links for protected packages without a payment endpoint: {exposed}")
 

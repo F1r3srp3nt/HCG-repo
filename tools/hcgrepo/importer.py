@@ -75,7 +75,7 @@ def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = Fa
         return "rejected", report
 
     meta = load_package_meta(cfg, info.package)
-    if meta.access != "public":
+    if meta.access_for(info.version) != "public":
         return _import_protected(cfg, info, meta, rel, provenance, report, same_key, dry_run)
 
     # Validate the candidate together with everything already in the pool.
@@ -155,7 +155,7 @@ def _import_protected(cfg: RepoConfig, info: DebInfo, meta, rel: str, provenance
         entry["status"] = "protected"
         lock["packages"].append(entry)
         save_lock(cfg, lock)
-    report.warn("protected", f"{info.package} ({meta.access}) recorded as protected; the .deb was NOT stored here. "
+    report.warn("protected", f"{info.package} ({meta.access_for(info.version)}) recorded as protected; the .deb was NOT stored here. "
                              "Deliver this exact file (sha256 above) to HCG Connect's protected storage.")
     return "protected", report
 
@@ -171,8 +171,9 @@ def protect(cfg: RepoConfig, package: str, version: str, architecture: str, move
     if not hits:
         raise ImportError_(f"{package} {version} {architecture} is not in repo-lock.json")
     e = hits[0]
-    if load_package_meta(cfg, package).access == "public":
-        raise ImportError_(f"set [access] level to connect or paid in packages/{package}/package.toml first")
+    if load_package_meta(cfg, package).access_for(version) == "public":
+        raise ImportError_(f"{package} {version} is public: set [access] level to connect or paid in "
+                           f"packages/{package}/package.toml (and remove it from exception_versions) first")
     src = cfg.root / e["filename"]
     prov_path = cfg.root / (e["filename"] + ".provenance.json")
     prov = json.loads(prov_path.read_text(encoding="utf-8")) if prov_path.exists() else {}

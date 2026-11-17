@@ -12,11 +12,17 @@ Repository metadata and branding are public. That covers `Release`, `Packages`, 
 
 Every package must declare its level (`config/repo.toml` → `[access] require_explicit = true`).
 
+**Per-version exceptions.** `[access] exception` (who approved it, when, why) plus `exception_versions` makes exactly
+those versions public; every other version keeps the package's level (`PackageMeta.access_for`). A paid package can
+therefore have one approved free candidate beta while its releases stay paid and protected. An unlisted version is
+never public by accident, a protected record cannot be made public (`protected-but-public`), and withdrawing an
+approval while the file is in the pool is an error (`protected-in-public-pool`).
+
 Current decisions (15 Nov 2026):
 
 | Package | Level |
 |---|---|
-| HCG Nexus (`com.hakmicapitalgroup.hcgnexus`) | `paid` |
+| HCG Nexus (`com.hakmicapitalgroup.hcgnexus`) | `paid`. **Exception (17 Nov 2026, owner):** 0.2.1~beta1 only is free in the candidate channel for device testing |
 | HCG Terminal Unleashed (`com.hakmicapitalgroup.hcgterminal.unleashed`) | `connect` |
 
 ## What the repository enforces

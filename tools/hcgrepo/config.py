@@ -338,6 +338,15 @@ class PackageMeta:
     channel: str = ""            # [release] channel: "" or "beta"
     known_issues: str = ""       # [display] known_issues (markdown); required for a beta
 
+    def access_for(self, version: str) -> str:
+        """The access level of one version. A recorded exception makes exactly the versions in
+        exception_versions public; every other version keeps the package's level. So a paid package
+        (e.g. HCG Nexus) can have one approved free candidate build while its releases stay paid,
+        and a public exception package (e.g. HCG Vortex) still refuses unapproved public versions."""
+        if self.access_exception and version in self.access_exception_versions:
+            return "public"
+        return self.access
+
     def status(self, version: str) -> str:
         return self.versions.get(version, {}).get("status", "experimental")
 
@@ -413,8 +422,6 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
     if meta.channel == "beta" and not meta.known_issues.strip():
         report.error("meta-beta-known-issues", "a beta must state its known issues in [display] known_issues "
                      "(say plainly if none have been found yet and whether it has been tested)")
-    if meta.access_exception and meta.access != "public":
-        report.error("meta-exception-unused", "[access] exception only applies to level = \"public\"")
     if meta.access_exception and not meta.access_exception_versions:
         report.error("meta-exception-scope", "[access] exception needs exception_versions: the exact free versions it approves")
     if meta.access_exception_versions and not meta.access_exception:

@@ -38,7 +38,7 @@ kind = "Jailbreak tweak"
 access = "paid"
 status = "Not yet available"
 summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
-detail = "Available in Sileo once HCG Connect sign-in and HCG Store purchases are live."
+detail = "Available in Sileo once HCG Connect sign-in and HCG Store purchases are live. A free candidate beta (0.2.1~beta1, not yet device-tested) is in the HCG Repo Candidate testing channel."
 store_slug = "hcg-nexus"
 store_edition = "jailbreak"
 

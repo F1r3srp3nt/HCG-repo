@@ -107,11 +107,12 @@ def check_release(cfg: RepoConfig, rec: dict, artifact_id: str, info: DebInfo | 
         if (product.store_edition or None) != rec.get("editionId"):
             r.error("store-edition-mismatch", f"{ident[0]} is edition {product.store_edition or None!r} here, the Store release is {rec.get('editionId')!r}")
         meta = load_package_meta(cfg, ident[0])
-        allowed = ACCESS_TO_DISTRIBUTION.get(meta.access)
+        access = meta.access_for(ident[1])
+        allowed = ACCESS_TO_DISTRIBUTION.get(access)
         if allowed is None:
             r.error("store-access-public", f"{ident[0]} is a public package here; Store-held files are only for connect/paid packages")
         elif rec.get("distribution") not in allowed:
-            r.error("store-access-mismatch", f"{ident[0]} requires {meta.access!r} here but the Store release is distributed as "
+            r.error("store-access-mismatch", f"{ident[0]} requires {access!r} here but the Store release is distributed as "
                     f"{rec.get('distribution')!r}; change neither side as a side effect, ask for a decision")
 
     if info is not None:
