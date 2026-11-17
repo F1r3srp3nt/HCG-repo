@@ -1,8 +1,20 @@
 # Presentation and review metadata for HCG Nexus (jailbreak tweak).
 # Version, architecture and dependencies come from the .deb itself. Icon: HCG-Nexus
 # App/Assets.xcassets/AppIcon.appiconset/Icon-180.png at commit 1341669.
+#
+# HCG Nexus is a paid product. One candidate build, 0.2.1~beta1, is free in the HCG Repo Candidate testing channel
+# by an owner-approved exception scoped to that exact version ([access] below). 0.2.0 and every other version,
+# including the 0.2.1 release, stay paid and protected.
+
+[release]
+channel = "beta"
 
 [display]
+known_issues = """
+- **Not yet device-tested.** 0.2.1~beta1 has not been installed on any phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
+- **Why 0.2.1~beta1 instead of 0.2.0:** the 0.2.0 builds use legacy `data.tar.lzma` packaging (64 MiB dictionary), the same format as the HCG Vortex beta whose unpack crashed with `dpkg-deb … Bus error: 10`. This beta has the same code as 0.2.0 (HCG-Nexus run #10) but uses gzip packaging.
+- Connected Devices (HCG Device Link) is a feature of the standalone HCG Nexus app, not of this tweak.
+"""
 summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
 icon = "icon.png"
 tint = "#2FD3E6"
@@ -12,23 +24,24 @@ HCG Nexus adds a cyan edge handle to SpringBoard. Tap or swipe it to open a comm
 **It is off after installation.** Turn it on in *Settings › HCG Nexus*. The package has no install scripts and never resprings by itself.
 """
 limitations = """
-- **Not yet run on a physical device.** It is the first device release candidate, built with Xcode for the confirmed target (iPhone 13 Pro, iOS 16.5, Dopamine rootless, ElleKit, Sileo).
-- Rootless only (`iphoneos-arm64`). A rootful build exists in the source project but is not supported until verified.
-- The binaries target iOS 15.0 and later, but the package declares no iOS range, so Sileo may offer it on other rootless iOS versions. Only the configuration above is the intended target.
-- Needs a tweak injector (ElleKit, Substitute, Substrate or libhooker) and PreferenceLoader. Sileo offers these if they are missing.
-- HCG Server and Executable Maker integrations show *Not connected*; they are not implemented in this release.
+- **Tested:** nothing yet. No configuration counts as tested until a device result is recorded under Tested devices.
+- **Intended test target:** iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, PreferenceLoader. Other rootless setups are untested.
+- Rootless only (`iphoneos-arm64`). The binaries target iOS 15.0 and later; the package declares no iOS range, so a package manager may offer it on other rootless iOS versions.
+- Needs a tweak injector (ElleKit, Substitute, Substrate or libhooker) and PreferenceLoader.
+- The HCG Repo row in Settings › About and Connected Devices are not in this build (Connected Devices belongs to the standalone app only).
 """
 install = """
-1. Install **HCG Nexus** in Sileo and accept the dependencies it offers (PreferenceLoader, an injector).
-2. Respring when you choose: Sileo's *Restart SpringBoard* button or the Respring action in your jailbreak app.
-3. Open **Settings › HCG Nexus**. *Status* should show the installed version and *SpringBoard: Running*.
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.2.1~beta1. Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
+2. Respring when you choose (your package manager's restart button or the Respring action in the jailbreak app). The package never resprings by itself.
+3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.2.1~beta1* and *SpringBoard: Running*.
 4. Turn on **Enable HCG Nexus**. The handle appears on the right edge without another respring.
 """
 removal = """
 1. **Turn it off:** Settings › HCG Nexus › Enable HCG Nexus → off. The handle disappears immediately.
-2. **Uninstall:** Sileo → *Installed* → **HCG Nexus** → *Remove*, then respring.
-3. Settings and workspaces remain in `/var/mobile/Library/Preferences/com.hakmicapitalgroup.hcgnexus.plist`. Delete that file only if you also want to erase your workspaces.
-4. **If SpringBoard keeps crashing:** reboot. Dopamine is semi-untethered, so the phone starts without tweaks. Then remove HCG Nexus in Sileo before re-enabling tweak injection.
+2. **If Settings can't be opened:** create `/var/mobile/Library/Preferences/com.hakmicapitalgroup.hcgnexus.killswitch` (Filza or `touch` in a terminal), then respring. Nexus stays inactive until the file is deleted.
+3. **Uninstall:** in your package manager, remove **HCG Nexus**, or `sudo dpkg -r com.hakmicapitalgroup.hcgnexus` in a terminal, then respring.
+4. Settings and workspaces remain in `/var/mobile/Library/Preferences/com.hakmicapitalgroup.hcgnexus.plist`. Delete that file only if you also want to erase your workspaces.
+5. **If SpringBoard keeps crashing:** reboot. Dopamine is semi-untethered, so the phone starts without tweaks. Then remove HCG Nexus before re-enabling tweak injection.
 """
 
 [review]
@@ -37,5 +50,8 @@ allow_setuid = []
 # binaries carry any, the import fails until they are reviewed and recorded here.
 
 [access]
-# Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here.
+# Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
+# EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
+exception = "Free candidate beta for device testing in HCG Repo Candidate, approved by the owner on 17 Nov 2026 for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1"]

@@ -1,0 +1,20 @@
+# HCG Nexus 0.2.1~beta1 (free candidate beta of a paid tweak), rootless.
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #13
+# (https://github.com/F1r3srp3nt/HCG-Nexus/actions/runs/44019802883) from commit 58e2dbd on branch
+# claude/nexus-0.2.1-beta1: the 0.2.0 source of run #10 (1341669) with only the version and gzip packaging changed.
+# Artifact zip digest sha256:d3ac321bfb14068271491ab556573a9d570b72466e8047e3d8f210cb5b2d5235, expires 2026-11-24.
+# Public only by the scoped exception in packages/com.hakmicapitalgroup.hcgnexus/package.toml.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.2.1~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44019802883
+commit = "58e2dbd81e6cca1bf3589d864403b05ebb8d966e"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "948465eaa30fd8cf1bc9fd98141362fe08c4e24ab0b23d788a39fa65d8ac17af"
