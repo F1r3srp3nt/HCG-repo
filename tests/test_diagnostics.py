@@ -68,13 +68,6 @@ class DiagnosticsTests(RepoTestCase):
             self.assertNotEqual(code, 200)
         self.assertEqual(set(reports), {v.key for v in ALL})
 
-    def test_candidate_is_the_next_production_source_at_its_own_url(self):
-        d = self.site / "diag" / "d8-candidate"
-        self.assertIn(b"Origin: HCG Repo Candidate\n", (d / "Release").read_bytes())
-        self.assertEqual((d / "Packages").read_bytes(), (self.site / "repo" / "Packages").read_bytes())  # protected: not indexed
-        self.assertEqual((d / "CydiaIcon@3x.png").read_bytes(), (self.site / "repo" / "CydiaIcon@3x.png").read_bytes())
-        self.assertIn("/diag/d8-candidate/assets/", (d / "sileo-featured.json").read_text())
-
     def test_not_built_by_default(self):
         self.assertFalse((build(self.cfg, PROD, self.tmp / "plain").out_dir / "diag").exists())
 

@@ -71,6 +71,9 @@ jobs:
           set +e
           bin/hcgrepo verify --target production --no-debs --source-only --evidence evidence | tee sileo-walk.txt
           rc=${PIPESTATUS[0]}
+          # The candidate (testing) source, downloading its packages and checking their checksums against the index.
+          bin/hcgrepo verify --target production --channel candidate --source-only --evidence evidence/candidate | tee -a sileo-walk.txt
+          [ ${PIPESTATUS[0]} -eq 0 ] || rc=1
           { echo "## Sileo-style walk (evidence artifact: sileo-evidence)"; echo '```'; cat sileo-walk.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           cp sileo-walk.txt evidence/ 2>/dev/null
           exit $rc

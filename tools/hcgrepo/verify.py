@@ -354,6 +354,8 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
                 continue
             if k == "SileoDepiction":
                 _check_sileo_json(r, label, data)
+            elif k == "Depiction":
+                _check_web_depiction_assets(f, r, label, v, data)
             elif k in ("Icon", "Header") and not (data[:8] == b"\x89PNG\r\n\x1a\n" or data[:3] == b"\xff\xd8\xff"):
                 r.error("presentation-image", f"{label}: {k} is not a PNG or JPEG")
     res.packages = len(stanzas)
@@ -390,10 +392,17 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
             if f'href="products/{product.key}/"'.encode() not in data:
                 r.error("site-product-link", f"website does not link the product page products/{product.key}/")
     if cfg:
-        _check_store_pages(f, r, cfg, public_base, {debian.field(st, "Package") for st in stanzas})
+        cand = set()
+        if cfg.channel == "stable":
+            from .config import CANDIDATE_DIR
+            code, data, _ = f.get(repo_public + CANDIDATE_DIR + "/Packages")
+            if code == 200 and not looks_like_html(data):
+                cand = {debian.field(st, "Package") for st in debian.parse_stanzas(data.decode("utf-8", "replace"))}
+        _check_store_pages(f, r, cfg, public_base, {debian.field(st, "Package") for st in stanzas}, cand)
 
 
-def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, indexed: set[str]) -> None:
+def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, indexed: set[str],
+                       candidate_indexed: set[str] | None = None) -> None:
     """Product pages link HCG Store, never link a .deb, and offer installation only for indexed packages."""
     for p in cfg.products:
         url = f"{public_base}products/{p.key}/"
@@ -414,8 +423,11 @@ def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str,
         offered = set(re.findall(r"sileo://package/([^\"'<>\s]+)", text))
         for pkg in sorted(offered - indexed):
             r.error("product-page-install-link", f"{url} offers sileo://package/{pkg}, which is not in the index")
-        if not set(p.package_ids) & indexed and NO_DOWNLOADS not in text:
+        in_testing = set(p.package_ids) & (candidate_indexed or set())
+        if not set(p.package_ids) & indexed and not in_testing and NO_DOWNLOADS not in text:
             r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
+        if in_testing and not set(p.package_ids) & indexed and "HCG Repo Candidate" not in text:
+            r.error("product-page-candidate", f"{url} does not point to the testing channel where {sorted(in_testing)} is")
 
 
 def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:
@@ -497,6 +509,23 @@ def _check_featured(f: "Fetcher", r: Report, data: bytes, public_base: str, inde
             r.error("featured-image", f"banner image {b['url']} missing or not an image (HTTP {code})")
         if b.get("package") and b["package"] not in indexed:
             r.error("featured-package", f"banner links package {b['package']}, which is not in the index")
+
+
+STYLESHEET = re.compile(r"""<link[^>]+rel=["']stylesheet["'][^>]*href=["']([^"']+)["']""", re.I)
+
+
+def _check_web_depiction_assets(f: "Fetcher", r: Report, label: str, url: str, data: bytes) -> None:
+    """Zebra (and Sileo for packages without SileoDepiction) shows the web depiction. Its stylesheet must load from
+    where the page actually is, or the page renders as unstyled browser-default text."""
+    sheets = STYLESHEET.findall(data.decode("utf-8", "replace"))
+    if not sheets:
+        r.error("depiction-stylesheet", f"{label}: web depiction {url} links no stylesheet")
+    for href in sheets:
+        target = urljoin(url, html.unescape(href))
+        code, css, ctype = f.get(target)
+        if code != 200 or looks_like_html(css) or b"{" not in css:
+            r.error("depiction-stylesheet", f"{label}: web depiction stylesheet {target} does not load (HTTP {code}); "
+                    "the page would render unstyled")
 
 
 def _check_sileo_json(r: Report, label: str, data: bytes) -> None:

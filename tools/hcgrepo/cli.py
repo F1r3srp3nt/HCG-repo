@@ -215,6 +215,17 @@ def cmd_protect(a, cfg) -> int:
     return 0
 
 
+def cmd_channel(a, cfg) -> int:
+    from .importer import ImportError_, set_channel
+    try:
+        before = set_channel(cfg, a.package, a.version, a.arch, a.channel)
+    except ImportError_ as exc:
+        print(f"ERROR: {exc}")
+        return 1
+    print(f"{a.package} {a.version} {a.arch}: channel {before} -> {a.channel}")
+    return 0
+
+
 def cmd_withdraw(a, cfg) -> int:
     from .importer import withdraw
     fn = withdraw(cfg, a.package, a.version, a.arch, a.reason)
@@ -270,6 +281,8 @@ def cmd_verify(a, cfg) -> int:
     fetch = a.fetch_url or base
     pub = Path(a.pubkey) if a.pubkey else None
     ev = Path(a.evidence) if a.evidence else None
+    if getattr(a, "channel", "stable") == "candidate":
+        cfg = cfg.candidate()
     res = verify(base, fetch, cfg=cfg, pubkey=pub, require_signature=a.require_signature, check_debs=not a.no_debs,
                  evidence=ev, check_provider=not a.no_provider, site_checks=not a.source_only)
     if ev:
@@ -402,6 +415,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--move-to", required=True, help="directory OUTSIDE this repository to move the .deb to")
     p.set_defaults(fn=cmd_protect)
 
+    p = sp.add_parser("channel", help="move a recorded build between the stable and candidate (testing) sources")
+    p.add_argument("package")
+    p.add_argument("version")
+    p.add_argument("arch")
+    p.add_argument("channel", choices=["stable", "candidate"])
+    p.set_defaults(fn=cmd_channel)
+
     p = sp.add_parser("withdraw", help="remove a version from the index; its lock record stays")
     p.add_argument("--package", required=True)
     p.add_argument("--version", required=True)
@@ -427,6 +447,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--list-urls", action="store_true")
     p.add_argument("--evidence", help="save every response body and responses.json (status, redirects, headers) here")
     p.add_argument("--no-provider", action="store_true", help="do not call the payment provider's info endpoint")
+    p.add_argument("--channel", choices=["stable", "candidate"], default="stable",
+                   help="which source to verify: stable <base>repo/ or candidate <base>repo/candidate/")
     p.add_argument("--source-only", action="store_true",
                    help="check only the APT source (what Sileo fetches), not the website and product pages")
     p.set_defaults(fn=cmd_verify)

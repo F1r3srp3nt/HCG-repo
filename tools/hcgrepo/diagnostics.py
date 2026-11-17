@@ -17,7 +17,7 @@ import shutil
 from pathlib import Path
 
 from . import debian
-from .config import Report, RepoConfig
+from .config import CANDIDATE_DIR, Report, RepoConfig
 from .repo import (build_info_date, compress_indexes, presentation_fields, protected_packages, protected_stanza,
                    render_release)
 
@@ -47,20 +47,12 @@ VARIANTS = (
             "Diagnostic 4 plus payment_endpoint and a static provider that answers only `info`.", frozenset({"package", "payment"})),
 )
 CONTROL = Variant("d7-production-copy", "HCG Repo", "The production source's files, byte for byte, at another URL.", frozenset({"production"}))
-# The NEXT production source, built by the normal build from the current pool (for example with a newly imported
-# package), under its own URL so every Depiction, Icon and Filename in it resolves there. It lets Sileo's refresh
-# and listing be tested on a device BEFORE /repo/ changes.
-CANDIDATE = Variant("d8-candidate", "Candidate", "The next production source, built from the current pool, at its own URL.",
-                    frozenset({"candidate"}))
-ALL = VARIANTS + (CONTROL, CANDIDATE)
+ALL = VARIANTS + (CONTROL,)
 
 
 def variant_cfg(cfg: RepoConfig, v: Variant, base_url: str) -> RepoConfig:
     if v is CONTROL:
         return dataclasses.replace(cfg, repo_subdir=f"diag/{v.key}")
-    if v is CANDIDATE:
-        return dataclasses.replace(cfg, origin="HCG Repo Candidate", label="HCG Repo Candidate", repo_subdir=f"diag/{v.key}",
-                                   description="HCG Repo candidate source for testing before publication. " + cfg.description)
     endpoint = f"{base_url}diag/{v.key}/provider/" if "payment" in v.components else ""
     return dataclasses.replace(cfg, origin=f"HCG Repo {v.title}", label=f"HCG Repo {v.title}", repo_subdir=f"diag/{v.key}",
                                description=f"HCG Repo diagnostic source, not for installing packages. {v.adds}",
@@ -81,15 +73,9 @@ def build_variant(cfg: RepoConfig, base_url: str, site: Path, v: Variant, packag
     repo_url = f"{base_url}diag/{v.key}/"
     if v is CONTROL:
         out.rmdir()
-        shutil.copytree(site / cfg.repo_subdir, out)   # every file, so debs/ and depictions/ come along when present
-        return out
-    if v is CANDIDATE:
-        import tempfile
-        from .site import build
-        out.rmdir()
-        with tempfile.TemporaryDirectory(prefix="hcgrepo-candidate-") as tmp:
-            res = build(vcfg, base_url, Path(tmp) / "site")
-            shutil.move(str(res.out_dir / vcfg.repo_subdir), str(out))
+        # Every file of the stable source (debs/ and depictions/ come along when present), but not the candidate
+        # source nested inside it: the control is the stable source only.
+        shutil.copytree(site / cfg.repo_subdir, out, ignore=shutil.ignore_patterns(CANDIDATE_DIR))
         return out
 
     text = ""
@@ -167,8 +153,8 @@ def verify_all(cfg: RepoConfig, base_url: str, fetch_base: str, evidence: Path |
     out = {}
     for v in ALL:
         vcfg = variant_cfg(cfg, v, base_url)
-        res = verify(base_url, fetch_base, cfg=vcfg, check_debs=v is CANDIDATE, site_checks=False,
-                     icons=bool({"icons", "production", "candidate"} & v.components),
+        res = verify(base_url, fetch_base, cfg=vcfg, check_debs=False, site_checks=False,
+                     icons=bool({"icons", "production"} & v.components),
                      evidence=(evidence / v.key) if evidence else None)
         allowed = EXPECTED.get(v.key, set())
         r = Report(f"diag/{v.key}")

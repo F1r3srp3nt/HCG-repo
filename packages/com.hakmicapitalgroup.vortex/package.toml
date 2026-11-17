@@ -26,6 +26,7 @@ HCG Vortex changes how Home Screen page transitions look without changing how na
 Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
 """
 known_issues = """
+- **Installation fails on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x** (17 Nov 2026): the download succeeds, then unpacking stops with `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`. Nothing is installed. The cause is being diagnosed with the Vortex project; until a fixed build is published, do not expect 0.1.0~beta1 to install.
 - **May crash SpringBoard.** Vortex hooks SpringBoard; its safety checks reduce but cannot rule out SpringBoard crashes. Recovery steps are under Removal.
 - Animated page jumps (tapping the page dots) may use the stock animation.
 """
@@ -51,3 +52,15 @@ removal = """
 [review]
 # No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
 allow_setuid = []
+
+[versions."0.1.0~beta1"]
+status = "experimental"
+# Observed results only. The installation attempt failed, so runtime behaviour has not been tested at all.
+[[versions."0.1.0~beta1".device_tests]]
+device = "iPhone 11 Pro Max"
+ios = "17.4"
+jailbreak = "Dopamine 2.x (rootless), Zebra 1.1.x"
+date = "2026-11-17"
+stage = "install"
+result = "fail"
+evidence = "docs/device-tests/vortex-0.1.0-beta1.md"

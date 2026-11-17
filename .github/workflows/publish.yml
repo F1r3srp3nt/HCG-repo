@@ -139,3 +139,5 @@ jobs:
           args=(--target "$TARGET" --list-urls)
           [ "$SIGNED" = "true" ] && args+=(--require-signature --pubkey keys/hcg-repo-archive-key.asc)
           bin/hcgrepo verify "${args[@]}"
+          # The candidate (testing) source at <source>/candidate/ is part of every publication.
+          bin/hcgrepo verify "${args[@]}" --channel candidate --source-only

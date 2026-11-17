@@ -39,7 +39,7 @@ class VortexTests(RepoTestCase):
         site = self.site()
         self.assertEqual((site / "repo" / "Packages").read_text(), "")
         page = (site / "products" / "hcg-vortex" / "index.html").read_text()
-        self.assertIn("Experimental beta, not yet released", page)
+        self.assertIn("Experimental beta in testing: installation failed", page)
         self.assertIn("Downloads are not available yet.", page)
         self.assertNotIn("sileo://package/", page)
         self.assertNotIn("store.hakmicapitalgroup.com", page)      # not in HCG Store: no Store actions
@@ -77,36 +77,25 @@ class VortexTests(RepoTestCase):
 
         web = (site / "repo" / "depictions" / PKG / "index.html").read_text()
         self.assertIn('class="badge badge-beta">Beta<', web)
-        self.assertIn("Not yet device-tested.", web)
         self.assertIn("Known issues", web)
-        self.assertIn("<dt>Device testing</dt><dd>Not yet device-tested.</dd>", web)
+        # The recorded installation failure (iPhone 11 Pro Max, iOS 17.4) is shown; runtime stays untested.
+        self.assertIn("Installation failed in testing.", web)
+        self.assertIn("<dt>Device testing</dt><dd>Installation failed on 1 tested device setup(s). Runtime behaviour has not "
+                      "been tested. See Tested devices.</dd>", web)
+        self.assertIn("<td>iPhone 11 Pro Max</td><td>iOS 17.4</td>", web)
+        self.assertNotIn(">Install in Sileo<", web)            # not advertised as installable
         self.assertNotIn("badge-ok", web)                      # no Device-tested badge without evidence
         dep = json.loads((site / "repo" / "depictions" / PKG / "sileo.json").read_text())
         text = json.dumps(dep)
-        self.assertIn("Beta, experimental, not yet device-tested", text)
+        self.assertIn("installation failed on 1 tested device(s); runtime not tested", text)
+        self.assertIn("**Installation failed in testing**", text)
         self.assertIn("Known issues", text)
         card = (site / "index.html").read_text()
         self.assertIn("Free · no sign-in", card)
-        self.assertIn(f"sileo://package/{PKG}", card)
+        self.assertIn("Open in Sileo (installation failed in testing)", card)
         with BackgroundServer(site, "/") as srv:
             v = verify(PROD, srv.url, cfg=self.cfg)
         self.assertTrue(v.report.ok, v.report.render())
-
-    def test_candidate_source_lets_sileo_refresh_be_tested_before_publication(self):
-        import dataclasses
-        from hcgrepo.diagnostics import CANDIDATE, build_variant, variant_cfg
-        deb = tool_deb(self.work, package=PKG, version="0.1.0~beta1")
-        self.assertEqual(import_deb(self.cfg, deb, {"source": "test-fixture"})[0], "imported")
-        site = self.site()
-        d = build_variant(self.cfg, PROD, site, CANDIDATE)
-        st = debian.parse_stanzas((d / "Packages").read_text())[0]
-        self.assertEqual(debian.field(st, "SHA256"), inspect_deb(deb).sha256)
-        self.assertTrue(debian.field(st, "SileoDepiction").startswith(f"{PROD}diag/d8-candidate/depictions/{PKG}/"))
-        self.assertEqual((d / debian.field(st, "Filename")).read_bytes(), deb.read_bytes())
-        with BackgroundServer(site, "/") as srv:
-            v = verify(PROD, srv.url, cfg=variant_cfg(self.cfg, CANDIDATE, PROD), site_checks=False)
-        self.assertTrue(v.report.ok, v.report.render())
-        self.assertEqual(v.packages, 1)
 
     def test_exception_covers_only_the_approved_versions(self):
         deb = tool_deb(self.work, package=PKG, version="0.2.0")      # e.g. a later build that may carry premium features
@@ -119,7 +108,8 @@ class VortexTests(RepoTestCase):
         deb = tool_deb(self.work, package=PKG, version="0.1.0~beta1")
         self.assertEqual(import_deb(self.cfg, deb, {"source": "test-fixture"})[0], "imported")
         toml = self.root / "packages" / PKG / "package.toml"
-        toml.write_text(toml.read_text() + '''
+        base = toml.read_text()
+        toml.write_text(base[:base.index('[versions."0.1.0~beta1"]')] + '''
 [versions."0.1.0~beta1"]
 status = "experimental"
 [[versions."0.1.0~beta1".device_tests]]
@@ -145,7 +135,7 @@ evidence = "docs/device-tests/2026-11-20-vortex.md"
         self.assertIn("Crashes SpringBoard", web)
         self.assertIn('badge-warn">Experimental<', web)     # a failed test never makes it device-tested
         dep = json.dumps(json.loads((site / "repo" / "depictions" / PKG / "sileo.json").read_text()))
-        self.assertIn("iOS 16.5, Dopamine 2.x (rootless): Does not work", dep)
+        self.assertIn("iOS 16.5, Dopamine 2.x (rootless): Runtime does not work", dep)
 
 
 if __name__ == "__main__":

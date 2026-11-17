@@ -359,6 +359,28 @@ def fetch_workflow_artifact(gh: GitHub, repo: str, run_id: int, commit: str, art
     }
 
 
+def set_channel(cfg: RepoConfig, package: str, version: str, architecture: str, channel: str) -> str:
+    """Move one recorded build between the stable source and the candidate (testing) source. Only the lock entry's
+    channel changes; the file, its checksums and provenance stay as they are (immutable)."""
+    from .config import LOCK_CHANNELS, entry_channel
+    if channel not in LOCK_CHANNELS:
+        raise ImportError_(f"channel must be one of {LOCK_CHANNELS}")
+    lock = load_lock(cfg)
+    hits = [e for e in lock["packages"] if (e["package"], e["version"], e["architecture"]) == (package, version, architecture)]
+    if not hits:
+        raise ImportError_(f"{package} {version} {architecture} is not in repo-lock.json")
+    e = hits[0]
+    if e.get("status") == "protected" and channel == "candidate":
+        raise ImportError_("protected packages cannot be in the public candidate channel")
+    before = entry_channel(e)
+    if channel == "stable":
+        e.pop("channel", None)
+    else:
+        e["channel"] = channel
+    save_lock(cfg, lock)
+    return before
+
+
 def temp_workdir() -> tempfile.TemporaryDirectory:
     return tempfile.TemporaryDirectory(prefix="hcgrepo-import-")
 
@@ -384,6 +406,8 @@ def load_request(path: Path) -> dict:
     for k in ("package", "version", "architecture"):
         if not req.get(k):
             problems.append(f"[request] {k} is required")
+    if req.get("channel", "stable") not in ("stable", "candidate"):
+        problems.append("[request] channel must be stable or candidate")
     if kind not in REQUEST_KINDS:
         problems.append(f"[source] kind must be one of {sorted(REQUEST_KINDS)}")
     if not REPO_RE.match(src.get("repository", "")):
@@ -442,4 +466,8 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
                 "commit": src["commit"].lower(), "layout": src["layout"], "entitlements_file": src["entitlements"]}
         prov.update(builder or {})
     prov["request"] = r["id"]
-    return import_deb(cfg, path, prov, dry_run=dry_run, expect=expect)
+    status, rep = import_deb(cfg, path, prov, dry_run=dry_run, expect=expect)
+    ch = req.get("channel", "stable")
+    if status == "imported" and not dry_run and ch != "stable":
+        set_channel(cfg, req["package"], req["version"], req["architecture"], ch)
+    return status, rep

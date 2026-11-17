@@ -8,6 +8,7 @@ and command-line tools.
 | | |
 |---|---|
 | APT source | **`https://repo.hakmicapitalgroup.com/repo/`**. The old `https://f1r3srp3nt.github.io/HCG-repo/repo/` redirects to it |
+| Testing channel | **`https://repo.hakmicapitalgroup.com/repo/candidate/`** (HCG Repo Candidate): betas, independent of the stable index ([docs/CANDIDATE.md](docs/CANDIDATE.md)) |
 | Website | `https://repo.hakmicapitalgroup.com/` |
 | HTTPS | **Not working yet:** GitHub has not issued a certificate for the domain, so the site is served over http. Fix: `docs/TRANSPORT.md` |
 | Metadata signing | Implemented; **no archive key yet**, so `Release` is unsigned. Prerequisites: `docs/SIGNING.md` |

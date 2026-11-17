@@ -181,6 +181,7 @@ class RepoConfig:
     store_base_url: str
     access_require_explicit: bool = True
     payment_endpoint: str = ""
+    channel: str = "stable"      # which channel this configuration builds: "stable" (/repo/) or "candidate"
 
     @property
     def pool_dir(self) -> Path:
@@ -193,6 +194,19 @@ class RepoConfig:
     @property
     def packages_meta_dir(self) -> Path:
         return self.root / "packages"
+
+    def candidate(self) -> "RepoConfig":
+        """The candidate (testing) channel: an independent flat APT source at <stable source>/candidate/.
+
+        It indexes only lock entries with channel = "candidate", never protected packages, and has its own
+        identity, so Sileo and Zebra treat it as a separate source. The stable index never lists its packages."""
+        import dataclasses
+        return dataclasses.replace(
+            self, channel="candidate", repo_subdir=f"{self.repo_subdir}/{CANDIDATE_DIR}", origin=f"{self.origin} Candidate",
+            label=f"{self.label} Candidate", suite="candidate", codename=f"{self.codename}-candidate",
+            description=("Testing channel for HCG tweaks, jailbreak apps and command-line tools. Builds here are betas: "
+                         "they may fail to install or misbehave. " + self.description),
+            payment_endpoint="")
 
     def base_url(self, target: str | None = None, explicit: str | None = None) -> str:
         if explicit:
@@ -289,6 +303,13 @@ ACCESS_LEVELS = ("public", "connect", "paid")
 REQUIRED_TEST_FIELDS = ("device", "ios", "jailbreak", "date", "result", "evidence")
 TEST_RESULTS = ("pass", "fail", "partial")
 CHANNELS = ("", "beta")
+LOCK_CHANNELS = ("stable", "candidate")
+CANDIDATE_DIR = "candidate"
+TEST_STAGES = ("install", "runtime")
+
+
+def entry_channel(e: dict) -> str:
+    return e.get("channel", "stable")
 
 
 @dataclass
@@ -407,6 +428,8 @@ def check_package_meta(meta: PackageMeta, report: Report) -> None:
                 report.error("meta-known-issues-stale", f"version {ver} has a {t.get('result')} device test on {model}; "
                              "describe it in [display] known_issues, naming that device")
         for t in v.get("device_tests", []):
+            if t.get("stage", "runtime") not in TEST_STAGES:
+                report.error("meta-device-test-stage", f"version {ver}: device test stage must be one of {TEST_STAGES}")
             if t.get("result") not in TEST_RESULTS:
                 report.error("meta-device-test-result", f"version {ver}: device test result must be one of {TEST_RESULTS}")
         st = v.get("status", "experimental")

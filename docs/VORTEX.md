@@ -64,60 +64,24 @@ Any mismatch refuses the import. The result is committed to the review branch on
 - **Artwork.** `icon.png` is the official spiral artwork, confirmed on 17 Nov 2026. It is a 180×180 export of the project's
   `HCGVortex/distribution/icon-512.png`, and the same image as the Settings icon inside the `.deb`.
 
-## Two separate tests
+## Status of 0.1.0~beta1
 
-1. **Sileo source and depiction test, without installing.** This belongs to the suspected Sileo crash
-   (`docs/SILEO_CRASH.md`). With the import committed on the review branch:
-   - run **Publish candidate (diagnostics only)** for that branch;
-   - in Sileo, add `https://repo.hakmicapitalgroup.com/diag/d8-candidate/`, refresh, open the source, then open
-     HCG Vortex's page;
-   - **do not install.** Record each step's result.
-2. **Vortex runtime test, after installation.** Separately, follow the project's
-   `HCGVortex/docs/DEVICE_TEST_HANDOFF.md`, starting with the kill switch on. Record the result under
-   `[versions."0.1.0~beta1"]` in `package.toml`, pass or fail, with evidence. A failure also goes into
-   `known_issues`.
+- **Channel.** It is in the **candidate** channel only (`https://repo.hakmicapitalgroup.com/repo/candidate/`), never
+  in the stable source (`docs/CANDIDATE.md`).
+- **Installation failed** on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x, on 17 Nov 2026:
+  `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`.
+  - The record and evidence are in `docs/device-tests/vortex-0.1.0-beta1.md`.
+  - The listing shows "Installation failed in testing" and offers no normal install.
+- **Runtime behaviour is untested.**
+- **Diagnosis** with the Vortex project: `docs/vortex/INSTALL-FAILURE-0.1.0-beta1.md`. The leading hypothesis is the
+  legacy `data.tar.lzma` member with a 64 MiB dictionary. The suggested fix is a new **0.1.0~beta2** built with gzip
+  or a small xz preset, with the same package ID. It sorts after beta1 and before 0.1.0, so testers are offered it.
+- **The failing artifact's provenance is retained:** commit `7d5e5b9`, run 43970942708, artifact 14278312698,
+  SHA-256 `bb0af727…07673eea`.
 
-## Candidate deployment leaves production unchanged
+## Two separate tests (for the next build)
 
-**Publish candidate (diagnostics only)** rebuilds production from the commit the live site reports in
-`build-info.json` (now `3a8fe2e`), using that commit's `SOURCE_DATE_EPOCH`. Every rebuilt file is compared with the
-live file byte for byte, and any difference stops the run before deployment. Only `/diag/` is added. A local
-rebuild of `3a8fe2e` already matches the saved live responses exactly: the homepage, all three product pages,
-`404.html`, the banner, `sileo-featured.json` and `Release`.
-
-Publishing `main` to production is therefore **not** needed for the candidate. That would be a real change. For
-reference, `main` at `dbb3e01` differs from live in three files:
-- `/repo/Release`: the `Date:` line only;
-- `/build-info.json`: revision and date;
-- the homepage's "Built … from" line.
-
-That is decided separately, as part of the production publication of Vortex.
-
-## Production publication (prepared, not done)
-
-**When:** after both tests are recorded in `docs/device-tests/vortex-0.1.0-beta1.md`, and the device result (pass
-or fail) is in `package.toml`.
-
-**Steps:**
-1. Merge the review branch.
-2. Run **Publish** with diagnostics unticked. This also removes `/diag/`.
-3. Run **Check transport**.
-
-**What it changes against the live `3a8fe2e`.** This was computed from a rebuild of the branch at `371cd1c`.
-
-- **Added:**
-  - `/repo/debs/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb`;
-  - `/repo/depictions/com.hakmicapitalgroup.vortex/` (web and Sileo);
-  - `/repo/assets/com.hakmicapitalgroup.vortex/icon.png`;
-  - `/products/hcg-vortex/`.
-- **Changed:**
-  - `/repo/Packages`, `.xz`, `.gz` and `.bz2` now list exactly one package, HCG Vortex (Beta), with the SHA-256 above;
-  - `/repo/Release`: `Date:` and the index checksums;
-  - `/index.html`: the Vortex card and the build line;
-  - `/build-info.json`;
-  - `/assets/site.css`: the Beta badge style.
-- **Unchanged:** the HCG Nexus, Terminal Unleashed and Sentinel product pages, the source icons, the banner,
-  `sileo-featured.json`, `payment_endpoint` (absent) and `404.html`.
-
-The results of the device test change only `package.toml`: `[versions."0.1.0~beta1"]` and `known_issues`.
-They do not change the package.
+1. **Source and depiction check, without installing.** Add `https://repo.hakmicapitalgroup.com/repo/candidate/`,
+   refresh, open the source, then open HCG Vortex's page.
+2. **Runtime smoke test, after a successful installation.** Follow HCG-Jailbreak-Research
+   `HCGVortex/docs/DEVICE_TEST_HANDOFF.md`, A–G with recovery in §7, and record the observed results.

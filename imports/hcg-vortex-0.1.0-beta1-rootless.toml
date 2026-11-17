@@ -9,6 +9,7 @@
 package = "com.hakmicapitalgroup.vortex"
 version = "0.1.0~beta1"
 architecture = "iphoneos-arm64"
+channel = "candidate"
 
 [source]
 kind = "github-artifact"

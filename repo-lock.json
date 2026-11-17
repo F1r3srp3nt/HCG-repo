@@ -24,6 +24,7 @@
     },
     {
       "architecture": "iphoneos-arm64",
+      "channel": "candidate",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb",
       "imported_at": "2026-11-16T23:04:48Z",
       "package": "com.hakmicapitalgroup.vortex",

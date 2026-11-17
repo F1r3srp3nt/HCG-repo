@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import __version__, debian
-from .config import Product, Report, RepoConfig, load_lock
+from .config import CANDIDATE_DIR, Product, Report, RepoConfig, entry_channel, load_lock
 from .repo import (PoolPackage, build_info_date, check_repository, compress_indexes, git_revision,
                    load_pool, render_packages, render_release)
 
@@ -54,6 +54,13 @@ class BuildResult:
     signature_verified: bool = False
     signature_detail: str = "unsigned"
     files: list[str] = field(default_factory=list)
+    groups: dict = field(default_factory=dict)
+
+
+def root_rel(cfg: RepoConfig, extra: int = 0) -> str:
+    """Relative path from <source>/<extra dirs>/ back to the site root, for any source depth
+    (repo/ = 1, repo/candidate/ = 2). Depictions sit 2 levels below the source."""
+    return "../" * (len(cfg.repo_subdir.strip("/").split("/")) + extra)
 
 
 # ---------------------------------------------------------------------------- text helpers
@@ -180,6 +187,26 @@ def channel_badge(p: PoolPackage) -> str:
 
 
 RESULT_TEXT = {"pass": "Works", "fail": "Does not work", "partial": "Partly works"}
+STAGE_TEXT = {"install": "Installation", "runtime": "Runtime"}
+
+
+def install_failed(p: PoolPackage) -> list[dict]:
+    """Recorded installation failures of this version, when no installation has succeeded."""
+    tests = p.meta.device_tests(p.info.version)
+    ok = [t for t in tests if t.get("stage", "runtime") == "install" and t.get("result") == "pass"]
+    runtime = [t for t in tests if t.get("stage", "runtime") == "runtime"]
+    fails = [t for t in tests if t.get("stage", "runtime") == "install" and t.get("result") in ("fail", "partial")]
+    return [] if ok or runtime else fails
+
+
+def install_failure_html(p: PoolPackage) -> str:
+    fails = install_failed(p)
+    if not fails:
+        return ""
+    where = "; ".join(f"{t.get('device')}, iOS {t.get('ios')}, {t.get('jailbreak')}" for t in fails)
+    return ('<p class="card note note-warn" role="alert"><strong>Installation failed in testing.</strong> '
+            f"This build did not install on {e(where)}. It is listed for testing and diagnosis only; "
+            "see Known issues.</p>")
 
 
 def status_text(p: PoolPackage) -> str:
@@ -187,8 +214,13 @@ def status_text(p: PoolPackage) -> str:
     st = "Device-tested" if p.meta.status(p.info.version) == "device-tested" else "Experimental"
     if p.meta.channel == "beta":
         st = "Beta, " + st[0].lower() + st[1:]
-    if not p.meta.device_tests(p.info.version):
+    tests = p.meta.device_tests(p.info.version)
+    if not tests:
         st += ", not yet device-tested"
+    elif install_failed(p):
+        st += f", installation failed on {len(install_failed(p))} tested device(s); runtime not tested"
+    elif not [t for t in tests if t.get("stage", "runtime") == "runtime"]:
+        st += ", runtime not yet tested"
     return st
 
 
@@ -203,11 +235,12 @@ def tested_devices_html(p: PoolPackage) -> str:
         return ('<p class="card note note-warn"><strong>Not yet device-tested.</strong> '
                 "No device, iOS version or jailbreak is known to work with this build.</p>")
     rows = "".join(f"<tr><td>{e(t.get('device', ''))}</td><td>iOS {e(str(t.get('ios', '')))}</td><td>{e(t.get('jailbreak', ''))}</td>"
+                   f"<td>{e(STAGE_TEXT.get(t.get('stage', 'runtime'), ''))}</td>"
                    f"<td>{e(RESULT_TEXT.get(t.get('result'), str(t.get('result'))))}</td><td>{e(str(t.get('date', '')))}</td></tr>"
                    for t in tests)
     return ('<div class="table-wrap"><table><caption class="sr-only">Device tests of this version</caption>'
             '<thead><tr><th scope="col">Device</th><th scope="col">iOS</th><th scope="col">Jailbreak</th>'
-            f'<th scope="col">Result</th><th scope="col">Date</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            f'<th scope="col">Stage</th><th scope="col">Result</th><th scope="col">Date</th></tr></thead><tbody>{rows}</tbody></table></div>'
             '<p class="small muted">Only these exact combinations have been tested. Others are untested.</p>')
 
 
@@ -221,6 +254,9 @@ def tests_text(p: PoolPackage) -> str:
     tests = passing_tests(p)
     if not every:
         return "Not yet device-tested."
+    if install_failed(p):
+        return (f"Installation failed on {len(install_failed(p))} tested device setup(s). Runtime behaviour has not been "
+                "tested. See Tested devices.")
     if not tests:
         return f"Tested on {len(every)} device setup(s); none passed. See Tested devices."
     text = "Works on " + "; ".join(f"{t['device']}, iOS {t['ios']}, {t['jailbreak']} ({t['date']})" for t in tests) + "."
@@ -318,7 +354,7 @@ def url_breaks(url: str) -> str:
     return e(scheme + sep) + "<wbr>" + "/<wbr>".join(e(part) for part in rest.split("/"))
 
 
-def source_actions(repo_url: str, rel: str = "") -> str:
+def source_actions(repo_url: str, rel: str = "", uid: str = "source-url") -> str:
     sileo = f"sileo://source/{repo_url}"
     zebra = f"zbra://sources/add/{repo_url}"
     return f"""<div class="source">
@@ -326,10 +362,10 @@ def source_actions(repo_url: str, rel: str = "") -> str:
     <a class="btn btn-primary" href="{e(sileo)}">Add to Sileo</a>
     <a class="btn btn-metal" href="{e(zebra)}">Add to Zebra</a>
   </div>
-  <p class="source-label" id="source-url-label">Repository URL</p>
+  <p class="source-label" id="{uid}-label">Repository URL</p>
   <div class="source-row">
-    <code id="source-url" class="source-url" aria-labelledby="source-url-label">{url_breaks(repo_url)}</code>
-    <button type="button" class="btn btn-metal btn-copy" data-copy="#source-url">Copy URL</button>
+    <code id="{uid}" class="source-url" aria-labelledby="{uid}-label">{url_breaks(repo_url)}</code>
+    <button type="button" class="btn btn-metal btn-copy" data-copy="#{uid}">Copy URL</button>
   </div>
   <p class="hint">Open this page on your iPhone or iPad. <strong>Add to Sileo</strong> opens Sileo’s Add Source prompt with this URL filled in, and you confirm it there.</p>
 </div>"""
@@ -363,6 +399,8 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     detail = f"{repo_rel}depictions/{e(pkg)}/"
     product = cfg.product_for_package(pkg)
     product_link = f'\n    <a class="btn btn-metal" href="products/{e(product.key)}/">Product page</a>' if product else ""
+    install_btn = (f'<a class="btn btn-metal" href="sileo://package/{e(pkg)}">Open in Sileo (installation failed in testing)</a>'
+                   if install_failed(p) else f'<a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>')
     return f"""<li class="card pkg-card">
   <div class="pkg-head">
     {icon}
@@ -381,14 +419,16 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
   </dl>
   <p class="pkg-tested">{e(tests_text(p))}</p>
   <div class="actions">
-    <a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
+    {install_btn}
     <a class="btn btn-metal" href="{detail}">Details</a>{product_link}
   </div>
 </li>"""
 
 
-def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[PoolPackage]], info: dict) -> str:
+def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[PoolPackage]], info: dict,
+            candidate: dict | None = None) -> str:
     n = len(groups)
+    cand_groups = (candidate or {}).get("groups", {})
     if groups:
         cards = "".join(package_card(cfg, v, "repo/") for v in groups.values())
         packages_html = (f'<p class="section-lead">{n} package{"s" if n != 1 else ""} in the repository index. '
@@ -403,8 +443,20 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
   </div>
 </div>"""
 
-    indexed = set(groups)
+    indexed = set(groups) | set(cand_groups)
     not_indexed = [p for p in cfg.products if not (set(p.package_ids) & indexed)]
+    cand_html = ""
+    if candidate:
+        ccards = "".join(package_card(cfg, v, f"{cfg.repo_subdir}/{CANDIDATE_DIR}/") for v in cand_groups.values())
+        cand_html = f"""<section id="candidate" class="section" aria-labelledby="cand-h">
+<h2 id="cand-h">Testing channel: HCG Repo Candidate</h2>
+<p class="section-lead">Betas of HCG tweaks, jailbreak apps and command-line tools, in a separate source. They may fail to install
+or misbehave; each one lists what has and has not been tested. Nothing here appears in the stable source above.</p>
+{source_actions(candidate["url"], uid="candidate-url")}
+<p><a href="{cfg.repo_subdir}/{CANDIDATE_DIR}/">About the testing channel</a>: migration from the old diagnostic source, and how
+candidate and stable versions update.</p>
+{f'<ul class="cards" role="list">{ccards}</ul>' if ccards else '<p class="muted">No builds are in testing right now.</p>'}
+</section>"""
     restricted = [p for p in not_indexed if p.restricted]
     planned = [p for p in not_indexed if p not in restricted]
     restricted_html = restricted_section(restricted, info.get("protected", {}), bool(cfg.payment_endpoint))
@@ -416,8 +468,8 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
   <div class="actions"><a class="btn btn-metal" href="products/{e(p.key)}/">Product page</a></div>
 </li>""" for p in planned)
     dev_html = f"""<section id="in-development" class="section" aria-labelledby="dev-h">
-<h2 id="dev-h">In development</h2>
-<p class="section-lead">Not in the repository index and not installable yet. Nothing here has an install action.</p>
+<h2 id="dev-h">Pending builds</h2>
+<p class="section-lead">No installable build exists yet, in either source. Nothing here has an install action.</p>
 <ul class="cards cards-dev" role="list">{dev_items}</ul>
 </section>""" if planned else ""
 
@@ -441,6 +493,7 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
 {packages_html}
 </section>
 {restricted_html}
+{cand_html}
 {dev_html}
 
 <section id="install" class="section prose" aria-labelledby="install-h">
@@ -551,7 +604,7 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
     p = versions[0]
     pkg = p.info.package
     summary, long = short_description(p)
-    rel = "../../../"
+    rel = root_rel(cfg, 2)   # depictions/<pkg>/ below the source, at any source depth
     icon = (f'<img src="../../assets/{e(pkg)}/{e(p.meta.icon)}" alt="" width="88" height="88" class="pkg-icon pkg-icon-lg">'
             if p.meta.icon else "")
     header = (f'<div class="dep-header-frame"><img class="dep-header" src="../../assets/{e(pkg)}/{e(p.meta.header)}" alt=""></div>'
@@ -609,11 +662,12 @@ def web_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage], a
     <p class="lead">{e(p.meta.summary or summary)}</p>
   </div>
 </div>
+{install_failure_html(p)}
 <div class="actions actions-primary">
-  <a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
+  <a class="btn {'btn-metal' if install_failed(p) else 'btn-primary'}" href="sileo://package/{e(pkg)}">{'Open in Sileo' if install_failed(p) else 'Install in Sileo'}</a>
   <a class="btn btn-metal" href="sileo://source/{e(repo_url)}">Add source first</a>
 </div>
-<p class="hint">“Install in Sileo” opens this package once the HCG Repo source has been added.</p>
+<p class="hint">{'“Open in Sileo” shows' if install_failed(p) else '“Install in Sileo” opens'} this package once the {e(cfg.origin)} source has been added.</p>
 {beta}
 <section class="section-tight" aria-labelledby="about-h">
 <h2 id="about-h">About</h2>
@@ -667,7 +721,11 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
     _, ios_long = ios_requirement(p)
     beta_note = ("**Experimental beta.** Free to install. It may change, break or be withdrawn, and it has only been "
                  "tested where Tested devices says so.") if p.meta.channel == "beta" else ""
-    about = "\n\n".join(x for x in (beta_note, p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
+    fail_note = ""
+    if install_failed(p):
+        where = "; ".join(f"{t.get('device')}, iOS {t.get('ios')}, {t.get('jailbreak')}" for t in install_failed(p))
+        fail_note = (f"**Installation failed in testing** on {where}. Listed for testing and diagnosis only; see Known issues.")
+    about = "\n\n".join(x for x in (fail_note, beta_note, p.meta.summary or summary, long if long != summary else "", p.meta.notes) if x)
     details = [
         {"class": "DepictionMarkdownView", "markdown": about, "useSpacing": True},
         {"class": "DepictionSeparatorView"},
@@ -687,7 +745,8 @@ def sileo_depiction(cfg: RepoConfig, repo_url: str, versions: list[PoolPackage],
     tests = tested_devices(p)
     if tests:
         details += [{"class": "DepictionTableTextView", "title": f"{t.get('device')}",
-                     "text": f"iOS {t.get('ios')}, {t.get('jailbreak')}: {RESULT_TEXT.get(t.get('result'), t.get('result'))}"}
+                     "text": f"iOS {t.get('ios')}, {t.get('jailbreak')}: {STAGE_TEXT.get(t.get('stage', 'runtime'))} "
+                             f"{RESULT_TEXT.get(t.get('result'), t.get('result')).lower()}"}
                     for t in tests]
         details.append({"class": "DepictionMarkdownView", "markdown": "Only these exact combinations have been tested.", "useSpacing": True})
     else:
@@ -735,10 +794,57 @@ def repo_index(cfg: RepoConfig, repo_url: str) -> str:
 <h1>HCG Repo source</h1>
 <p>Add this address to Sileo or another package manager; it is not meant to be browsed.</p>
 {source_actions(repo_url)}
-<p><a href="../">Go to the HCG Repo page</a></p>
+<p><a href="{root_rel(cfg)}">Go to the HCG Repo page</a></p>
 </div>
 </section>"""
-    return page("HCG Repo source", body, "../", "HCG Repo APT source root.", repo_url)
+    return page("HCG Repo source", body, root_rel(cfg), "HCG Repo APT source root.", repo_url)
+
+
+def candidate_index(cfg: RepoConfig, ccfg: RepoConfig, base: str, groups: dict, cand_groups: dict) -> str:
+    """<source>/candidate/: what the testing channel is, how to add it, migration, and version ordering."""
+    url = ccfg.repo_url(base)
+    stable_url = cfg.repo_url(base)
+    rows = "".join(
+        f"<li><a href=\"depictions/{e(pkg)}/\">{e(display_name(v[0]))}</a> <code>{e(v[0].info.version)}</code> "
+        f"<span class=\"small muted\">{e(status_text(v[0]))}</span></li>" for pkg, v in cand_groups.items())
+    indexed = set(groups) | set(cand_groups)
+    pending = [p for p in cfg.products if not (set(p.package_ids) & indexed) and not p.restricted]
+    held = [p for p in cfg.products if p.restricted and not (set(p.package_ids) & indexed)]
+    pend = "".join(f"<li>{e(p.name)}: {e(p.status)}</li>" for p in pending)
+    needs = {"connect": "HCG Connect sign-in", "paid": "HCG Connect sign-in and HCG Store ownership"}
+    held_html = "".join(f"<li>{e(p.name)}: needs {needs.get(cfg.product_level(p) or p.access, 'sign-in')}, so it is never "
+                        "published in this public channel.</li>" for p in held)
+    body = f"""<section class="section prose">
+<div class="intro card">
+<p class="eyebrow">Testing channel</p>
+<h1>HCG Repo Candidate</h1>
+<p class="lead">Betas of HCG tweaks, jailbreak apps and command-line tools before they reach the stable HCG Repo source.
+Builds here may fail to install or misbehave. Each package lists exactly what has been tested.</p>
+{source_actions(url)}
+<p><a href="{root_rel(ccfg)}">Go to the HCG Repo page</a></p>
+</div>
+<h2>In testing</h2>
+{f'<ul>{rows}</ul>' if rows else '<p class="muted">No builds are in testing right now.</p>'}
+<h2>Pending builds</h2>
+{f'<ul>{pend}</ul>' if pend else '<p class="muted">None.</p>'}
+{f'<h2>Not in this channel: sign-in required</h2><ul>{held_html}</ul>' if held_html else ''}
+<h2>Moving from the old diagnostic source</h2>
+<ol>
+<li>In Sileo or Zebra, remove <strong>HCG Repo Candidate</strong> at <code>https://repo.hakmicapitalgroup.com/diag/d8-candidate/</code>
+(and any <code>/diag/</code> source). That address is no longer served.</li>
+<li>Add <code>{e(url)}</code> and refresh.</li>
+<li>Nothing installed from the old source needs to be removed: package IDs are the same, so updates arrive from this source.</li>
+</ol>
+<h2>Candidate and stable versions</h2>
+<ul>
+<li>The two sources are independent: the stable source <code>{e(stable_url)}</code> never lists candidate builds.</li>
+<li>Package IDs are the same in both. With both sources added, your package manager installs the highest version.</li>
+<li>Betas use Debian pre-release versions such as <code>0.1.0~beta1</code>, which sort <em>before</em> <code>0.1.0</code>.
+So when <code>0.1.0</code> is released to the stable source, testers are upgraded to it automatically.</li>
+<li>To stop testing, remove this source. An installed beta stays until the stable source has a higher version.</li>
+</ul>
+</section>"""
+    return page("HCG Repo Candidate", body, root_rel(ccfg), "HCG Repo Candidate: the testing channel for HCG betas.", url)
 
 
 # ---------------------------------------------------------------------------- product pages
@@ -752,7 +858,7 @@ NO_DOWNLOADS = "Downloads are not available yet."
 
 
 def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
-                 groups: dict[str, list[PoolPackage]]) -> str:
+                 groups: dict[str, list[PoolPackage]], candidate: dict | None = None) -> str:
     """products/<key>/: what the product is, whether it can be installed, and its HCG Store actions.
 
     An install action appears only for a package that is in the generated index (public, or
@@ -765,6 +871,8 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
     store_url = cfg.store_product_url(p) if p.in_store else ""
     login_url = cfg.store_login_url(p) if p.in_store else ""
     installable = [pkg for pkg in p.package_ids if pkg in groups]
+    cand_groups = (candidate or {}).get("groups", {})
+    in_candidate = [pkg for pkg in p.package_ids if pkg in cand_groups and pkg not in groups]
     pkgs = (", ".join(f"<code>{e(x)}</code>" for x in p.package_ids) if p.package_ids
             else "None. This product has no Debian package.")
     rows = [("Package", pkgs)]
@@ -773,7 +881,8 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
                      ", ".join(f"{describe_arch(a)} (<code>{e(a)}</code>)" for a in p.layouts)))
     if level:
         rows.append(("Access", e(ACCESS_TEXT[level])))
-    rows.append(("In HCG Repo", "In the package index" if installable else "Not in the package index"))
+    rows.append(("In HCG Repo", "In the package index" if installable else
+                 "Testing channel only (HCG Repo Candidate)" if in_candidate else "Not in the package index"))
     table = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in rows)
     if installable:
         install = "".join(
@@ -781,6 +890,19 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
 <a class="btn btn-metal" href="{rel}{cfg.repo_subdir}/depictions/{e(pkg)}/">Details</a></div>""" for pkg in installable)
         install += ('<p class="hint">“Install in Sileo” opens the package once the HCG Repo source has been added.'
                     + (" Sileo asks you to sign in with HCG Connect first." if level in ("connect", "paid") else "") + "</p>")
+    elif in_candidate:
+        cand_url = candidate["url"]
+        parts = []
+        for pkg in in_candidate:
+            v = cand_groups[pkg][0]
+            dep = f"{rel}{cfg.repo_subdir}/{CANDIDATE_DIR}/depictions/{e(pkg)}/"
+            parts.append(f"""{install_failure_html(v)}
+<p>Version <strong>{e(v.info.version)}</strong> is in the <strong>testing channel</strong>, HCG Repo Candidate. It is not in the
+stable HCG Repo source. {e(tests_text(v))}</p>
+<div class="actions actions-primary"><a class="btn btn-metal" href="{dep}">Details and known issues</a>
+<a class="btn btn-metal" href="{e('sileo://source/' + cand_url)}">Add HCG Repo Candidate</a></div>""")
+        install = "".join(parts) + (f'<p class="hint">Testing channel: <code>{e(cand_url)}</code>. Betas there may fail to '
+                                    "install or misbehave; read Known issues first.</p>")
     else:
         if not p.package_ids:
             reason = "This product has no Debian package, so it cannot be installed from HCG Repo."
@@ -789,7 +911,7 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
                       + ". Authenticated delivery through Sileo is not live yet, and its package is never published "
                       "here as a public file.")
         else:
-            reason = "No package has been published yet."
+            reason = "No installable build has been published yet."
         install = f'<div class="card note note-warn" role="note"><p><strong>{NO_DOWNLOADS}</strong> {e(reason)}</p></div>'
     heading = "Buy Product" if level == "paid" else "Get access"
     store_section = f"""<section class="section-tight card store" aria-labelledby="store-h" data-store-access data-store-base="{e(cfg.store_base_url)}"
@@ -832,7 +954,7 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
 
 
 def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = None,
-          require_signature: bool | None = None) -> BuildResult:
+          require_signature: bool | None = None, nested: bool = False) -> BuildResult:
     from . import sign as signmod
     from . import verify as verifymod
 
@@ -843,11 +965,12 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
     if not report.ok:
         raise BuildError("repository validation failed", report)
     lock = load_lock(cfg)
-    published = {e["filename"] for e in lock["packages"] if e.get("status", "published") == "published"}
-    pkgs = [p for p in pkgs if p.rel in published]
+    published = {e["filename"] for e in lock["packages"]
+                 if e.get("status", "published") == "published" and entry_channel(e) == cfg.channel}
+    pkgs = [p for p in pkgs if p.rel in published]       # only this channel's packages
     from .repo import protected_packages
     protected = protected_packages(cfg)
-    if cfg.payment_endpoint:
+    if cfg.payment_endpoint and cfg.channel == "stable":
         # Indexed as cydia::commercial (files are never deployed), but only when a person approved this exact
         # file for public delivery in HCG Store (import-store-release). Otherwise Sileo would list a package that
         # the provider can never deliver; drafts, rejected and unapproved releases stay out of the index.
@@ -915,6 +1038,20 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         elif must_sign:
             raise BuildError("signing is required (config/repo.toml [signing] required = true) but no key was given")
 
+        res.groups = groups
+        # The candidate (testing) channel: an independent source built into <source>/candidate/ by every
+        # ordinary build, so publishing never drops it. It is built from its own lock entries only.
+        cand = None
+        if cfg.channel == "stable" and not nested:
+            ccfg = cfg.candidate()
+            with tempfile.TemporaryDirectory(prefix="hcgrepo-candidate-") as ctmp:
+                cres = build(ccfg, base_url, Path(ctmp) / "site", sign_key=sign_key, require_signature=require_signature,
+                             nested=True)
+                shutil.move(str(cres.out_dir / ccfg.repo_subdir), str(repo_dir / CANDIDATE_DIR))
+            cand = {"url": ccfg.repo_url(base_url), "groups": cres.groups, "packages": cres.packages}
+            (repo_dir / CANDIDATE_DIR / "index.html").write_text(candidate_index(cfg, ccfg, base_url, groups, cres.groups),
+                                                                  encoding="utf-8")
+
         # Website
         revision = git_revision(cfg.root)
         fpr = cfg.signing_fingerprint
@@ -939,12 +1076,12 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         for name in BRAND_FILES:
             shutil.copyfile(cfg.root / "branding" / name, tmp / "assets" / "brand" / name)
         shutil.copyfile(cfg.root / "branding" / "apple-touch-icon.png", tmp / "apple-touch-icon.png")
-        (tmp / "index.html").write_text(landing(cfg, base_url, repo_url, groups, info), encoding="utf-8")
+        (tmp / "index.html").write_text(landing(cfg, base_url, repo_url, groups, info, cand), encoding="utf-8")
         (repo_dir / "index.html").write_text(repo_index(cfg, repo_url), encoding="utf-8")
         for product in cfg.products:
             pdir = tmp / "products" / product.key
             pdir.mkdir(parents=True)
-            (pdir / "index.html").write_text(product_page(cfg, base_url, repo_url, product, groups), encoding="utf-8")
+            (pdir / "index.html").write_text(product_page(cfg, base_url, repo_url, product, groups, cand), encoding="utf-8")
         (tmp / "404.html").write_text(page("Not found · HCG Repo", '<section class="section prose"><div class="intro card">'
                                            '<h1>Page not found</h1><p>The page you asked for does not exist.</p>'
                                            f'<p><a class="btn btn-primary" href="{e(base_url)}">Go to HCG Repo</a></p></div></section>',
@@ -969,12 +1106,30 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             if exposed:
                 raise BuildError(f"install links for protected packages without a payment endpoint: {exposed}")
 
+        # Channel isolation: the stable index and stable debs/ never carry a candidate build.
+        if cand:
+            stable_keys = {(p.info.package, p.info.version, p.info.architecture) for p in pkgs}
+            cand_keys = {(p.info.package, p.info.version, p.info.architecture) for p in cand["packages"]}
+            if stable_keys & cand_keys:
+                raise BuildError(f"the same build is in both channels: {sorted(stable_keys & cand_keys)}")
+            stable_debs = {f.name for f in (repo_dir / "debs").iterdir()}
+            leaked_c = sorted(stable_debs & {p.info.canonical_filename() for p in cand["packages"]})
+            if leaked_c:
+                raise BuildError(f"candidate package files in the stable debs/: {leaked_c}")
+
         # Verify the finished tree offline before it replaces anything.
         vr = verifymod.verify(base_url, tmp.as_uri() + "/", cfg=cfg,
-                              pubkey=(cfg.root / cfg.public_key_file) if res.signed else None)
+                              pubkey=(cfg.root / cfg.public_key_file) if res.signed else None,
+                              site_checks=not nested)
         if not vr.report.ok:
             raise BuildError("the generated snapshot failed verification", vr.report)
         report.extend(vr.report)
+        if cand:
+            cv = verifymod.verify(base_url, tmp.as_uri() + "/", cfg=cfg.candidate(),
+                                  pubkey=(cfg.root / cfg.public_key_file) if res.signed else None, site_checks=False)
+            if not cv.report.ok:
+                raise BuildError("the candidate source failed verification", cv.report)
+            report.extend(cv.report)
 
         if out_dir.exists():
             old = out_dir.with_name(out_dir.name + ".old")

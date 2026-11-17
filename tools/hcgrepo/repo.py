@@ -15,7 +15,7 @@ from email.utils import format_datetime
 from pathlib import Path
 
 from . import debian
-from .config import (PackageMeta, Report, RepoConfig, check_package_meta, load_lock,
+from .config import (LOCK_CHANNELS, PackageMeta, Report, RepoConfig, check_package_meta, entry_channel, load_lock,
                      load_package_meta)
 from .debinspect import DebInfo, InspectError, inspect_deb, validate_deb
 
@@ -83,6 +83,14 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
                     mr.error("access-public-exception", f"{d.name}: a public HCG package needs [access] exception")
                 report.extend(mr)
     lock = lock if lock is not None else load_lock(cfg)
+    # Channels: stable (/repo/) or candidate (/repo/candidate/, testing). The candidate source is public and has no
+    # payment provider, so it may only carry public packages; protected entries stay stable-only (and unindexed).
+    for e in lock["packages"]:
+        ch = entry_channel(e)
+        if ch not in LOCK_CHANNELS:
+            report.error("lock-channel", f"{e['filename']}: channel must be one of {LOCK_CHANNELS}, got {ch!r}")
+        elif ch == "candidate" and e.get("status", "published") == "protected":
+            report.error("candidate-protected", f"{e['filename']}: protected packages cannot be in the public candidate channel")
     # Per-package findings
     for p in pkgs:
         report.extend(p.report)
@@ -351,6 +359,8 @@ def check_lock_history(base_lock: dict, head_lock: dict, report: Report) -> None
                 report.error("lock-history-changed", f"{b['filename']}: recorded {k} changed from {b.get(k)!r} to {h.get(k)!r}")
         if h.get("status", "published") not in ("published", "protected", "withdrawn"):
             report.error("lock-history-status", f"{b['filename']}: unknown status {h.get('status')!r}")
+        if entry_channel(b) == "stable" and entry_channel(h) == "candidate":
+            report.error("lock-history-channel", f"{b['filename']} was stable and cannot move back to candidate; withdraw it instead")
         if b.get("status", "published") == "withdrawn" and h.get("status", "published") != "withdrawn":
             report.error("lock-history-republished", f"{b['filename']} was withdrawn and cannot be republished; use a new version")
 
