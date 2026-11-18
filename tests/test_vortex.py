@@ -102,7 +102,7 @@ class VortexTests(RepoTestCase):
         status, rep = import_deb(self.cfg, deb, {"source": "test-fixture"})
         self.assertEqual(status, "rejected")
         self.assertIn("access-exception-version", rep.codes())
-        self.assertEqual(load_package_meta(self.cfg, PKG).access_exception_versions, ["0.1.0~beta1", "0.1.0~beta2", "0.3.0~beta1"])
+        self.assertEqual(load_package_meta(self.cfg, PKG).access_exception_versions, ["0.1.0~beta1", "0.1.0~beta2", "0.3.0~beta1", "0.3.1~beta1"])
 
     def test_device_results_are_shown_exactly(self):
         deb = tool_deb(self.work, package=PKG, version="0.1.0~beta1")
