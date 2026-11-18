@@ -2,6 +2,17 @@
   "packages": [
     {
       "architecture": "iphoneos-arm64",
+      "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.halo_0.1.0~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-18T00:03:20Z",
+      "package": "com.hakmicapitalgroup.halo",
+      "sha256": "c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af",
+      "size": 264782,
+      "status": "published",
+      "version": "0.1.0~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.2.0_iphoneos-arm64.deb",
       "imported_at": "2026-11-15T03:46:01Z",
       "package": "com.hakmicapitalgroup.hcgnexus",
