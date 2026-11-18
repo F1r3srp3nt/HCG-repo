@@ -1,0 +1,23 @@
+# HCG Animation Center 0.1.0~beta1, rootless. Free public beta demo — Simulator-tested, not yet device-tested.
+# First version of the package (com.hakmicapitalgroup.animationcenter); no earlier build exists.
+# Candidate channel only (free demo; HCG-repo docs/ACCESS.md), authorised by the owner on 18 Nov 2026:
+# "Candidate betas are authorised as free public demos at https://repo.hakmicapitalgroup.com/repo/candidate/".
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 2d642bd (branch claude/stoic-gates-07elp7),
+# macOS CI run 44242604467 (HCG Animation Center build: Xcode, Theos 8167f59, conclusion success incl. 103 Simulator
+# runtime checks), artifact hcg-animationcenter-rootless-deb (ID 14399579139, kept 90 days).
+# validate.sh --require-new-abi: 0 failures, 0 warnings (native arm64e ABI 0x80000002, build ID 2d642bd29974).
+# 360,342 bytes. Prepare packages refuses any other bytes.
+
+[request]
+package = "com.hakmicapitalgroup.animationcenter"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44242604467
+commit = "2d642bd29974001de742d6d930a9b30599e8b245"
+artifact = "hcg-animationcenter-rootless-deb"
+sha256 = "27a161b3cc323f09940211553b058873218697b49c995812f04e579f97429f60"

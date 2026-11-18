@@ -1,0 +1,74 @@
+# Presentation and review metadata for HCG Animation Center (free public beta demo, candidate channel).
+# Package ID, name, version, architecture, dependencies, size and checksums always come from the imported .deb;
+# nothing here can override them. Listing text from the project's handoff
+# (F1r3srp3nt/HCG-Jailbreak-Research, HCGAnimationCenter/distribution/hcg-repo/).
+# Icon: PROVISIONAL original artwork (HCGAnimationCenter/scripts/make_icon.py, 180 px), the same image as the Settings
+# icon inside the .deb. Replace when official artwork exists.
+
+[release]
+channel = "beta"
+
+[access]
+# HCG's default access level for its packages (HCG Connect sign-in). Production pricing and access are NOT decided by
+# this file; the owner sets them before any release. The exception below makes ONLY the listed candidate version a
+# free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps it out of
+# the stable source. Any other version needs its own approval.
+level = "connect"
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Animation Center candidate betas as free public demos at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
+exception_versions = ["0.1.0~beta1"]
+
+[display]
+# summary is intentionally empty: the listing uses the Description from the .deb's control file.
+icon = "icon.png"
+tint = "#876BFF"
+notes = """
+**Free public beta demo.** No sign-in and no payment. Expect rough edges and please report problems.
+
+HCG Animation Center plays **your own videos and GIFs** as animated backgrounds behind the Home Screen icons and, experimentally, on the Lock Screen.
+
+- **Media Library** in Settings: import from Photos or Files. GIFs are converted to video once; videos keep only their picture (backgrounds never play sound).
+- **Editor with live preview:** trim, **Fill / Fit / Crop**, loop or play once, speed 0.5×–2×, and a still image.
+- **Different backgrounds** for the Home Screen and the Lock Screen, or the same one.
+- **Behaves like a wallpaper:** pauses behind apps and when the screen is off, follows Reduce Motion and Low Power Mode, and shows the still if a video can't play.
+
+**It is off after installation**: turn it on in *Settings › HCG Animation Center*. Changes apply without a respring. **Your system wallpaper is never changed**: turn it off or remove the package and your normal wallpaper is back.
+
+No account, telemetry or network access. Your media stays on your phone.
+"""
+known_issues = """
+- **Not yet device-tested.** Built and validated with Xcode, and tested in the iOS Simulator (with HCG Halo, Vortex and Nexus running their real code in a stand-in SpringBoard). That is not a device result.
+- **Lock Screen playback is experimental and off by default.** On iOS 16 and later (poster wallpapers), whether the background shows under the clock is not yet confirmed; if no safe place is found, nothing is drawn and Settings says why.
+- **May crash SpringBoard.** Safety checks (off by default, kill switch, crash-loop guard, fault fallback) reduce but cannot rule this out. See Removal.
+- **Live Photos are not supported**, and neither are still images: both are refused with an explanation. Save a Live Photo as a video in Photos to use it.
+- **AI generation is not connected.** The HCG AI interface is groundwork for a later phase; this beta contains no AI features and no network code.
+- The Home Screen background does not zoom with the wallpaper when apps open.
+- Battery and performance impact have not been measured. Low Power Mode shows the still image by default.
+- The icon is provisional.
+"""
+limitations = """
+- **Tested:** nothing on a device yet.
+- Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim.
+- Imports: video up to 512 MB and 10 minutes; GIFs up to 3000 frames. Sound is always removed.
+- Coexistence with other wallpaper or Home Screen video tweaks is untested.
+"""
+install = """
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Animation Center (Beta)**. Accept the dependencies offered (PreferenceLoader, an injector).
+2. Respring when you choose. Nothing changes yet: it is off after installation.
+3. Open **Settings › HCG Animation Center › Media Library**, tap **+** and import a video or GIF.
+4. Tap it, adjust it in the preview, and tap **Apply to Home Screen**. Turn it on when asked.
+"""
+removal = """
+1. **Turn it off:** Settings › HCG Animation Center › **Restore System Wallpaper** (or Enable → off). Your normal wallpaper is back at once.
+2. **Uninstall:** remove **HCG Animation Center (Beta)** in your package manager, then respring. Your library stays in `/var/mobile/Library/HCGAnimationCenter`; purge the package to erase it.
+3. **If Settings can't be opened:** over SSH, `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.animationcenter.disabled`, then respring.
+4. **If SpringBoard keeps crashing:** after three quick crashes in a row it turns itself off (*Auto-disabled*). Otherwise reboot: rootless jailbreaks such as Dopamine are semi-untethered, so the phone starts without tweaks. Remove the package before re-enabling tweak injection.
+"""
+
+[review]
+allow_setuid = []
+# No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
+
+[versions."0.1.0~beta1"]
+status = "experimental"
+label = "Experimental beta — Simulator-tested; not yet device-tested."
+# No device_tests entry until a phone has attempted the install. Install and runtime are recorded separately.
