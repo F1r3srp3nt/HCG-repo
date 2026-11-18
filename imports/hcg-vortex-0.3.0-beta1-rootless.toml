@@ -1,0 +1,20 @@
+# HCG Vortex 0.3.0~beta1, rootless. Free public demo for the candidate channel: six icon effects
+# (Tornado, Orbital, Warp, Holographic Layers, Circuit Flow, Magnetic Grid). Not yet installed or tested on a device.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit d5636ca (branch claude/vortex-effects), macOS CI run
+# 44208118648 (Xcode 16.4, Theos 8167f59), artifact hcg-vortex-rootless-deb (ID 14383938597). The SHA-256 is
+# recomputed from a fresh download by the handoff workflow; Prepare packages refuses any other bytes.
+# Earlier builds (0.1.0~beta1 bb0af727..., 0.1.0~beta2 a326759a..., 0.2.0~beta1 c379266d...) are different, unchanged builds.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.3.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44208118648
+commit = "d5636ca0ccb16fc2b7e34640b1718126aace70ff"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "0711465af25edbeff302baa7dbedfc5725bb0f0ca77b1b15133a82f7fc5e55d6"
