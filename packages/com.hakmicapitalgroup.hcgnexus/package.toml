@@ -2,41 +2,48 @@
 # Version, architecture and dependencies come from the .deb itself. Icon: HCG-Nexus
 # App/Assets.xcassets/AppIcon.appiconset/Icon-180.png at commit 1341669.
 #
-# HCG Nexus is a paid product. One candidate build, 0.2.1~beta1, is free in the HCG Repo Candidate testing channel
-# by an owner-approved exception scoped to that exact version ([access] below). 0.2.0 and every other version,
-# including the 0.2.1 release, stay paid and protected.
+# HCG Nexus is a paid product. Its owner-approved candidate builds (exception_versions in [access] below) are free
+# public demos in the HCG Repo Candidate testing channel only. The one offered now is 0.3.1~beta1: the 0.3.0~beta1
+# redesign + Command Mode + the HCG Halo border interface. 0.2.2~beta1 and 0.3.0~beta1 were approved but superseded
+# by it and are not imported. 0.2.0 and every other version, including the 0.2.1 release, stay paid and protected.
 
 [release]
 channel = "beta"
 
 [display]
 known_issues = """
-- **0.2.2~beta1** is 0.2.1~beta1 plus the optional border interface for HCG Halo. Nexus draws nothing new itself. Not yet device-tested; the Halo border has only been previewed in the iOS Simulator.
-- **Not yet device-tested.** 0.2.1~beta1 has not been installed on any phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
+- **0.3.1~beta1 is simulator-tested only; real-device testing is pending.** It has been built and validated, and it ran in the iOS Simulator with its panel, Command Mode, Settings and the HCG Halo border. It has not been installed on a phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
+- **Upgrading from 0.2.1~beta1** keeps every workspace and shortcut. The first launch copies app and link shortcuts into Apps; *Tools › Restore Previous Layout* undoes that.
+- **HCG Halo panel border (optional):** with **HCG Halo 0.2.0~beta1** installed and its Border Target set to *HCG Nexus Panel* or *Both*, Halo draws its animated border around the open panel. Nexus never requires Halo. Install either first, then respring once.
 - **Why 0.2.1~beta1 instead of 0.2.0:** the 0.2.0 builds use legacy `data.tar.lzma` packaging (64 MiB dictionary), the same format as the HCG Vortex beta whose unpack crashed with `dpkg-deb … Bus error: 10`. This beta has the same code as 0.2.0 (HCG-Nexus run #10) but uses gzip packaging.
-- Connected Devices (HCG Device Link) is a feature of the standalone HCG Nexus app, not of this tweak.
+- Connected Devices (HCG Device Link) and HCG sign-in are features of the standalone HCG Nexus app, not of this tweak. HCG sign-in is not configured yet: HCG has not issued Nexus's HCG Connect client.
+- No official HCG Nexus banner yet; the Overview shows the Nexus emblem instead.
 """
-summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
+summary = "Smoked-glass command panel behind a cyan edge handle: Overview, Workspaces, Tools, HCG Products, Apps and Command Mode."
 icon = "icon.png"
 tint = "#2FD3E6"
 notes = """
-HCG Nexus adds a cyan edge handle to SpringBoard. Tap or swipe it to open a command panel with searchable shortcuts, workspaces and recent actions, and launch installed apps or links from it.
+HCG Nexus adds a cyan edge handle to SpringBoard. Tap or swipe it to open a smoked-glass command panel with **Overview**, **Workspaces**, **Tools**, **HCG Products**, **Apps** and **Account**. Launch installed apps and links from it.
+
+**Command Mode** (the grid button in the panel header) shows device status, your shortcuts and the state of HCG integrations. It never claims a connection it cannot prove.
+
+**Optional HCG Halo border:** with HCG Halo 0.2.0~beta1 installed, Halo can draw its animated light border around the open panel (*Settings › HCG Nexus › Appearance › Halo border*). Nexus works the same without it.
 
 **Free public demo:** this candidate build needs no sign-in and no payment. Device compatibility is unverified until tested.
 
 **It is off after installation.** Turn it on in *Settings › HCG Nexus*. The package has no install scripts and never resprings by itself.
 """
 limitations = """
-- **Tested:** nothing yet. No configuration counts as tested until a device result is recorded under Tested devices.
+- **Tested:** in the iOS Simulator only. No configuration counts as tested until a device result is recorded under Tested devices.
 - **Intended test target:** iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, PreferenceLoader. Other rootless setups are untested.
 - Rootless only (`iphoneos-arm64`). The binaries target iOS 15.0 and later; the package declares no iOS range, so a package manager may offer it on other rootless iOS versions.
 - Needs a tweak injector (ElleKit, Substitute, Substrate or libhooker) and PreferenceLoader.
-- The HCG Repo row in Settings › About and Connected Devices are not in this build (Connected Devices belongs to the standalone app only).
+- Connected Devices and HCG sign-in belong to the standalone app; the tweak says so instead of offering them.
 """
 install = """
-1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.2.1~beta1. Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
-2. Respring when you choose (your package manager's restart button or the Respring action in the jailbreak app). The package never resprings by itself.
-3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.2.1~beta1* and *SpringBoard: Running*.
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.3.1~beta1. To light the panel, also install **HCG Halo (Beta)** 0.2.0~beta1, in either order. Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
+2. Respring once, after installing everything you chose (your package manager's restart button or the Respring action in the jailbreak app). The package never resprings by itself.
+3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.3.1~beta1* and *SpringBoard: Running*.
 4. Turn on **Enable HCG Nexus**. The handle appears on the right edge without another respring.
 """
 removal = """
@@ -56,5 +63,9 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1", "0.2.2~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.3.0~beta1, 'Candidate builds are free public demos'; 0.2.2~beta1 and 0.3.1~beta1, the HCG Halo × HCG Nexus candidates 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1"]
+
+[versions."0.3.1~beta1"]
+status = "experimental"
+label = "Free public demo — simulator-tested; real-device testing pending."

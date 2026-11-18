@@ -1,0 +1,24 @@
+# HCG Nexus 0.3.1~beta1 (free candidate beta of a paid tweak), rootless. Simulator-tested; real-device testing pending.
+# The combined line: the 0.3.0~beta1 redesign + Command Mode (HCG-Nexus PR #3) + the HCG Halo border interface (PR #4).
+# Supersedes 0.3.0~beta1 (run 44213585148, never imported) and 0.2.2~beta1 (run 44214599706, never published).
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run 44221045349 (route both, rootless) from commit 0a947ee on
+# branch claude/nexus-combined-0.3.1. All four jobs passed: lint + 27,674 Core host checks, the Device Link client,
+# the jailbreak package (build-jailbreak-deb.sh --require-new-arm64e-abi), and the app (20/20 XCTests).
+# Re-checked on the downloaded file: inspect-package.py rootless --require-new-arm64e-abi, all OK (HaloBorder.plist
+# valid, nexusVersion == 0.3.1~beta1; gzip members; build ID 0a947eebb7). The .deb is 1,007,166 bytes.
+# Artifact hcg-nexus-rootless-deb (ID 14389833969) EXPIRES 2026-11-25.
+# Public only by the scoped exception in packages/com.hakmicapitalgroup.hcgnexus/package.toml.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.3.1~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44221045349
+commit = "0a947eebb7b92b0dd03ba6e6837bcbfa85d9405d"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "f83c8d3e74fb9c6c10e04fffe93e861694e3c5208eb82bfbb24e4c38f30929b8"

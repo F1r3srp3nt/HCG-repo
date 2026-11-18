@@ -34,13 +34,13 @@ The border never receives touches and is hidden from VoiceOver. It pauses when t
 - *HCG Nexus Panel*;
 - *Both*.
 
-The border follows the panel as it opens, moves and closes. It has its own look, including the *Nexus Signature*, *Reactor* and *Hologram* presets. This needs HCG Nexus 0.2.2~beta1, which includes the border interface.
+The border follows the panel as it opens, moves and closes. It has its own look, including the *Nexus Signature*, *Reactor* and *Hologram* presets. This needs **HCG Nexus 0.3.1~beta1**, which includes the border interface.
 
 No account, telemetry or network access.
 """
 known_issues = """
-- **0.2.0~beta1 is not yet device-tested.** The HCG Nexus panel border has only been previewed in the iOS Simulator, against HCG Nexus's real panel code. The owner reports that 0.1.0~beta1 runs on an iPhone 11 Pro Max. That is not yet a recorded device test, and it does not cover every mode or setting.
-- **HCG Nexus panel border:** it needs HCG Nexus **0.2.2~beta1**. HCG Nexus 0.3.0~beta1 is a separate line without the border interface. With it, or without Nexus, Halo shows *Requires compatible HCG Nexus* and only the screen-edge border works. Respring once after installing or updating either package.
+- **0.2.0~beta1 is simulator-tested only; real-device testing is pending.** The HCG Nexus panel border and both Settings entry points ran in the iOS Simulator against HCG Nexus 0.3.1~beta1's real panel code and Settings bundle. The owner reports that 0.1.0~beta1 runs on an iPhone 11 Pro Max. That is not yet a recorded device test, and it does not cover every mode or setting.
+- **HCG Nexus panel border:** it needs HCG Nexus **0.3.1~beta1**, or any later build with the border interface. Without a compatible Nexus, Halo shows *Requires compatible HCG Nexus* and only the screen-edge border works. Respring once after installing or updating either package.
 - **May crash SpringBoard.** Halo runs inside SpringBoard. Its safety checks (off by default, kill switch, crash-loop guard, fault fallback) reduce but cannot rule out crashes. Recovery steps are under Removal.
 - **Device profile:** only the iPhone 11 Pro Max outline is implemented, from reference values that have not been measured on a device. On other iPhones the border will not line up. Calibrate under *Device Profile*.
 - The border also shows over the Today View, App Library and open folders, because they are part of the Home Screen window.
@@ -73,7 +73,7 @@ allow_setuid = []
 
 [versions."0.2.0~beta1"]
 status = "experimental"
-label = "Free public beta demo — adds the optional HCG Nexus panel border; not yet device-tested."
+label = "Free public beta demo — adds the optional HCG Nexus panel border; simulator-tested, real-device testing pending."
 
 [versions."0.1.0~beta1"]
 status = "experimental"
