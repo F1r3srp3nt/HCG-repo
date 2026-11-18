@@ -98,6 +98,17 @@
       "size": 223676,
       "status": "published",
       "version": "0.3.0~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.vortex_0.3.1~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-18T02:44:35Z",
+      "package": "com.hakmicapitalgroup.vortex",
+      "sha256": "ff1d1b5f78ec79b149460f93c5735505ae04270f2a57a592debf440f62f19e42",
+      "size": 227306,
+      "status": "published",
+      "version": "0.3.1~beta1"
     }
   ],
   "schema": 1
