@@ -1,5 +1,21 @@
 # HCG Nexus changelog
 
+## 0.3.2~beta1
+
+Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.3.1~beta1, plus:
+
+- **Use HCG Halo border** in Settings › HCG Nexus › Appearance and in the panel's own Settings.
+  - States: *Not installed*, *Incompatible*, *Disabled*, *Ready* and *Active*.
+  - With HCG Halo 0.3.1~beta1 the switch turns HCG Halo's panel border on or off through HCG Halo's own setting, and never turns on HCG Halo's screen-edge light.
+  - *Active* means Nexus itself sees HCG Halo drawing around the open panel.
+  - Without HCG Halo, Nexus keeps its own outline.
+- **HCG Terminal** in HCG Products:
+  - Installed (with the version read from the app), Launch, Integration and Session are shown separately.
+  - Opening the app is never shown as *Connected*; Command Mode shows *Launch available*.
+  - *Open HCG Terminal* works with today's HCG Terminal 0.1.0.
+  - *Open Saved Connection…* appears only with an HCG Terminal build that has the Nexus handoff. It accepts only a link copied from HCG Terminal, and never runs a command.
+- Works offline; no sign-in needed.
+
 ## 0.3.1~beta1
 
 The combined candidate: the redesign, Command Mode and the optional HCG Halo border interface. It is free in HCG Repo
