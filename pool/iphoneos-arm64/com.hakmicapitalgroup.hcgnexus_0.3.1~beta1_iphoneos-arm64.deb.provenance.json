@@ -1,0 +1,84 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:2bb58bf39af0cc842675b3c3d78f0d8f6bb2561b0dfba2359c067fa17e249508",
+  "artifact_id": 14389833969,
+  "artifact_name": "hcg-nexus-rootless-deb",
+  "artifact_zip_sha256": "2bb58bf39af0cc842675b3c3d78f0d8f6bb2561b0dfba2359c067fa17e249508",
+  "commit": "0a947eebb7b92b0dd03ba6e6837bcbfa85d9405d",
+  "downloaded_sha256": "f83c8d3e74fb9c6c10e04fffe93e861694e3c5208eb82bfbb24e4c38f30929b8",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.3.1~beta1_iphoneos-arm64.deb",
+  "imported_at": "2026-11-18T02:58:54Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/Network.framework/Network",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/MobileSubstrate/DynamicLibraries/HCGNexus.dylib",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/Network.framework/Network",
+          "/System/Library/PrivateFrameworks/Preferences.framework/Preferences",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/PreferenceBundles/HCGNexusPrefs.bundle/HCGNexusPrefs",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "15.0",
+    "depends": "mobilesubstrate | ellekit, preferenceloader",
+    "maintainer_scripts": [],
+    "package": "com.hakmicapitalgroup.hcgnexus",
+    "sha256": "f83c8d3e74fb9c6c10e04fffe93e861694e3c5208eb82bfbb24e4c38f30929b8",
+    "size": 1007166,
+    "version": "0.3.1~beta1"
+  },
+  "member": "com.hakmicapitalgroup.hcgnexus_0.3.1~beta1_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.hcgnexus",
+  "repository": "F1r3srp3nt/HCG-Nexus",
+  "request": "hcg-nexus-0.3.1-beta1-rootless",
+  "run_attempt": 1,
+  "run_id": 44221045349,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Nexus/actions/runs/44221045349",
+  "schema": 1,
+  "sha256": "f83c8d3e74fb9c6c10e04fffe93e861694e3c5208eb82bfbb24e4c38f30929b8",
+  "sha512": "89758157b9fc2dbba045d8dd8d109660d1bda2e07d57b72c5f08cd56686086dc027ffc6ae67afcd5cc7e4541ed3cf5c5b9ec0266b011f3d5d3da3cb9eeab4732",
+  "size": 1007166,
+  "source": "github-workflow-artifact",
+  "version": "0.3.1~beta1",
+  "workflow": ".github/workflows/build-package.yml"
+}
