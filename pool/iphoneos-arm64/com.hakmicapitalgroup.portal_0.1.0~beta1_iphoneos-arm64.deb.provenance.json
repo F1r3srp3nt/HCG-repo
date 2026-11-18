@@ -1,0 +1,85 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:98887c5072badd9aa23b65909117bdd6698866b803735ea0232cf34c617c330e",
+  "artifact_id": 14470690859,
+  "artifact_name": "hcg-portal-rootless-deb",
+  "artifact_zip_sha256": "98887c5072badd9aa23b65909117bdd6698866b803735ea0232cf34c617c330e",
+  "commit": "4bfed3342fa38d83bd06fe2c38cfd9478666b3c9",
+  "downloaded_sha256": "9ccfeb9b6b832edb3e8745c8e1774d93cc5623ebde1023102cf95bb139220dae",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.portal_0.1.0~beta1_iphoneos-arm64.deb",
+  "imported_at": "2026-11-18T21:12:25Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/usr/lib/libSystem.B.dylib",
+          "@rpath/CydiaSubstrate.framework/CydiaSubstrate"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/MobileSubstrate/DynamicLibraries/HCGPortal.dylib",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/System/Library/PrivateFrameworks/Preferences.framework/Preferences",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/PreferenceBundles/HCGPortalPrefs.bundle/HCGPortalPrefs",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "15.0",
+    "depends": "mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 15.0)",
+    "maintainer_scripts": [
+      "postrm"
+    ],
+    "package": "com.hakmicapitalgroup.portal",
+    "sha256": "9ccfeb9b6b832edb3e8745c8e1774d93cc5623ebde1023102cf95bb139220dae",
+    "size": 273714,
+    "version": "0.1.0~beta1"
+  },
+  "member": "com.hakmicapitalgroup.portal_0.1.0~beta1_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.portal",
+  "repository": "F1r3srp3nt/HCG-Jailbreak-Research",
+  "request": "hcg-portal-0.1.0-beta1-rootless",
+  "run_attempt": 1,
+  "run_id": 44395826216,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44395826216",
+  "schema": 1,
+  "sha256": "9ccfeb9b6b832edb3e8745c8e1774d93cc5623ebde1023102cf95bb139220dae",
+  "sha512": "0654d42522b5c84ac604b0144bd038ca897e7f8fca57bacea382fc9a721c84726eff8fe32660916ddaba4c93de83217763c7ea39809fe20ab355afc5f7f61d62",
+  "size": 273714,
+  "source": "github-workflow-artifact",
+  "version": "0.1.0~beta1",
+  "workflow": ".github/workflows/hcg-portal.yml"
+}

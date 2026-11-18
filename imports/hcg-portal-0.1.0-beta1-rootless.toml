@@ -1,0 +1,23 @@
+# HCG Portal 0.1.0~beta1, rootless. Free public beta demo — Simulator-tested, not yet device-tested.
+# First version of the package (com.hakmicapitalgroup.portal); no earlier build exists.
+# Candidate channel only (free demo; HCG-repo docs/ACCESS.md), authorised by the owner on 18 Nov 2026:
+# "The beta is authorised as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/".
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 4bfed33 (branch claude/quirky-johnson-furqhh),
+# macOS CI run 44395826216 (HCG Portal build: Xcode, Theos 8167f59, conclusion success incl. 66 Simulator
+# runtime checks), artifact hcg-portal-rootless-deb (ID 14470690859, kept until 2027-02-16).
+# validate.sh --require-new-abi: 0 failures, 0 warnings (native arm64e ABI 0x80000002, build ID 4bfed3342fa3).
+# 273,714 bytes. Prepare packages refuses any other bytes.
+
+[request]
+package = "com.hakmicapitalgroup.portal"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44395826216
+commit = "4bfed3342fa38d83bd06fe2c38cfd9478666b3c9"
+artifact = "hcg-portal-rootless-deb"
+sha256 = "9ccfeb9b6b832edb3e8745c8e1774d93cc5623ebde1023102cf95bb139220dae"
