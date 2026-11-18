@@ -2,8 +2,9 @@
 # Version, architecture and dependencies come from the .deb itself. Icon: HCG-Nexus
 # App/Assets.xcassets/AppIcon.appiconset/Icon-180.png at commit 1341669.
 #
-# HCG Nexus is a paid product. One candidate build, 0.2.1~beta1, is free in the HCG Repo Candidate testing channel
-# by an owner-approved exception scoped to that exact version ([access] below). 0.2.0 and every other version,
+# HCG Nexus is a paid product. Its approved candidate builds (0.2.1~beta1, 0.3.0~beta1) are free public demos in the
+# HCG Repo Candidate testing channel, by owner-approved exceptions scoped to those exact versions ([access] below).
+# 0.2.0 and every other version,
 # including the 0.2.1 release, stay paid and protected.
 
 [release]
@@ -11,9 +12,10 @@ channel = "beta"
 
 [display]
 known_issues = """
-- **Not yet device-tested.** 0.2.1~beta1 has not been installed on any phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
+- **Not yet device-tested.** Neither 0.3.0~beta1 nor 0.2.1~beta1 has been installed on any phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
 - **Why 0.2.1~beta1 instead of 0.2.0:** the 0.2.0 builds use legacy `data.tar.lzma` packaging (64 MiB dictionary), the same format as the HCG Vortex beta whose unpack crashed with `dpkg-deb … Bus error: 10`. This beta has the same code as 0.2.0 (HCG-Nexus run #10) but uses gzip packaging.
-- Connected Devices (HCG Device Link) is a feature of the standalone HCG Nexus app, not of this tweak.
+- Connected Devices (HCG Device Link) and HCG sign-in are features of the standalone HCG Nexus app, not of this tweak. HCG sign-in is not configured yet: HCG has not issued Nexus's HCG Connect client.
+- 0.3.0~beta1 has no official HCG Nexus banner yet; its Overview shows the Nexus emblem instead.
 """
 summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
 icon = "icon.png"
@@ -55,5 +57,5 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.3.0~beta1, 'Candidate builds are free public demos') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.3.0~beta1"]
