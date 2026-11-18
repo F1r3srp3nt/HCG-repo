@@ -64,7 +64,21 @@ Any mismatch refuses the import. The result is committed to the review branch on
 - **Artwork.** `icon.png` is the official spiral artwork, confirmed on 17 Nov 2026. It is a 180×180 export of the project's
   `HCGVortex/distribution/icon-512.png`, and the same image as the Settings icon inside the `.deb`.
 
-## Status (17 Nov 2026)
+## Status (18 Nov 2026)
+
+- **0.3.1~beta1 is the offered candidate.** Label: "Experimental beta — fixes the visual bugs seen in the 0.3.0
+  recording; not yet installed on a device".
+  - Imported from the Vortex handoff's pinned request: commit `e3b66044916c4b40ca5d8f3c0f12f4df93970c3f`, run
+    44220895787, artifact 14389878167 (zip digest `4d0baf96…916f628f`), 227,306 bytes, SHA-256 `ff1d1b5f…f62f19e42`.
+  - Checked: gzip members pass `gzip -t`, the data tar reads fully, `dpkg-deb --fsys-tarfile` exits 0, control equals
+    the source commit's `control` (apart from Installed-Size), `inspect` passes.
+  - The `.deb`'s own Description says "Partially tested on one device"; that refers to the recording of the previous
+    build. The listing says exactly what was and was not seen.
+- **0.3.0~beta1 is unchanged** (SHA-256 `0711465a…e55d6`). A camera recording on 18 Nov 2026 points to it but does
+  not show the installed version, so it is described, not recorded as a device test
+  (`docs/device-tests/2026-11-18-owner-device-evidence.md`).
+
+## Earlier status (17 Nov 2026)
 
 - **0.1.0~beta2 is the offered candidate.** Label: "Packaging compatibility candidate — installation and runtime
   not yet device-verified."

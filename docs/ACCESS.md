@@ -30,13 +30,14 @@ therefore have one approved free candidate beta while its releases stay paid and
 never public by accident, a protected record cannot be made public (`protected-but-public`), and withdrawing an
 approval while the file is in the pool is an error (`protected-in-public-pool`).
 
-Current decisions (15 Nov 2026):
+Current decisions (18 Nov 2026):
 
 | Package | Level |
 |---|---|
-| HCG Nexus (`com.hakmicapitalgroup.hcgnexus`) | `paid`. **Exception (17 Nov 2026, owner):** 0.2.1~beta1 only is free in the candidate channel for device testing |
+| HCG Nexus (`com.hakmicapitalgroup.hcgnexus`) | `paid`. **Exception (owner, 17 and 18 Nov 2026):** 0.2.1~beta1 and 0.2.2~beta1 only are free in the candidate channel; every other version stays paid |
 | HCG Terminal Unleashed (`com.hakmicapitalgroup.hcgterminal.unleashed`) | `connect` |
-| HCG Halo (`com.hakmicapitalgroup.halo`) | `connect` (HCG default; production access not yet decided). **Exception (17 Nov 2026, owner):** HCG Halo candidate builds are free public demos; 0.1.0~beta1 is listed, candidate channel only |
+| HCG Halo (`com.hakmicapitalgroup.halo`) | `connect` (HCG default; production access not yet decided). **Exception (17 Nov 2026, owner):** HCG Halo candidate builds are free public demos; 0.1.0~beta1 and 0.2.0~beta1 are listed, candidate channel only |
+| HCG Vortex (`com.hakmicapitalgroup.vortex`) | `public` by a scoped exception (owner, 16–18 Nov 2026): 0.1.0~beta1, 0.1.0~beta2, 0.3.0~beta1 and 0.3.1~beta1, candidate channel only |
 
 ## What the repository enforces
 

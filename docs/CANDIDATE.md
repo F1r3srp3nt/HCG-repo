@@ -23,8 +23,9 @@
   ([ACCESS.md](ACCESS.md), free-demo policy). Free demos of paid or sign-in products are refused in stable.
 - **Public packages only.** The candidate has no payment provider, so protected (`connect` or `paid`) packages can
   never be put in it: `channel` refuses, and `validate` reports `candidate-protected`.
-  - Vortex's free exception is scoped to `exception_versions` (now `0.1.0~beta1` and `0.1.0~beta2`).
-  - It cannot make any other package, or any other Vortex version, public.
+  - Each free exception is scoped to that package's `exception_versions` (Vortex: `0.1.0~beta1`, `0.1.0~beta2`,
+    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`).
+  - It cannot make any other package, or any other version, public.
 - **Verified on every Publish.** Both sources are verified offline before deployment and online afterwards.
   **Check transport** walks both sources and downloads every candidate `.deb` to check its checksum.
 
@@ -51,18 +52,21 @@
 
 Products with no installable build appear only in the website's **Pending builds** list, never in `Packages`.
 
-## Inventory (17 Nov 2026)
+## Inventory (18 Nov 2026)
 
-The inventory searched every accessible HCG repository and all its branches. **Four** HCG projects produce an
-iOS jailbreak `.deb`:
+Checked against each project's branches, handoffs and its own CI runs and artifacts (read through GitHub's API by a
+temporary HCG-repo workflow, run 44225029311). Every build below is the exact CI artifact, fetched and checked by
+**Prepare packages**. Device evidence: `docs/device-tests/2026-11-18-owner-device-evidence.md`.
 
-| Product | Package / version | Source of the build | Access | Candidate | Why |
-|---|---|---|---|---|---|
-| HCG Vortex (Beta) | `com.hakmicapitalgroup.vortex` **0.1.0~beta2** (offered) and 0.1.0~beta1, iphoneos-arm64 | beta2: HCG-Jailbreak-Research `b212cdb`, run 44012915117, artifact 14297382250, SHA-256 `a326759a…90179395` (gzip). beta1: `7d5e5b9`, run 43970942708, SHA-256 `bb0af727…07673eea` (legacy lzma) | public: free exception for beta1 and beta2 (owner, 16 and 17 Nov 2026) | **Included** | beta2 is a packaging compatibility candidate: installation and runtime are not yet device-verified. beta1 failed to unpack on iPhone 11 Pro Max, iOS 17.4 (dpkg-deb Bus error 10). Its record and provenance are kept, and it stays listed as an older version. Package managers offer beta2, the highest version |
-| HCG Nexus (Beta) | `com.hakmicapitalgroup.hcgnexus` **0.2.1~beta1**, iphoneos-arm64 | HCG-Nexus `58e2dbd`, run 44019802883 (#13), artifact `hcg-nexus-rootless-deb`, SHA-256 `948465ea…8ac17af`: the 0.2.0 code of run #10 with gzip packaging | paid, with a free exception for 0.2.1~beta1 only (owner, 17 Nov 2026) | **Included** | Repackaged as a new version because 0.2.0 uses the same `data.tar.lzma` (64 MiB dictionary) as the failing Vortex build, and 0.2.0 is already recorded (run #9). Not yet device-tested. 0.2.0 stays paid, protected and out of both indexes |
-| HCG Terminal Unleashed | `com.hakmicapitalgroup.hcgterminal.unleashed` 0.1.0-1, iphoneos-arm64 | Built from HCG-Terminal with the `hcg-terminal-unleashed` recipe. HCG-Terminal's own CI does not upload its `.deb` | connect | **Blocked** | Needs HCG Connect sign-in, and no sign-in delivery is live. Requires iOS 17 |
-| HCG Halo (Beta) | `com.hakmicapitalgroup.halo` **0.1.0~beta1**, iphoneos-arm64 | HCG-Jailbreak-Research `ab439f8`, run 44062061609, artifact 14317739735, SHA-256 `c0a3301c…ba24c9af` (gzip); handoff run 44063187804 | connect, with a free exception for candidate builds (owner, 17 Nov 2026); 0.1.0~beta1 listed | **Included** (on review branch `candidate/hcg-halo-0.1.0-beta1`) | Free public beta demo. Not yet installed on any device; the first test is on an iPhone 11 Pro Max whose iOS version and jailbreak are not yet confirmed |
-| HCG Sentinel | — | Not applicable | — | **Pending** | No jailbreak package exists. The app is an IPA, and the privileged helper is only a specification |
+| Product | Offered (highest) / also listed | Source of the offered build | Device testing | Candidate |
+|---|---|---|---|---|
+| HCG Vortex (Beta) | **0.3.1~beta1** / 0.3.0~beta1, 0.1.0~beta2, 0.1.0~beta1 | HCG-Jailbreak-Research `e3b6604`, run 44220895787, artifact 14389878167, SHA-256 `ff1d1b5f…f62f19e42`, 227,306 bytes (gzip) | 0.3.1~beta1: not yet installed. A recording of the previous build (version not confirmed) showed 3 of 6 effects with visual bugs F1–F3, fixed in 0.3.1. 0.1.0~beta1: install failed (iPhone 11 Pro Max, iOS 17.4). Performance and battery unmeasured | **Included** |
+| HCG Halo (Beta) | **0.2.0~beta1** / 0.1.0~beta1 | HCG-Jailbreak-Research `778c21a`, run 44216299888, artifact 14388546682, SHA-256 `391a4421…85ae6e54` (gzip) | 0.2.0~beta1 and the Nexus panel border: not yet device-tested. 0.1.0~beta1: partial runtime observation on iPhone 11 Pro Max | **Included** |
+| HCG Nexus (Beta) | **0.2.2~beta1** / 0.2.1~beta1 | HCG-Nexus `b68768f`, run 44214599706 (#17), artifact 14387323372, SHA-256 `696b1584…d5138fb3f52` (gzip). Ships `HaloBorder.plist` (schema 1, interface 1, `nexusVersion` 0.2.2~beta1) and `HCGNexusBorderInterface` | Owner reports Nexus running on iPhone 13 Pro, iOS 16.5 (version not stated): not a recorded test | **Included**: the companion of Halo 0.2.0~beta1 |
+| HCG Nexus 0.3.0~beta1 | — | HCG-Nexus `8aa0b04` | — | **Not published**: it has no HCG Halo border interface, and as a higher version it would upgrade testers off 0.2.2~beta1 |
+| HCG Nexus 0.3.1~beta1 (redesign + Command Mode + border) | — | HCG-Nexus `claude/nexus-combined-0.3.1` | — | **Pending**: still being changed under the same version (run #21 `0a947ee` built, #22 failed, #23 on `528e27e` running at review time); no `VALIDATION.md` record or import request names a final build |
+| HCG Terminal Unleashed | — (0.1.0-1 recorded as protected) | HCG-Terminal CI uploads logs only, no `.deb` | — | **Blocked**: connect access with no free-demo approval, and no CI-built `.deb` |
+| HCG Sentinel | — | HCG-Sentinel CI produces archives, simulator apps and screenshots | — | **Pending**: no jailbreak `.deb` exists; the privileged helper is a specification |
 
 **Not eligible:**
 - **IPAs:** HCG Terminal (standard edition, and the unsigned Unleashed IPA), the HCG Nexus standalone app, HCG News,
