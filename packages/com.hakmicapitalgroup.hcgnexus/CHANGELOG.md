@@ -1,5 +1,16 @@
 # HCG Nexus changelog
 
+## 0.2.2~beta1
+
+Candidate beta: the 0.2.1~beta1 code plus an optional border interface for HCG Halo. Free in HCG Repo Candidate only.
+
+- Installs a declarative border definition (`HCGNexusPrefs.bundle/HaloBorder.plist`, schema 1).
+- Adds an in-process, non-interactive border host inside the panel, with open, close, geometry and workspace events
+  (interface 1).
+- With HCG Halo 0.2.0~beta1 installed, Halo can draw its animated border around the panel. Nexus never requires Halo.
+- New Settings row: *Appearance › Halo border*, which opens HCG Halo's border page when Halo is installed.
+- Not yet verified on a physical device.
+
 ## 0.2.1~beta1
 
 Candidate beta for device testing (HCG-Nexus commit `58e2dbd`, Xcode build run #13). Free in HCG Repo Candidate only.

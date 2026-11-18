@@ -11,6 +11,7 @@ channel = "beta"
 
 [display]
 known_issues = """
+- **0.2.2~beta1** is 0.2.1~beta1 plus the optional border interface for HCG Halo. Nexus draws nothing new itself. Not yet device-tested; the Halo border has only been previewed in the iOS Simulator.
 - **Not yet device-tested.** 0.2.1~beta1 has not been installed on any phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
 - **Why 0.2.1~beta1 instead of 0.2.0:** the 0.2.0 builds use legacy `data.tar.lzma` packaging (64 MiB dictionary), the same format as the HCG Vortex beta whose unpack crashed with `dpkg-deb … Bus error: 10`. This beta has the same code as 0.2.0 (HCG-Nexus run #10) but uses gzip packaging.
 - Connected Devices (HCG Device Link) is a feature of the standalone HCG Nexus app, not of this tweak.
@@ -55,5 +56,5 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.2.2~beta1"]
