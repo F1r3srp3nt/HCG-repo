@@ -1,0 +1,19 @@
+# HCG Halo 0.1.0~beta1, rootless. Free public beta demo — not yet device-tested.
+# The only import request for this version. Candidate channel only (free demo; HCG-repo docs/ACCESS.md).
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit ab439f8, macOS CI run 44062061609 (HCG Halo build: Xcode, Theos 8167f59),
+# artifact hcg-halo-rootless-deb (ID 14317739735, kept until 2027-02-15), validate.sh --require-new-abi: 0 failures, 0 warnings.
+# The SHA-256 is recomputed from a fresh download by the HCG Halo handoff archive workflow. Prepare packages refuses any other bytes.
+
+[request]
+package = "com.hakmicapitalgroup.halo"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44062061609
+commit = "ab439f8bd0990500ba373616073a1d9b108686e6"
+artifact = "hcg-halo-rootless-deb"
+sha256 = "c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af"

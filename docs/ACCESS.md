@@ -36,6 +36,7 @@ Current decisions (15 Nov 2026):
 |---|---|
 | HCG Nexus (`com.hakmicapitalgroup.hcgnexus`) | `paid`. **Exception (17 Nov 2026, owner):** 0.2.1~beta1 only is free in the candidate channel for device testing |
 | HCG Terminal Unleashed (`com.hakmicapitalgroup.hcgterminal.unleashed`) | `connect` |
+| HCG Halo (`com.hakmicapitalgroup.halo`) | `connect` (HCG default; production access not yet decided). **Exception (17 Nov 2026, owner):** HCG Halo candidate builds are free public demos; 0.1.0~beta1 is listed, candidate channel only |
 
 ## What the repository enforces
 

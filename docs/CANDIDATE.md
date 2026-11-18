@@ -53,7 +53,7 @@ Products with no installable build appear only in the website's **Pending builds
 
 ## Inventory (17 Nov 2026)
 
-The inventory searched every accessible HCG repository and all its branches. **Three** HCG projects produce an
+The inventory searched every accessible HCG repository and all its branches. **Four** HCG projects produce an
 iOS jailbreak `.deb`:
 
 | Product | Package / version | Source of the build | Access | Candidate | Why |
@@ -61,6 +61,7 @@ iOS jailbreak `.deb`:
 | HCG Vortex (Beta) | `com.hakmicapitalgroup.vortex` **0.1.0~beta2** (offered) and 0.1.0~beta1, iphoneos-arm64 | beta2: HCG-Jailbreak-Research `b212cdb`, run 44012915117, artifact 14297382250, SHA-256 `a326759a…90179395` (gzip). beta1: `7d5e5b9`, run 43970942708, SHA-256 `bb0af727…07673eea` (legacy lzma) | public: free exception for beta1 and beta2 (owner, 16 and 17 Nov 2026) | **Included** | beta2 is a packaging compatibility candidate: installation and runtime are not yet device-verified. beta1 failed to unpack on iPhone 11 Pro Max, iOS 17.4 (dpkg-deb Bus error 10). Its record and provenance are kept, and it stays listed as an older version. Package managers offer beta2, the highest version |
 | HCG Nexus (Beta) | `com.hakmicapitalgroup.hcgnexus` **0.2.1~beta1**, iphoneos-arm64 | HCG-Nexus `58e2dbd`, run 44019802883 (#13), artifact `hcg-nexus-rootless-deb`, SHA-256 `948465ea…8ac17af`: the 0.2.0 code of run #10 with gzip packaging | paid, with a free exception for 0.2.1~beta1 only (owner, 17 Nov 2026) | **Included** | Repackaged as a new version because 0.2.0 uses the same `data.tar.lzma` (64 MiB dictionary) as the failing Vortex build, and 0.2.0 is already recorded (run #9). Not yet device-tested. 0.2.0 stays paid, protected and out of both indexes |
 | HCG Terminal Unleashed | `com.hakmicapitalgroup.hcgterminal.unleashed` 0.1.0-1, iphoneos-arm64 | Built from HCG-Terminal with the `hcg-terminal-unleashed` recipe. HCG-Terminal's own CI does not upload its `.deb` | connect | **Blocked** | Needs HCG Connect sign-in, and no sign-in delivery is live. Requires iOS 17 |
+| HCG Halo (Beta) | `com.hakmicapitalgroup.halo` **0.1.0~beta1**, iphoneos-arm64 | HCG-Jailbreak-Research `ab439f8`, run 44062061609, artifact 14317739735, SHA-256 `c0a3301c…ba24c9af` (gzip); handoff run 44063187804 | connect, with a free exception for candidate builds (owner, 17 Nov 2026); 0.1.0~beta1 listed | **Included** (on review branch `candidate/hcg-halo-0.1.0-beta1`) | Free public beta demo. Not yet installed on any device; the first test is on an iPhone 11 Pro Max whose iOS version and jailbreak are not yet confirmed |
 | HCG Sentinel | — | Not applicable | — | **Pending** | No jailbreak package exists. The app is an IPA, and the privileged helper is only a specification |
 
 **Not eligible:**

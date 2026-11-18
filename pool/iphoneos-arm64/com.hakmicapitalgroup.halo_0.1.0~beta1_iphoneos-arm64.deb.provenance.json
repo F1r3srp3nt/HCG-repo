@@ -1,0 +1,85 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:8a92d5ea8c9173da2977366ffea76e8f364705bc87129ffba54e7c7d90f9622b",
+  "artifact_id": 14317739735,
+  "artifact_name": "hcg-halo-rootless-deb",
+  "artifact_zip_sha256": "8a92d5ea8c9173da2977366ffea76e8f364705bc87129ffba54e7c7d90f9622b",
+  "commit": "ab439f8bd0990500ba373616073a1d9b108686e6",
+  "downloaded_sha256": "c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.halo_0.1.0~beta1_iphoneos-arm64.deb",
+  "imported_at": "2026-11-18T00:03:20Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/usr/lib/libSystem.B.dylib",
+          "@rpath/CydiaSubstrate.framework/CydiaSubstrate"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/MobileSubstrate/DynamicLibraries/HCGHalo.dylib",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/System/Library/PrivateFrameworks/Preferences.framework/Preferences",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/PreferenceBundles/HCGHaloPrefs.bundle/HCGHaloPrefs",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "15.0",
+    "depends": "mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 15.0)",
+    "maintainer_scripts": [
+      "postrm"
+    ],
+    "package": "com.hakmicapitalgroup.halo",
+    "sha256": "c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af",
+    "size": 264782,
+    "version": "0.1.0~beta1"
+  },
+  "member": "com.hakmicapitalgroup.halo_0.1.0~beta1_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.halo",
+  "repository": "F1r3srp3nt/HCG-Jailbreak-Research",
+  "request": "hcg-halo-0.1.0-beta1-rootless",
+  "run_attempt": 1,
+  "run_id": 44062061609,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44062061609",
+  "schema": 1,
+  "sha256": "c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af",
+  "sha512": "9fe58c87edcec3dce8cdbac3e8bac4336ab303167d9d14b856d88061647eded51d6089b05601b66e688953b92f9d1da0f32ad5f413fd9401898e812f23ec4e67",
+  "size": 264782,
+  "source": "github-workflow-artifact",
+  "version": "0.1.0~beta1",
+  "workflow": ".github/workflows/hcg-halo.yml"
+}

@@ -1,0 +1,68 @@
+# Presentation and review metadata for HCG Halo (free public beta demo, candidate channel).
+# Package ID, name, version, architecture, dependencies, size and checksums always come from the imported .deb;
+# nothing here can override them. Listing text from the Halo project's handoff
+# (F1r3srp3nt/HCG-Jailbreak-Research, HCGHalo/distribution/hcg-repo/, PR #2).
+# Icon: PROVISIONAL original artwork (HCGHalo/scripts/make_icon.py, 180 px), the same image as the Settings icon
+# inside the .deb. Replace when official artwork exists.
+
+[release]
+channel = "beta"
+
+[access]
+# HCG's default access level for its packages (HCG Connect sign-in). Halo's production pricing and access are NOT
+# decided by this file; the owner sets them before any release. The exception below makes ONLY the listed candidate
+# version a free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps
+# it out of the stable source (free-demo-stable). Any other version needs its own approval.
+level = "connect"
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
+exception_versions = ["0.1.0~beta1"]
+
+[display]
+# summary is intentionally empty: the listing uses the Description from the .deb's control file.
+icon = "icon.png"
+tint = "#00E5FF"
+notes = """
+**Free public beta demo.** No sign-in and no payment. Expect rough edges and please report problems.
+
+HCG Halo draws an animated neon light border around your Home Screen. It follows the screen's rounded corners and the notch. Choose **Static**, **Breathing**, **Colour Flow**, **Orbit** or **Sci-Fi Circuit**, with single colours, multiple colours or gradients. You can set brightness, thickness, glow, edge inset, speed and direction, and save your own presets.
+
+The border never receives touches and is hidden from VoiceOver. It pauses when the screen is off, when the phone is locked or when an app is open. It follows Reduce Motion. **It is off after installation**: turn it on in *Settings › HCG Halo*. Changes apply immediately, with no respring.
+
+No account, telemetry or network access.
+"""
+known_issues = """
+- **Not yet device-tested.** 0.1.0~beta1 has not been installed on any phone. The first test device is an iPhone 11 Pro Max; its iOS version and jailbreak will be recorded with the result.
+- **May crash SpringBoard.** Halo runs inside SpringBoard. Its safety checks (off by default, kill switch, crash-loop guard, fault fallback) reduce but cannot rule out crashes. Recovery steps are under Removal.
+- **Device profile:** only the iPhone 11 Pro Max outline is implemented, from reference values that have not been measured on a device. On other iPhones the border will not line up. Calibrate under *Device Profile*.
+- The border also shows over the Today View, App Library and open folders, because they are part of the Home Screen window.
+- Battery and performance impact have not been measured.
+- The icon is provisional.
+"""
+limitations = """
+- **Tested:** nothing yet. No configuration counts as tested until a device result is recorded under Tested devices.
+- **Profiles:** iPhone 11 Pro Max is implemented, but not device-tested. Other models are listed as planned and cannot be selected. Automatic detection is not available yet.
+- Home Screen only. Not shown in apps, on the Lock Screen or in the App Switcher.
+- Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim. On iOS versions where the Home Screen window cannot be found, Halo stays inactive and Settings shows *Incompatible*.
+- Use alongside other edge-lighting or Home Screen overlay tweaks is untested.
+"""
+install = """
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Halo (Beta)**. Accept the dependencies offered (PreferenceLoader, an injector).
+2. Respring when you choose. Nothing changes yet: Halo is off after installation.
+3. Open **Settings › HCG Halo** and turn on **Enable HCG Halo**. The border appears on the Home Screen without another respring.
+4. If the line doesn't hug the corners or notch exactly, adjust it under **Calibration**.
+"""
+removal = """
+1. **Turn it off:** Settings › HCG Halo › Enable HCG Halo → off. The border disappears immediately.
+2. **Uninstall:** remove **HCG Halo (Beta)** in your package manager, then respring. Your settings and presets stay in `/var/mobile/Library/Preferences/com.hakmicapitalgroup.halo.plist`; purge the package to erase them.
+3. **If Settings can't be opened:** over SSH, `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.halo.disabled`, then respring. Halo stays inactive until the file is deleted.
+4. **If SpringBoard keeps crashing:** after three quick crashes in a row, Halo stops drawing by itself (*Auto-disabled*). Otherwise reboot: rootless jailbreaks such as Dopamine are semi-untethered, so the phone starts without tweaks. Remove HCG Halo before re-enabling tweak injection.
+"""
+
+[review]
+allow_setuid = []
+# No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
+
+[versions."0.1.0~beta1"]
+status = "experimental"
+label = "Free public beta demo — not yet device-tested."
+# No device_tests entry until a phone has attempted the install. Install and runtime are recorded separately.
