@@ -3,6 +3,17 @@
     {
       "architecture": "iphoneos-arm64",
       "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.animationcenter_0.1.0~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-18T19:31:38Z",
+      "package": "com.hakmicapitalgroup.animationcenter",
+      "sha256": "27a161b3cc323f09940211553b058873218697b49c995812f04e579f97429f60",
+      "size": 360342,
+      "status": "published",
+      "version": "0.1.0~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "channel": "candidate",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.halo_0.1.0~beta1_iphoneos-arm64.deb",
       "imported_at": "2026-11-18T00:03:20Z",
       "package": "com.hakmicapitalgroup.halo",
