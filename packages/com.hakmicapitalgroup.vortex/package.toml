@@ -12,9 +12,9 @@ level = "public"
 # proprietary freeware, free with no sign-in, for the versions listed below ONLY. Any other version (a later beta,
 # a release, or a build with premium features sold through HCG Store) is refused until it is approved and listed.
 exception = "Free experimental beta, proprietary freeware with no sign-in. Approved by the owner on 16 Nov 2026 for the versions in exception_versions only. Future versions may offer a free core plus optional premium features through HCG Store and need their own access decision."
-# 0.1.0~beta2 (17 Nov 2026) and 0.3.0~beta1 (18 Nov 2026, under the owner's standing policy that approved candidate
-# builds are free public demos) are free public candidate demos.
-exception_versions = ["0.1.0~beta1", "0.1.0~beta2", "0.3.0~beta1"]
+# 0.1.0~beta2 (17 Nov 2026), 0.3.0~beta1 and 0.3.1~beta1 (18 Nov 2026, under the owner's standing policy that approved
+# candidate builds are free public demos) are free public candidate demos.
+exception_versions = ["0.1.0~beta1", "0.1.0~beta2", "0.3.0~beta1", "0.3.1~beta1"]
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
@@ -25,7 +25,7 @@ notes = """
 
 HCG Vortex changes how Home Screen page transitions look without changing how navigation works. Swipe left and you still land on the next page.
 
-**Icon effects (0.3.0~beta1):**
+**Icon effects (since 0.3.0~beta1):**
 - **Tornado:** icons form a travelling funnel, with controls for funnel height, upper and lower radius, depth and travel, and the presets Subtle, Classic Tornado and Sci-Fi Vortex.
 - **Orbital:** icons circle on concentric rings.
 - **Warp:** icons pass through a short tunnel.
@@ -35,12 +35,16 @@ HCG Vortex changes how Home Screen page transitions look without changing how na
 
 Each effect has its own Settings page with a description, live preview, controls and Reset to Defaults. Reverse Slide, Vertical Rise, Vertical Fall and Custom Directions are still available. Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
 
-**Device testing:** not yet performed for this version. **Performance and battery impact:** unmeasured.
+**New in 0.3.1~beta1:** fixes for the visual problems seen in a phone recording of the previous build: no flash of the next page's icons at the start of a swipe, Tornado reads as a funnel again, Orbital shows clear rings, and icon labels are hidden while icons are in a formation. No new effects.
+
+**Device testing:** 0.3.1~beta1 has not yet been installed on a device. A phone recording of the previous build is partial evidence only (see Known issues). **Performance and battery impact:** unmeasured.
 """
 known_issues = """
-- **0.3.0~beta1 has not been installed or tested on a device.** None of the six icon effects has run on a phone. Frame rate, performance and battery impact are unmeasured.
+- **0.3.1~beta1 has not yet been installed on a device.** Its fixes are checked by regression tests on the recorded layout, not on a phone.
+- **Phone recording of the previous build (18 Nov 2026, partial, version not confirmed):** a camera video of an iPhone 11 Pro Max (identified from its wallpaper) shows a build with all six effects installed and running Orbital, Tornado and Magnetic Grid, with HCG Halo enabled. The only such build is 0.3.0~beta1, but the installed version, iOS and jailbreak are not visible, so it is not recorded as a device test of any version. Completed, reversed and cancelled swipes restored the grid correctly. **Reported visual bugs**, fixed in 0.3.1~beta1: (F1) the incoming page's icons flash at their grid positions for about one frame at the start of a swipe, with doubled labels (Orbital, Tornado); (F2) Tornado forms a thin diagonal "rope" whose tip reaches the dock, with cluttered labels; (F3) Orbital forms a crowded disc with overlapping icons. Not shown: Warp, Holographic Layers, Circuit Flow, tapping apps after a transition, Reduce Motion, widgets.
+- **Frame rate, performance and battery impact are unmeasured** for every version.
 - With Reduce Motion on, every icon effect uses the stock animation. Widgets fade in place instead of joining a formation.
-- Not tested together with HCG Halo or HCG Nexus.
+- Seen running alongside HCG Halo in the recording above, with no artefact attributable to Halo; not otherwise tested with HCG Halo, and not tested with HCG Nexus.
 - **0.1.0~beta1 failed to install** on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x (17 Nov 2026): the download worked, then unpacking stopped with `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`. Nothing was installed. The cause is still under investigation.
 - **0.1.0~beta2 is a packaging compatibility candidate.** It is the same tweak repackaged with gzip (`data.tar.gz`) and has not yet been installed on any device. Installation and runtime are not yet device-verified.
 - **May crash SpringBoard.** Vortex hooks SpringBoard; its safety checks reduce but cannot rule out SpringBoard crashes. Recovery steps are under Removal.
@@ -89,6 +93,13 @@ label = "Packaging compatibility candidate — installation and runtime not yet 
 
 [versions."0.3.0~beta1"]
 status = "experimental"
-label = "Experimental beta — not yet device-tested"
-# Six icon effects (Tornado, Orbital, Warp, Holographic Layers, Circuit Flow, Magnetic Grid). Not yet installed or
-# tested on a device; performance and battery impact unmeasured. Install and runtime are recorded separately.
+label = "Experimental beta — a phone recording shows 3 of 6 effects running, with visual bugs; installed version not confirmed"
+# Six icon effects (Tornado, Orbital, Warp, Holographic Layers, Circuit Flow, Magnetic Grid). The 18 Nov 2026 recording
+# (HCG-Jailbreak-Research HCGVortex/docs/device-tests/2026-11-18-recording-0.3.0.md) points to this build but does not
+# show the installed version, iOS or jailbreak, so no device_tests entry is recorded. Performance/battery unmeasured.
+
+[versions."0.3.1~beta1"]
+status = "experimental"
+label = "Experimental beta — fixes the visual bugs seen in the 0.3.0 recording; not yet installed on a device"
+# Polish and fixes (F1-F3) after the partial recording of the previous build. No new effects. No device_tests entry
+# until a phone with a confirmed version has run it; performance and battery impact unmeasured.

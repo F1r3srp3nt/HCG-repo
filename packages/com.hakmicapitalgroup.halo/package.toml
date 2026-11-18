@@ -39,7 +39,8 @@ The border follows the panel as it opens, moves and closes. It has its own look,
 No account, telemetry or network access.
 """
 known_issues = """
-- **0.2.0~beta1 is not yet device-tested.** The HCG Nexus panel border has only been previewed in the iOS Simulator, against HCG Nexus's real panel code. The owner reports that 0.1.0~beta1 runs on an iPhone 11 Pro Max. That is not yet a recorded device test, and it does not cover every mode or setting.
+- **0.2.0~beta1 is not yet device-tested.** The HCG Nexus panel border has only been previewed in the iOS Simulator, against HCG Nexus's real panel code.
+- **0.1.0~beta1: partial device evidence on iPhone 11 Pro Max.** The owner reports it running on their iPhone 11 Pro Max, and an 18 Nov 2026 camera recording of that phone shows Halo's edge glow stable on the Home Screen through page transitions (alongside HCG Vortex). This is a partial runtime observation, not a completed checklist: modes, settings, calibration, Lock/unlock, respring and uninstall were not reported. iOS 17.4 and Dopamine 2.x are that phone's owner-confirmed setup from 17 Nov 2026; the recording itself does not show them.
 - **HCG Nexus panel border:** it needs HCG Nexus **0.2.2~beta1**. HCG Nexus 0.3.0~beta1 is a separate line without the border interface. With it, or without Nexus, Halo shows *Requires compatible HCG Nexus* and only the screen-edge border works. Respring once after installing or updating either package.
 - **May crash SpringBoard.** Halo runs inside SpringBoard. Its safety checks (off by default, kill switch, crash-loop guard, fault fallback) reduce but cannot rule out crashes. Recovery steps are under Removal.
 - **Device profile:** only the iPhone 11 Pro Max outline is implemented, from reference values that have not been measured on a device. On other iPhones the border will not line up. Calibrate under *Device Profile*.
@@ -48,8 +49,8 @@ known_issues = """
 - The icon is provisional.
 """
 limitations = """
-- **Tested:** nothing yet. No configuration counts as tested until a device result is recorded under Tested devices.
-- **Profiles:** iPhone 11 Pro Max is implemented, but not device-tested. Other models are listed as planned and cannot be selected. Automatic detection is not available yet.
+- **Tested:** only what Tested devices lists: a partial runtime observation of 0.1.0~beta1 on iPhone 11 Pro Max. 0.2.0~beta1 and the HCG Nexus panel border are untested on a device.
+- **Profiles:** iPhone 11 Pro Max is implemented; its outline has not been measured or calibrated on a device. Other models are listed as planned and cannot be selected. Automatic detection is not available yet.
 - Screen edge: Home Screen only. Not shown in apps, on the Lock Screen or in the App Switcher. The optional HCG Nexus panel border is shown only while the panel is open.
 - Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim. On iOS versions where the Home Screen window cannot be found, Halo stays inactive and Settings shows *Incompatible*.
 - Use alongside other edge-lighting or Home Screen overlay tweaks is untested.
@@ -77,5 +78,13 @@ label = "Free public beta demo — adds the optional HCG Nexus panel border; not
 
 [versions."0.1.0~beta1"]
 status = "experimental"
-label = "Free public beta demo — not yet device-tested."
-# No device_tests entry until a phone has attempted the install. Install and runtime are recorded separately.
+label = "Free public beta demo — seen running on an iPhone 11 Pro Max (owner report and recording); partial, not a full device test."
+# The owner names this version; it was also the only HCG Halo build in any source when the recording was made.
+[[versions."0.1.0~beta1".device_tests]]
+device = "iPhone 11 Pro Max"
+ios = "17.4 (owner-confirmed setup of this phone, 17 Nov 2026; not shown in the recording)"
+jailbreak = "Dopamine 2.x (rootless)"
+date = "2026-11-18"
+stage = "runtime"
+result = "partial"
+evidence = "docs/device-tests/2026-11-18-owner-device-evidence.md"

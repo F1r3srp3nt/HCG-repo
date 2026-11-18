@@ -2,8 +2,8 @@
 # Version, architecture and dependencies come from the .deb itself. Icon: HCG-Nexus
 # App/Assets.xcassets/AppIcon.appiconset/Icon-180.png at commit 1341669.
 #
-# HCG Nexus is a paid product. One candidate build, 0.2.1~beta1, is free in the HCG Repo Candidate testing channel
-# by an owner-approved exception scoped to that exact version ([access] below). 0.2.0 and every other version,
+# HCG Nexus is a paid product. Two candidate builds, 0.2.1~beta1 and 0.2.2~beta1, are free in the HCG Repo Candidate channel
+# by an owner-approved exception scoped to those exact versions ([access] below). 0.2.0 and every other version,
 # including the 0.2.1 release, stay paid and protected.
 
 [release]
@@ -12,7 +12,8 @@ channel = "beta"
 [display]
 known_issues = """
 - **0.2.2~beta1** is 0.2.1~beta1 plus the optional border interface for HCG Halo. Nexus draws nothing new itself. Not yet device-tested; the Halo border has only been previewed in the iOS Simulator.
-- **Not yet device-tested.** 0.2.1~beta1 has not been installed on any phone. The first test is on iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, Zebra; results will be recorded here.
+- **Owner report, not yet a recorded device test.** On 17 Nov 2026 the owner reported HCG Nexus visibly running on iPhone 13 Pro, iOS 16.5, Dopamine (rootless): the panel opens, workspaces switch and Settings open. The installed version was not stated, so it is not recorded against 0.2.1~beta1 or any other version. The handle, Lock Screen, rotation, disable, kill switch and uninstall were not reported.
+- **Not in this source:** 0.3.0~beta1 (it lacks the HCG Halo border interface) and 0.3.1~beta1 (the combined redesign, Command Mode and border build, still being finished and not yet validated). 0.2.2~beta1 is the build that works with HCG Halo 0.2.0~beta1.
 - **Why 0.2.1~beta1 instead of 0.2.0:** the 0.2.0 builds use legacy `data.tar.lzma` packaging (64 MiB dictionary), the same format as the HCG Vortex beta whose unpack crashed with `dpkg-deb … Bus error: 10`. This beta has the same code as 0.2.0 (HCG-Nexus run #10) but uses gzip packaging.
 - Connected Devices (HCG Device Link) is a feature of the standalone HCG Nexus app, not of this tweak.
 """
@@ -58,3 +59,11 @@ allow_setuid = []
 level = "paid"
 exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
 exception_versions = ["0.2.1~beta1", "0.2.2~beta1"]
+
+[versions."0.2.2~beta1"]
+status = "experimental"
+label = "Free public beta demo — 0.2.1~beta1 plus the HCG Halo border interface (for HCG Halo 0.2.0~beta1); not yet device-tested."
+
+[versions."0.2.1~beta1"]
+status = "experimental"
+label = "Free public beta demo — owner reports Nexus running on iPhone 13 Pro (version not stated); not yet a recorded device test."

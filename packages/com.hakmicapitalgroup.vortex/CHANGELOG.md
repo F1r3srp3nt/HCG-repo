@@ -1,3 +1,17 @@
+## 0.3.1~beta1
+
+Free experimental beta. Polish and fixes after the first phone recording; no new effects. Not yet installed on a device.
+
+- **Fixed:** a brief flash at the start of a swipe, where the next page's icons appeared in place for one frame
+  (Orbital, Tornado).
+- **Tornado** reads as a funnel again: icons spread around every height of the funnel, sit smaller and tapered, and
+  the tip stays clear of the dock.
+- **Orbital** shows clear rings instead of a crowded disc.
+- Icon labels are hidden while icons are in a formation and come back with the grid.
+- A recording of the previous build (most likely 0.3.0~beta1; version not confirmed) showed Orbital, Tornado and
+  Magnetic Grid running on an iPhone 11 Pro Max. Warp, Holographic Layers and Circuit Flow are not yet device-tested.
+  Performance and battery impact are unmeasured.
+
 ## 0.3.0~beta1
 
 Free experimental beta. Not yet installed or tested on a device.

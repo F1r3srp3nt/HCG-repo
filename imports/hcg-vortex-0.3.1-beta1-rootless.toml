@@ -1,0 +1,19 @@
+# HCG Vortex 0.3.1~beta1, rootless. Free public demo for the candidate channel: polish and fixes after a
+# partial device test of 0.3.0~beta1. Not yet installed on a device.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit e3b6604 (branch claude/vortex-polish), macOS CI run
+# 44220895787 (Xcode 16.4, Theos 8167f59), artifact hcg-vortex-rootless-deb (ID 14389878167). The SHA-256 is
+# recomputed from a fresh download by the handoff workflow; Prepare packages refuses any other bytes.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.3.1~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44220895787
+commit = "e3b66044916c4b40ca5d8f3c0f12f4df93970c3f"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "ff1d1b5f78ec79b149460f93c5735505ae04270f2a57a592debf440f62f19e42"
