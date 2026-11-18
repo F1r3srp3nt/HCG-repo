@@ -14,8 +14,8 @@ channel = "beta"
 # version a free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps
 # it out of the stable source (free-demo-stable). Any other version needs its own approval.
 level = "connect"
-exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026 for 0.1.0~beta1; 18 Nov 2026 for 0.2.0~beta1, 'authorised as free public demos with no account or payment requirement'), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
-exception_versions = ["0.1.0~beta1", "0.2.0~beta1"]
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026 for 0.1.0~beta1; 18 Nov 2026 for 0.2.0~beta1, 'authorised as free public demos with no account or payment requirement'; 18 Nov 2026 for 0.3.0~beta1, 'Publish 0.3.0~beta1 to candidate, it's approved'), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
+exception_versions = ["0.1.0~beta1", "0.2.0~beta1", "0.3.0~beta1"]
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
@@ -24,9 +24,21 @@ tint = "#00E5FF"
 notes = """
 **Free public beta demo.** No sign-in and no payment. Expect rough edges and please report problems.
 
-HCG Halo draws an animated neon light border around your Home Screen. It follows the screen's rounded corners and the notch. Choose **Static**, **Breathing**, **Colour Flow**, **Orbit** or **Sci-Fi Circuit**, with single colours, multiple colours or gradients. You can set brightness, thickness, glow, edge inset, speed and direction, and save your own presets.
+HCG Halo draws an animated neon light border around your screen edge. It follows the screen's rounded corners and the notch. Choose **Static**, **Breathing**, **Colour Flow**, **Orbit** or **Sci-Fi Circuit**, with single colours, multiple colours or gradients. You can set brightness, thickness, glow, edge inset, speed and direction, and save your own presets.
 
-The border never receives touches and is hidden from VoiceOver. It pauses when the screen is off, when the phone is locked or when an app is open. It follows Reduce Motion. **It is off after installation**: turn it on in *Settings › HCG Halo*. Changes apply immediately, with no respring.
+The border never receives touches and is hidden from VoiceOver. It follows Reduce Motion and your Low Power Mode choice. **It is off after installation**: turn it on in *Settings › HCG Halo*. Changes apply immediately, with no respring.
+
+**New in 0.3.0~beta1: Show Halo on** (*Settings › HCG Halo › Screen Edge*):
+
+- *Home Screen Only*, the default, unchanged for existing users;
+- *Selected App Only*, with an installed-app picker: the border shows only while that app is open;
+- *Always*: the lit Lock Screen, the Home Screen and apps;
+- *Always Except Lock Screen*: the Home Screen and apps, hidden whenever the phone is locked;
+- *Always Except When Screen Is Off*, which behaves the same as *Always*.
+
+A display that is fully off can't show a border: every choice hides the border and pauses rendering then. HCG Halo has no Always-On display mode. The HCG Nexus panel border is not affected.
+
+0.3.0~beta1 also fixes the corner and notch size under **Display Zoom** (*Larger Text*), where an iPhone 11 Pro Max reports 375 × 812 pt: the corners and notch are now scaled to match the glass. If you calibrated under Display Zoom, tap *Reset Calibration*.
 
 **New in 0.2.0~beta1, optional:** HCG Halo can also light the **HCG Nexus** panel. Under *Settings › HCG Halo › Border Target* you can choose:
 
@@ -39,6 +51,8 @@ The border follows the panel as it opens, moves and closes. It has its own look,
 No account, telemetry or network access.
 """
 known_issues = """
+- **0.3.0~beta1 is simulator-tested only; real-device testing is pending.** Show Halo on ran in the iOS Simulator with HCG Halo's real SpringBoard code in a stand-in SpringBoard (app switching, lock, wake and screen-off under every choice). Whether the border shows above the real Lock Screen, over Control Center and the App Switcher, and in screenshots, is not yet verified on a phone.
+- **Always Except Lock Screen** follows the lock state: after Face ID unlocks but before you swipe up, the border may already appear.
 - **0.2.0~beta1 is simulator-tested only; real-device testing is pending.** The HCG Nexus panel border and both Settings entry points ran in the iOS Simulator against HCG Nexus 0.3.1~beta1's real panel code and Settings bundle.
 - **0.1.0~beta1: partial device evidence on iPhone 11 Pro Max.** The owner reports it running on their iPhone 11 Pro Max, and an 18 Nov 2026 camera recording of that phone shows Halo's edge glow stable on the Home Screen through page transitions (alongside HCG Vortex). This is a partial runtime observation, not a completed checklist: modes, settings, calibration, Lock/unlock, respring and uninstall were not reported. iOS 17.4 and Dopamine 2.x are that phone's owner-confirmed setup from 17 Nov 2026; the recording itself does not show them.
 - **HCG Nexus panel border:** it needs HCG Nexus **0.3.1~beta1** (recommended) or 0.2.2~beta1, the builds with the border interface. Without a compatible Nexus, Halo shows *Requires compatible HCG Nexus* and only the screen-edge border works. Respring once after installing or updating either package.
@@ -49,16 +63,16 @@ known_issues = """
 - The icon is provisional.
 """
 limitations = """
-- **Tested:** only what Tested devices lists: a partial runtime observation of 0.1.0~beta1 on iPhone 11 Pro Max. 0.2.0~beta1 and the HCG Nexus panel border are untested on a device.
+- **Tested:** only what Tested devices lists: a partial runtime observation of 0.1.0~beta1 on iPhone 11 Pro Max. 0.2.0~beta1, 0.3.0~beta1, Show Halo on and the HCG Nexus panel border are untested on a device.
 - **Profiles:** iPhone 11 Pro Max is implemented; its outline has not been measured or calibrated on a device. Other models are listed as planned and cannot be selected. Automatic detection is not available yet.
-- Screen edge: Home Screen only. Not shown in apps, on the Lock Screen or in the App Switcher. The optional HCG Nexus panel border is shown only while the panel is open.
+- Screen edge: Home Screen only on 0.1.0~beta1 and 0.2.0~beta1. On 0.3.0~beta1, *Show Halo on* can extend it to one app, all apps and the lit Lock Screen; never on a dark display or the Always-On display. The optional HCG Nexus panel border is shown only while the panel is open.
 - Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim. On iOS versions where the Home Screen window cannot be found, Halo stays inactive and Settings shows *Incompatible*.
 - Use alongside other edge-lighting or Home Screen overlay tweaks is untested.
 """
 install = """
 1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Halo (Beta)**. Accept the dependencies offered (PreferenceLoader, an injector).
 2. Respring when you choose. Nothing changes yet: Halo is off after installation.
-3. Open **Settings › HCG Halo** and turn on **Enable HCG Halo**. The border appears on the Home Screen without another respring.
+3. Open **Settings › HCG Halo** and turn on **Enable HCG Halo**. The border appears on the Home Screen without another respring. To show it elsewhere, change **Show Halo on**.
 4. If the line doesn't hug the corners or notch exactly, adjust it under **Calibration**.
 """
 removal = """
@@ -71,6 +85,10 @@ removal = """
 [review]
 allow_setuid = []
 # No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
+
+[versions."0.3.0~beta1"]
+status = "experimental"
+label = "Free public beta demo — adds Show Halo on and the Display Zoom fix; simulator-tested, real-device testing pending."
 
 [versions."0.2.0~beta1"]
 status = "experimental"

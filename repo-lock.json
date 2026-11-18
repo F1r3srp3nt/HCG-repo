@@ -24,6 +24,17 @@
     },
     {
       "architecture": "iphoneos-arm64",
+      "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.halo_0.3.0~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-18T19:14:28Z",
+      "package": "com.hakmicapitalgroup.halo",
+      "sha256": "bd8a926667b8ebec5b2a200fc8d8a14bcd21a9a2919e0475ec97a479381defc5",
+      "size": 431720,
+      "status": "published",
+      "version": "0.3.0~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.2.0_iphoneos-arm64.deb",
       "imported_at": "2026-11-15T03:46:01Z",
       "package": "com.hakmicapitalgroup.hcgnexus",

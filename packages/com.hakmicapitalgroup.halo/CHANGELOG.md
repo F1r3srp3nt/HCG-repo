@@ -1,3 +1,13 @@
+## 0.3.0~beta1
+
+**Free public beta demo — simulator-tested; real-device testing pending.** 0.2.0~beta1 and 0.1.0~beta1 are unchanged.
+
+- **Show Halo on** (screen edge; applies at once): *Home Screen Only* (default), *Selected App Only* with an installed-app picker, *Always* (lit Lock Screen, Home Screen and apps), *Always Except Lock Screen*, *Always Except When Screen Is Off*.
+- A fully off display can't show a border: every choice hides it and pauses rendering. No Always-On display mode, so *Always* and *Always Except When Screen Is Off* behave identically. Low Power Mode and Reduce Motion apply under every choice.
+- The choices beyond the Home Screen draw in HCG Halo's own non-interactive overlay window, hidden whenever the border is hidden.
+- The HCG Nexus panel border is unchanged.
+- **Display Zoom:** corners and notch are scaled to the zoomed size (an iPhone 11 Pro Max reports 375 × 812 pt). Settings shows points, pixels, native scale and the model identifier. Reset Calibration if you calibrated under Display Zoom.
+
 ## 0.2.0~beta1
 
 **Free public beta demo — simulator-tested; real-device testing pending.** Adds an optional border around the HCG Nexus panel. The 0.1.0~beta1 package is unchanged.
