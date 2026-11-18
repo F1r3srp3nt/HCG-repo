@@ -1,0 +1,35 @@
+# Temporary, read-only: lists recent CI runs and artifacts of HCG product repositories so the candidate
+# inventory can be verified from GitHub itself. Removed after use; never publishes anything.
+name: Discover builds
+on:
+  push:
+    branches: [claude/hcg-apt-sileo-repo-unxxqg]
+    paths: [".github/workflows/discover-builds.yml"]
+permissions: {}
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for spec in \
+            "F1r3srp3nt/HCG-Nexus claude/nexus-combined-0.3.1" \
+            "F1r3srp3nt/HCG-Nexus claude/nexus-command-mode" \
+            "F1r3srp3nt/HCG-Nexus claude/nexus-halo-border" \
+            "F1r3srp3nt/HCG-Jailbreak-Research claude/vortex-polish" \
+            "F1r3srp3nt/HCG-Jailbreak-Research claude/halo-nexus-border" \
+            "F1r3srp3nt/HCG-Executable-Maker packaging/rootless-app-deb" \
+            "F1r3srp3nt/HCG-Terminal main" \
+            "F1r3srp3nt/HCG-Sentinel main"; do
+            set -- $spec
+            echo "=== $1 @ $2"
+            gh api "repos/$1/actions/runs?branch=$2&per_page=15" \
+              --jq '.workflow_runs[] | "run \(.id) #\(.run_number) \(.name) | \(.head_sha) | \(.status)/\(.conclusion) | \(.created_at)"' || echo "(no access)"
+            for id in $(gh api "repos/$1/actions/runs?branch=$2&per_page=15" --jq '.workflow_runs[] | select(.conclusion=="success") | .id' 2>/dev/null); do
+              gh api "repos/$1/actions/runs/$id/artifacts" --jq ".artifacts[] | \"  art run $id: \(.id) \(.name) \(.size_in_bytes)B expired=\(.expired) \(.digest) exp \(.expires_at)\"" || true
+            done
+          done
