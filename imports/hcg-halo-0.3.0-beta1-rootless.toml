@@ -1,0 +1,24 @@
+# HCG Halo 0.3.0~beta1, rootless. Free public beta demo — simulator-tested, real-device testing pending.
+# Adds "Show Halo on" for the screen-edge border (Home Screen Only — the default —, Selected App Only, Always,
+# Always Except Lock Screen, Always Except When Screen Is Off) and corrects the corner/notch size under Display Zoom.
+# Candidate channel only (free demo; HCG-repo docs/ACCESS.md), approved by the owner on 18 Nov 2026
+# ("Publish 0.3.0~beta1 to candidate, it's approved").
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit e22527d (branch claude/hcg-halo-tweak-tfnxxl),
+# macOS CI run 44246501375 (HCG Halo build: Xcode, Theos 8167f59), artifact hcg-halo-rootless-deb
+# (ID 14402121490, kept until 2027-02-16). validate.sh --require-new-abi passed; 446 iOS Simulator runtime checks;
+# preview run 44246501303: Nexus panel 17/17, Settings failures=0, Show Halo on surfaces 51/51.
+# The .deb is 431,720 bytes. Prepare packages refuses any other bytes.
+
+[request]
+package = "com.hakmicapitalgroup.halo"
+version = "0.3.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44246501375
+commit = "e22527d4ad11c2002bab5574bfc93d1d4a15588d"
+artifact = "hcg-halo-rootless-deb"
+sha256 = "bd8a926667b8ebec5b2a200fc8d8a14bcd21a9a2919e0475ec97a479381defc5"
