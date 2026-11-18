@@ -1,9 +1,9 @@
 ## 0.2.0~beta1
 
-**Free public beta demo — not yet device-tested.** Adds an optional border around the HCG Nexus panel. The 0.1.0~beta1 package is unchanged.
+**Free public beta demo — simulator-tested; real-device testing pending.** Adds an optional border around the HCG Nexus panel. The 0.1.0~beta1 package is unchanged.
 
 - **Border Target:** Screen Edge (the default, unchanged for existing users), HCG Nexus Panel, or Both.
-- **HCG Nexus panel border** (needs HCG Nexus 0.2.2~beta1):
+- **HCG Nexus panel border** (needs HCG Nexus 0.3.1~beta1, or 0.2.2~beta1):
   - Halo reads the border definition that HCG Nexus installs and draws around the live panel.
   - It follows the panel's position, slide, size and rotation, and never covers its content or takes touches.
   - It appears only while the panel is shown.

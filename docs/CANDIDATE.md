@@ -24,7 +24,8 @@
 - **Public packages only.** The candidate has no payment provider, so protected (`connect` or `paid`) packages can
   never be put in it: `channel` refuses, and `validate` reports `candidate-protected`.
   - Each free exception is scoped to that package's `exception_versions` (Vortex: `0.1.0~beta1`, `0.1.0~beta2`,
-    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`).
+    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`, `0.3.0~beta1` (approved, never imported),
+    `0.3.1~beta1`).
   - It cannot make any other package, or any other version, public.
 - **Verified on every Publish.** Both sources are verified offline before deployment and online afterwards.
   **Check transport** walks both sources and downloads every candidate `.deb` to check its checksum.
@@ -61,10 +62,9 @@ temporary HCG-repo workflow, run 44225029311). Every build below is the exact CI
 | Product | Offered (highest) / also listed | Source of the offered build | Device testing | Candidate |
 |---|---|---|---|---|
 | HCG Vortex (Beta) | **0.3.1~beta1** / 0.3.0~beta1, 0.1.0~beta2, 0.1.0~beta1 | HCG-Jailbreak-Research `e3b6604`, run 44220895787, artifact 14389878167, SHA-256 `ff1d1b5f…f62f19e42`, 227,306 bytes (gzip) | 0.3.1~beta1: not yet installed. A recording of the previous build (version not confirmed) showed 3 of 6 effects with visual bugs F1–F3, fixed in 0.3.1. 0.1.0~beta1: install failed (iPhone 11 Pro Max, iOS 17.4). Performance and battery unmeasured | **Included** |
-| HCG Halo (Beta) | **0.2.0~beta1** / 0.1.0~beta1 | HCG-Jailbreak-Research `778c21a`, run 44216299888, artifact 14388546682, SHA-256 `391a4421…85ae6e54` (gzip) | 0.2.0~beta1 and the Nexus panel border: not yet device-tested. 0.1.0~beta1: partial runtime observation on iPhone 11 Pro Max | **Included** |
-| HCG Nexus (Beta) | **0.2.2~beta1** / 0.2.1~beta1 | HCG-Nexus `b68768f`, run 44214599706 (#17), artifact 14387323372, SHA-256 `696b1584…d5138fb3f52` (gzip). Ships `HaloBorder.plist` (schema 1, interface 1, `nexusVersion` 0.2.2~beta1) and `HCGNexusBorderInterface` | Owner reports Nexus running on iPhone 13 Pro, iOS 16.5 (version not stated): not a recorded test | **Included**: the companion of Halo 0.2.0~beta1 |
-| HCG Nexus 0.3.0~beta1 | — | HCG-Nexus `8aa0b04` | — | **Not published**: it has no HCG Halo border interface, and as a higher version it would upgrade testers off 0.2.2~beta1 |
-| HCG Nexus 0.3.1~beta1 (redesign + Command Mode + border) | — | HCG-Nexus `claude/nexus-combined-0.3.1` | — | **Pending**: still being changed under the same version (run #21 `0a947ee` built, #22 failed, #23 on `528e27e` running at review time); no `VALIDATION.md` record or import request names a final build |
+| HCG Halo (Beta) | **0.2.0~beta1** / 0.1.0~beta1 | HCG-Jailbreak-Research `778c21a`, run 44216299888, artifact 14388546682, SHA-256 `391a4421…85ae6e54` (gzip) | 0.2.0~beta1 and the Nexus panel border: simulator-tested against Nexus 0.3.1~beta1 (panel preview 17/17; both Settings entry points); real-device testing pending. 0.1.0~beta1: partial runtime observation on iPhone 11 Pro Max | **Included**: install with Nexus 0.3.1~beta1 |
+| HCG Nexus (Beta) | **0.3.1~beta1** / 0.2.2~beta1 (superseded), 0.2.1~beta1 | HCG-Nexus `82412dd`, run 44225979728 (#24), artifact 14393735142, SHA-256 `b6750cf1…adaf6741c3`, 1,143,570 bytes (gzip). The redesign + Command Mode + `HCGNexusBorderInterface` and `HaloBorder.plist` (schema 1, interface 1, `nexusVersion` 0.3.1~beta1) | 0.3.1~beta1: simulator-tested (22 app XCTests, panel + Halo preview 17/17); real-device testing pending. Owner reports an earlier Nexus running on iPhone 13 Pro, iOS 16.5 (version not stated): not a recorded test | **Included**: the companion of Halo 0.2.0~beta1 |
+| HCG Nexus 0.3.0~beta1 | — | HCG-Nexus `8aa0b04` | — | **Not published**: replaced by 0.3.1~beta1, which adds the HCG Halo border interface and Command Mode |
 | HCG Terminal Unleashed | — (0.1.0-1 recorded as protected) | HCG-Terminal CI uploads logs only, no `.deb` | — | **Blocked**: connect access with no free-demo approval, and no CI-built `.deb` |
 | HCG Sentinel | — | HCG-Sentinel CI produces archives, simulator apps and screenshots | — | **Pending**: no jailbreak `.deb` exists; the privileged helper is a specification |
 

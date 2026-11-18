@@ -37,8 +37,8 @@ layouts = ["iphoneos-arm64"]
 kind = "Jailbreak tweak"
 access = "paid"
 status = "Not yet available"
-summary = "Command panel behind a configurable cyan edge handle: shortcuts, workspaces, search and recent actions."
-detail = "Available in Sileo once HCG Connect sign-in and HCG Store purchases are live. Free candidate betas are in the HCG Repo Candidate testing channel: 0.2.2~beta1 (adds the border interface for HCG Halo 0.2.0~beta1) and 0.2.1~beta1. Neither is a recorded device test yet."
+summary = "Smoked-glass command panel behind a cyan edge handle: Overview, Workspaces, Tools, HCG Products, Apps and Command Mode."
+detail = "Available in Sileo once HCG Connect sign-in and HCG Store purchases are live. Free candidate beta in the HCG Repo Candidate testing channel: 0.3.1~beta1 (redesign, Command Mode and the HCG Halo border interface, for HCG Halo 0.2.0~beta1), simulator-tested; real-device testing pending. Earlier candidates 0.2.2~beta1 and 0.2.1~beta1 remain listed."
 store_slug = "hcg-nexus"
 store_edition = "jailbreak"
 

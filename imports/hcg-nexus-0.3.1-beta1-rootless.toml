@@ -1,0 +1,37 @@
+# HCG Nexus 0.3.1~beta1 (free candidate beta of a paid tweak), rootless. Simulator-tested; real-device testing pending.
+# The combined line: the 0.3.0~beta1 redesign + Command Mode (HCG-Nexus PR #3) + the HCG Halo border interface (PR #4),
+# plus the official HCG Nexus banner, the Dynamic Type fix and HCG Connect token verification (sign-in not configured).
+# Supersedes 0.3.0~beta1 (run 44213585148, never imported) and 0.2.2~beta1 (run 44214599706, published 18 Nov 2026; it
+# stays, labelled superseded). Earlier 0.3.1~beta1 test builds (runs 44221045349, 44223713632, 44224311587) are NOT this
+# package.
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #24, id 44225979728 (route both, rootless), from commit
+# 82412dd on branch claude/nexus-combined-0.3.1. That commit was declared final by the Nexus redesign session; only docs
+# followed. All four jobs passed:
+#   - lint + 27,674 Core host checks;
+#   - the Device Link client + HCGConnectVerify 21/21;
+#   - app: 22/22 XCTests;
+#   - the jailbreak package.
+# Re-checked independently on the downloaded file:
+#   - zip sha256 83dee9f0…18de2 matches GitHub's digest;
+#   - inspect-package.py at 82412dd, rootless, --require-new-arm64e-abi: 35/35 OK;
+#   - HaloBorder.plist valid, nexusVersion == 0.3.1~beta1, equal to the source at 82412dd;
+#   - build ID 82412dd5d5;
+#   - border interface, Command Mode, Halo border row and banner present;
+#   - .deb 1,143,570 bytes.
+# HCG Halo × Nexus preview run 44227065710 against this commit: panel 17/17 checks.
+# Artifact hcg-nexus-rootless-deb (ID 14393735142) EXPIRES 2026-11-25.
+# Public only by the scoped exception in packages/com.hakmicapitalgroup.hcgnexus/package.toml.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.3.1~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44225979728
+commit = "82412dd5d52086eb20b45170a203853654af8d6b"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "b6750cf12d7ab4ebcf5542cef0496945211d8226152a4c45e57e40adaf6741c3"
