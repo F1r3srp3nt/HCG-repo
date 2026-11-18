@@ -1,0 +1,23 @@
+# HCG Nexus 0.2.2~beta1 (free candidate beta of a paid tweak), rootless.
+# The 0.2.1~beta1 candidate code plus the optional HCG Halo border interface (docs/HALO-BORDER.md in HCG-Nexus).
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #17
+# (https://github.com/F1r3srp3nt/HCG-Nexus/actions/runs/44214599706) from commit b68768f on branch
+# claude/nexus-halo-border. inspect-package.py rootless --require-new-arm64e-abi: all OK (HaloBorder.plist valid,
+# nexusVersion == 0.2.2~beta1; gzip members). .deb 466,766 bytes.
+# Artifact hcg-nexus-rootless-deb (ID 14387323372) EXPIRES 2026-11-25: import before then, or rebuild and re-pin.
+# Public only by the scoped exception in packages/com.hakmicapitalgroup.hcgnexus/package.toml.
+# Not 0.3.0~beta1: that version belongs to a separate HCG Nexus line (claude/nexus-candidate-0.3.0-beta1).
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.2.2~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44214599706
+commit = "b68768f829a6505a167368c4d8dc6d0710ec5450"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "696b15849e6fcf60c8216e9187a353a3cb1256e1a88b57e968660d5138fb3f52"

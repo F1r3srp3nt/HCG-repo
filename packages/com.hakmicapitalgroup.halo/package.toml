@@ -14,8 +14,8 @@ channel = "beta"
 # version a free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps
 # it out of the stable source (free-demo-stable). Any other version needs its own approval.
 level = "connect"
-exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
-exception_versions = ["0.1.0~beta1"]
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026 for 0.1.0~beta1; 18 Nov 2026 for 0.2.0~beta1, 'authorised as free public demos with no account or payment requirement'), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
+exception_versions = ["0.1.0~beta1", "0.2.0~beta1"]
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
@@ -28,10 +28,19 @@ HCG Halo draws an animated neon light border around your Home Screen. It follows
 
 The border never receives touches and is hidden from VoiceOver. It pauses when the screen is off, when the phone is locked or when an app is open. It follows Reduce Motion. **It is off after installation**: turn it on in *Settings › HCG Halo*. Changes apply immediately, with no respring.
 
+**New in 0.2.0~beta1, optional:** HCG Halo can also light the **HCG Nexus** panel. Under *Settings › HCG Halo › Border Target* you can choose:
+
+- *Screen Edge*, the default;
+- *HCG Nexus Panel*;
+- *Both*.
+
+The border follows the panel as it opens, moves and closes. It has its own look, including the *Nexus Signature*, *Reactor* and *Hologram* presets. This needs HCG Nexus 0.2.2~beta1, which includes the border interface.
+
 No account, telemetry or network access.
 """
 known_issues = """
-- **Not yet device-tested.** 0.1.0~beta1 has not been installed on any phone. The first test device is an iPhone 11 Pro Max; its iOS version and jailbreak will be recorded with the result.
+- **0.2.0~beta1 is not yet device-tested.** The HCG Nexus panel border has only been previewed in the iOS Simulator, against HCG Nexus's real panel code. The owner reports that 0.1.0~beta1 runs on an iPhone 11 Pro Max. That is not yet a recorded device test, and it does not cover every mode or setting.
+- **HCG Nexus panel border:** it needs HCG Nexus **0.2.2~beta1**. HCG Nexus 0.3.0~beta1 is a separate line without the border interface. With it, or without Nexus, Halo shows *Requires compatible HCG Nexus* and only the screen-edge border works. Respring once after installing or updating either package.
 - **May crash SpringBoard.** Halo runs inside SpringBoard. Its safety checks (off by default, kill switch, crash-loop guard, fault fallback) reduce but cannot rule out crashes. Recovery steps are under Removal.
 - **Device profile:** only the iPhone 11 Pro Max outline is implemented, from reference values that have not been measured on a device. On other iPhones the border will not line up. Calibrate under *Device Profile*.
 - The border also shows over the Today View, App Library and open folders, because they are part of the Home Screen window.
@@ -41,7 +50,7 @@ known_issues = """
 limitations = """
 - **Tested:** nothing yet. No configuration counts as tested until a device result is recorded under Tested devices.
 - **Profiles:** iPhone 11 Pro Max is implemented, but not device-tested. Other models are listed as planned and cannot be selected. Automatic detection is not available yet.
-- Home Screen only. Not shown in apps, on the Lock Screen or in the App Switcher.
+- Screen edge: Home Screen only. Not shown in apps, on the Lock Screen or in the App Switcher. The optional HCG Nexus panel border is shown only while the panel is open.
 - Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim. On iOS versions where the Home Screen window cannot be found, Halo stays inactive and Settings shows *Incompatible*.
 - Use alongside other edge-lighting or Home Screen overlay tweaks is untested.
 """
@@ -61,6 +70,10 @@ removal = """
 [review]
 allow_setuid = []
 # No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
+
+[versions."0.2.0~beta1"]
+status = "experimental"
+label = "Free public beta demo — adds the optional HCG Nexus panel border; not yet device-tested."
 
 [versions."0.1.0~beta1"]
 status = "experimental"

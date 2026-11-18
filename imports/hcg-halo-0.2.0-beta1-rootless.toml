@@ -1,0 +1,21 @@
+# HCG Halo 0.2.0~beta1, rootless. Free public beta demo — not yet device-tested.
+# Adds the optional HCG Nexus panel border (needs HCG Nexus 0.2.2~beta1); the 0.1.0~beta1 package is unchanged.
+# Candidate channel only (free demo; HCG-repo docs/ACCESS.md), authorised by the owner on 18 Nov 2026.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 778c21a (branch claude/halo-nexus-border),
+# macOS CI run 44216299888 (HCG Halo build: Xcode, Theos 8167f59), artifact hcg-halo-rootless-deb
+# (ID 14388546682, kept until 2027-02-16). validate.sh --require-new-abi: 0 failures, 0 warnings, also re-run
+# locally from that commit on the downloaded .deb (391,074 bytes). Prepare packages refuses any other bytes.
+
+[request]
+package = "com.hakmicapitalgroup.halo"
+version = "0.2.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44216299888
+commit = "778c21a168fd957fa3f1195a91d4144e9ca36913"
+artifact = "hcg-halo-rootless-deb"
+sha256 = "391a4421de98225169e0f1ba37b63bd3b7cc4b5321d00dbed7b689be85ae6e54"
