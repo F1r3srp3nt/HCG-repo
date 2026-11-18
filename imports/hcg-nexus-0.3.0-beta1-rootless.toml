@@ -1,0 +1,22 @@
+# HCG Nexus 0.3.0~beta1 (free candidate beta of a paid tweak), rootless.
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #15
+# (https://github.com/F1r3srp3nt/HCG-Nexus/actions/runs/44213585148) from commit 77b0f3a on branch
+# claude/hcg-nexus-tweak-yb1ii2: the smoked-glass redesign with seven sections, gzip packaging.
+# CI verification (scripts/build-jailbreak-deb.sh --require-new-arm64e-abi) passed; embedded build 77b0f3adb1.
+# Artifact hcg-nexus-rootless-deb, ID 14386843705, zip digest
+# sha256:f156dc38fd04aea061dd4d38e66f71a5e2931983d8f1b78089126b22aaf585f6, expires 2026-11-25.
+# Public only by the scoped exception in packages/com.hakmicapitalgroup.hcgnexus/package.toml.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.3.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44213585148
+commit = "77b0f3adb1d75ceb0c4c088fa8e9d0ab33573b57"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "e4a92c2b3680b965052769cd641cce6ebe28aa0371a0e3e3c72a29f46c5ca341"
