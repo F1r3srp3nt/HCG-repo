@@ -9,4 +9,4 @@ the pinned bytes into this branch. Publication is a separate step (merge, then *
 | Request | Package | Pairs with |
 |---|---|---|
 | `hcg-halo-0.3.1-beta1-rootless.toml` | HCG Halo 0.3.1~beta1 | HCG Nexus 0.3.2~beta1 |
-| `hcg-nexus-0.3.2-beta1-rootless.toml` (added when its CI run is final) | HCG Nexus 0.3.2~beta1 | HCG Halo 0.3.1~beta1 |
+| `hcg-nexus-0.3.2-beta1-rootless.toml` | HCG Nexus 0.3.2~beta1 | HCG Halo 0.3.1~beta1 |

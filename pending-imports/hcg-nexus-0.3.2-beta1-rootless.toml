@@ -1,0 +1,27 @@
+# HCG Nexus 0.3.2~beta1 (free candidate beta of a paid tweak), rootless. Simulator-tested; real-device testing pending.
+# Everything in 0.3.1~beta1, plus "Use HCG Halo border" (Appearance; states Not installed / Incompatible / Disabled /
+# Ready / Active; switched only through HCG Halo 0.3.1~beta1's HaloNexusControl, never HCG Halo's screen edge) and HCG
+# Terminal states in HCG Products (Installed with version / Launch / Integration / Session never "Connected"; saved-
+# connection handoff with HCG Terminal 0.1.1+; Command Mode "Launch available"). Publish together with HCG Halo
+# 0.3.1~beta1 (hcg-halo-0.3.1-beta1-rootless.toml). NOT TO BE IMPORTED until the owner explicitly approves 0.3.2~beta1.
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #29, id 44389550508 (route both, rootless), from commit
+# cd81084 on branch claude/nexus-0.3.2-integrations (based on the published 0.3.1~beta1 line). All four jobs passed:
+# lint + 27,820 Core host checks; Device Link + HCGConnectVerify 21/21; app 22/22 XCTests; jailbreak package.
+# Re-checked locally on the downloaded file: zip sha256 9137184b…cb92 matches GitHub; inspect-package.py
+# --require-new-arm64e-abi all OK; build ID cd81084a48; HaloBorder.plist valid (nexusVersion 0.3.2~beta1) and accepted
+# by HCG Halo's own validator; .deb 1,197,154 bytes. HCG Halo preview run 44388729789 drove this commit's real
+# Settings bundle switch (0 failures). Artifact hcg-nexus-rootless-deb (ID 14467701677) EXPIRES 2026-11-25.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.3.2~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44389550508
+commit = "cd81084a48b5ee834fbb37c2553467858ca2e862"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "e5e5f0f46b2023470d9d76070d7d666339735e9c31b4aa19b5eae3684a38ad56"
