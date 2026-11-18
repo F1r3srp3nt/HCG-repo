@@ -12,20 +12,35 @@ level = "public"
 # proprietary freeware, free with no sign-in, for the versions listed below ONLY. Any other version (a later beta,
 # a release, or a build with premium features sold through HCG Store) is refused until it is approved and listed.
 exception = "Free experimental beta, proprietary freeware with no sign-in. Approved by the owner on 16 Nov 2026 for the versions in exception_versions only. Future versions may offer a free core plus optional premium features through HCG Store and need their own access decision."
-exception_versions = ["0.1.0~beta1", "0.1.0~beta2"]   # 0.1.0~beta2 approved by the owner on 17 Nov 2026 as a free public candidate demo
+# 0.1.0~beta2 (17 Nov 2026) and 0.3.0~beta1 (18 Nov 2026, under the owner's standing policy that approved candidate
+# builds are free public demos) are free public candidate demos.
+exception_versions = ["0.1.0~beta1", "0.1.0~beta2", "0.3.0~beta1"]
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
 icon = "icon.png"
 tint = "#00E5FF"
 notes = """
-**Free experimental beta.** Expect rough edges and report problems.
+**Free experimental beta.** No sign-in and no payment. Expect rough edges and report problems.
 
-HCG Vortex changes how Home Screen page transitions look without changing how navigation works. Swipe left and you still land on the next page, but the transition can run in reverse, rise from below, fall from above, or follow any of eight directions.
+HCG Vortex changes how Home Screen page transitions look without changing how navigation works. Swipe left and you still land on the next page.
 
-Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
+**Icon effects (0.3.0~beta1):**
+- **Tornado:** icons form a travelling funnel, with controls for funnel height, upper and lower radius, depth and travel, and the presets Subtle, Classic Tornado and Sci-Fi Vortex.
+- **Orbital:** icons circle on concentric rings.
+- **Warp:** icons pass through a short tunnel.
+- **Holographic Layers:** floating parallax layers.
+- **Circuit Flow:** icons run along glowing circuit traces.
+- **Magnetic Grid:** a subtle loosen-and-snap, the everyday option.
+
+Each effect has its own Settings page with a description, live preview, controls and Reset to Defaults. Reverse Slide, Vertical Rise, Vertical Fall and Custom Directions are still available. Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
+
+**Device testing:** not yet performed for this version. **Performance and battery impact:** unmeasured.
 """
 known_issues = """
+- **0.3.0~beta1 has not been installed or tested on a device.** None of the six icon effects has run on a phone. Frame rate, performance and battery impact are unmeasured.
+- With Reduce Motion on, every icon effect uses the stock animation. Widgets fade in place instead of joining a formation.
+- Not tested together with HCG Halo or HCG Nexus.
 - **0.1.0~beta1 failed to install** on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x (17 Nov 2026): the download worked, then unpacking stopped with `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`. Nothing was installed. The cause is still under investigation.
 - **0.1.0~beta2 is a packaging compatibility candidate.** It is the same tweak repackaged with gzip (`data.tar.gz`) and has not yet been installed on any device. Installation and runtime are not yet device-verified.
 - **May crash SpringBoard.** Vortex hooks SpringBoard; its safety checks reduce but cannot rule out SpringBoard crashes. Recovery steps are under Removal.
@@ -70,3 +85,10 @@ evidence = "docs/device-tests/vortex-0.1.0-beta1.md"
 status = "experimental"
 label = "Packaging compatibility candidate — installation and runtime not yet device-verified."
 # No device_tests entry until a phone has attempted the install. Install and runtime are recorded separately.
+
+
+[versions."0.3.0~beta1"]
+status = "experimental"
+label = "Experimental beta — not yet device-tested"
+# Six icon effects (Tornado, Orbital, Warp, Holographic Layers, Circuit Flow, Magnetic Grid). Not yet installed or
+# tested on a device; performance and battery impact unmeasured. Install and runtime are recorded separately.
