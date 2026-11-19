@@ -66,8 +66,8 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported) for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1"]
 
 [versions."0.3.1~beta1"]
 status = "experimental"

@@ -1,0 +1,25 @@
+# HCG Halo 0.3.1~beta1, rootless. Free public beta demo — simulator-tested, real-device testing pending.
+# Everything in 0.3.0~beta1 (Show Halo on, Display Zoom geometry) plus HaloNexusControl, the HCG Halo-owned switch
+# behind HCG Nexus 0.3.2~beta1's "Use HCG Halo border" (contract HCGHaloNexusControl 1). The switch never turns the
+# screen-edge light on. Publish together with HCG Nexus 0.3.2~beta1 (imports/hcg-nexus-0.3.2-beta1-rootless.toml).
+# Candidate channel only (free demo; HCG-repo docs/ACCESS.md). Owner approval, 19 Nov 2026: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 1e232ab (branch claude/halo-nexus-control-0.3, based on the
+# published 0.3.0~beta1 line at 8a51b26), macOS CI run 44388729773 (HCG Halo build: Xcode, validate.sh
+# --require-new-abi passed; 509 iOS Simulator runtime checks incl. 168 Nexus panel border checks), artifact
+# hcg-halo-rootless-deb (ID 14466694093, zip sha256 388270dc…f511, kept until 2027-02-16). Preview run 44388729789
+# against HCG Nexus 0.3.2~beta1 (cd81084): panel, Settings and surfaces previews, 0 failures; the Settings preview
+# drives Nexus's real "Use HCG Halo border" switch. The .deb is 436,608 bytes, re-checked locally.
+
+[request]
+package = "com.hakmicapitalgroup.halo"
+version = "0.3.1~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44388729773
+commit = "1e232aba25d48e34031d84197115d33f9f62e877"
+artifact = "hcg-halo-rootless-deb"
+sha256 = "6a2117b381cb2a562f1d4adc76e7ae8c74f85c0f6951b0f4b41df069d802a23b"

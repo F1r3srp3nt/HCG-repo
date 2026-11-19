@@ -46,6 +46,17 @@
     },
     {
       "architecture": "iphoneos-arm64",
+      "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.halo_0.3.1~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-19T05:45:28Z",
+      "package": "com.hakmicapitalgroup.halo",
+      "sha256": "6a2117b381cb2a562f1d4adc76e7ae8c74f85c0f6951b0f4b41df069d802a23b",
+      "size": 436608,
+      "status": "published",
+      "version": "0.3.1~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.2.0_iphoneos-arm64.deb",
       "imported_at": "2026-11-15T03:46:01Z",
       "package": "com.hakmicapitalgroup.hcgnexus",
@@ -87,6 +98,17 @@
       "size": 1143570,
       "status": "published",
       "version": "0.3.1~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.3.2~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-19T05:44:24Z",
+      "package": "com.hakmicapitalgroup.hcgnexus",
+      "sha256": "e5e5f0f46b2023470d9d76070d7d666339735e9c31b4aa19b5eae3684a38ad56",
+      "size": 1197154,
+      "status": "published",
+      "version": "0.3.2~beta1"
     },
     {
       "architecture": "iphoneos-arm64",
