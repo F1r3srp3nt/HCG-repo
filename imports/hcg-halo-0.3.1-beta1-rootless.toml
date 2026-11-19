@@ -2,8 +2,7 @@
 # Everything in 0.3.0~beta1 (Show Halo on, Display Zoom geometry) plus HaloNexusControl, the HCG Halo-owned switch
 # behind HCG Nexus 0.3.2~beta1's "Use HCG Halo border" (contract HCGHaloNexusControl 1). The switch never turns the
 # screen-edge light on. Publish together with HCG Nexus 0.3.2~beta1 (imports/hcg-nexus-0.3.2-beta1-rootless.toml).
-# Candidate channel only (free demo; HCG-repo docs/ACCESS.md). NOT TO BE IMPORTED until the owner explicitly approves
-# 0.3.1~beta1 (the exception entry in packages/com.hakmicapitalgroup.halo/package.toml quotes the request).
+# Candidate channel only (free demo; HCG-repo docs/ACCESS.md). Owner approval, 19 Nov 2026: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'.
 # Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 1e232ab (branch claude/halo-nexus-control-0.3, based on the
 # published 0.3.0~beta1 line at 8a51b26), macOS CI run 44388729773 (HCG Halo build: Xcode, validate.sh
 # --require-new-abi passed; 509 iOS Simulator runtime checks incl. 168 Nexus panel border checks), artifact

@@ -3,7 +3,8 @@
 # Ready / Active; switched only through HCG Halo 0.3.1~beta1's HaloNexusControl, never HCG Halo's screen edge) and HCG
 # Terminal states in HCG Products (Installed with version / Launch / Integration / Session never "Connected"; saved-
 # connection handoff with HCG Terminal 0.1.1+; Command Mode "Launch available"). Publish together with HCG Halo
-# 0.3.1~beta1 (hcg-halo-0.3.1-beta1-rootless.toml). NOT TO BE IMPORTED until the owner explicitly approves 0.3.2~beta1.
+# 0.3.1~beta1 (hcg-halo-0.3.1-beta1-rootless.toml).
+# Owner approval, 19 Nov 2026: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'.
 # Built with Xcode's toolchain by HCG-Nexus "Build package" run #29, id 44389550508 (route both, rootless), from commit
 # cd81084 on branch claude/nexus-0.3.2-integrations (based on the published 0.3.1~beta1 line). All four jobs passed:
 # lint + 27,820 Core host checks; Device Link + HCGConnectVerify 21/21; app 22/22 XCTests; jailbreak package.

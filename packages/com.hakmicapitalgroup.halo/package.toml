@@ -14,7 +14,7 @@ channel = "beta"
 # version a free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps
 # it out of the stable source (free-demo-stable). Any other version needs its own approval.
 level = "connect"
-exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026 for 0.1.0~beta1; 18 Nov 2026 for 0.2.0~beta1, 'authorised as free public demos with no account or payment requirement'; 18 Nov 2026 for 0.3.0~beta1, 'Publish 0.3.0~beta1 to candidate, it's approved'; 18 Nov 2026 for 0.3.1~beta1, built with HCG Nexus 0.3.2~beta1 for the Nexus border switch: 'so the matching versions are published together as free candidate betas'), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Halo candidate builds as free public demos (17 Nov 2026 for 0.1.0~beta1; 18 Nov 2026 for 0.2.0~beta1, 'authorised as free public demos with no account or payment requirement'; 18 Nov 2026 for 0.3.0~beta1, 'Publish 0.3.0~beta1 to candidate, it's approved'; 19 Nov 2026 for 0.3.1~beta1, with HCG Nexus 0.3.2~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'), for the versions in exception_versions only. This does not change HCG Halo's production pricing or access; no expiry date and no remote disabling."
 exception_versions = ["0.1.0~beta1", "0.2.0~beta1", "0.3.0~beta1", "0.3.1~beta1"]
 
 [display]
