@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.0~beta4
+
+Unlock gating and a touch-interaction repair. **Simulator validated; physical iPhone validation pending.** The touch
+repair and the earlier Safe Mode issue are not confirmed resolved on real hardware.
+
+- **Only on an unlocked iPhone.**
+  - Portal is shown only while every lock-state source iOS offers reports the device unlocked: data protection,
+    SpringBoard's lock state and `-[SBLockScreenManager isUILocked]`.
+  - If any source says locked, or cannot be read, Portal stays hidden (fail closed).
+  - It appears on the Cover Sheet pulled down after unlocking, and never on the locked Lock Screen. Face ID matching
+    while the Lock Screen is still up does not count as unlocked.
+- **No authentication code.** Portal no longer requests Face ID, Touch ID or the passcode, and never bypasses them;
+  it only reads the outcome. The build fails if any unlock request is referenced.
+- **Locking removes it at once** and discards anything pending.
+  - An action carries the lock-state "epoch" it was chosen in, and runs only if that epoch is still current. It is
+    re-checked when you tap, after the Cover Sheet closes, and right before iOS is asked to open anything.
+  - So nothing chosen before a lock can run after it, even after an immediate unlock.
+- **Touch repair.** On 0.1.0~beta3 the portal could be drawn but not respond: SpringBoard's own tap gestures on the
+  Cover Sheet took the taps. The orb and the items now use their own tap handling, which those gestures wait for, only
+  for touches on Portal. Swipes and long presses are untouched.
+- **Opening a destination closes the Cover Sheet first**, then opens Settings, the chosen app or Nexus.
+- **Settings › HCG Portal** shows the lock state as Portal reads it, touch diagnostics and the last lifecycle step.
+- Validation: Xcode build and `validate.sh` (0 failures, 0 warnings); host tests (2,927,359 checks, including every
+  lock-state combination and lock/unlock storms); Simulator runtime 65/65; preview 122/122 with real UIKit touch
+  events.
+
 ## 0.1.0~beta3
 
 Lock Screen lifecycle hardening after the SpringBoard Safe Mode incident with 0.1.0~beta1. **Test build only. The
