@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.1.0~beta3
+
+Lock Screen lifecycle hardening after the SpringBoard Safe Mode incident with 0.1.0~beta1. **Test build only. The
+cause is not confirmed:** no SpringBoard crash report from the incident has been reviewed yet. This build removes every
+lifecycle hazard found in review and records where SpringBoard was in Portal's lifecycle when it last stopped, so the
+next device test can tell the possible causes apart (`docs/INCIDENT_0.1.0-beta1.md`).
+
+- **Attach once, detach on leave.** Portal joins the Lock Screen's main page once per Lock Screen session and leaves it
+  when the Cover Sheet disappears, the screen turns off, the phone unlocks or Portal is turned off. Before, every
+  update and every layout pass re-inserted the overlay and brought it to the front, inside SpringBoard's own layout.
+  Bringing it to the front now happens at most once a second.
+- **No fallback container.** If the Lock Screen's main page is missing, not loaded, not the expected class or not in a
+  window, Portal stays hidden and the Lock Screen carries on; Settings shows *Lock Screen container unavailable* and
+  why. 0.1.0~beta1/2 fell back to the Cover Sheet's own view.
+- **Callbacks cannot outlive the view.** The idle collapse (12 s), message fade (3.5 s), tap-outside collapse and
+  relayout timers hold Portal weakly and do nothing once it has left the Lock Screen. The measure timer stops on detach.
+- **Layout storms are coalesced** (one relayout per 250 ms) and an update can no longer re-enter itself.
+- **The radial menu is rebuilt only when its items change**, not on every update.
+- **Crash guard counts every launch**, enabled or not (0.1.0~beta1/2 counted only while enabled, so a crash on the
+  disabled path never tripped it).
+- **Breadcrumbs.** Portal records its lifecycle step (*bootstrap*, *installing hooks*, *attaching to the Lock Screen*,
+  *on the Lock Screen*, *off the Lock Screen*, *requesting authentication*, …) in its status file when it changes.
+  After the next launch Settings › HCG Portal › *Diagnostics* shows the step the previous launch ended on and whether
+  it ended within 30 s.
+- Simulator preview: 20 lock / wake / menu / unlock cycles, a 300-pass layout storm, SpringBoard rebuilding the main
+  page, the container unavailable, late callbacks after teardown, 10 disable / re-enable cycles and an authentication
+  completing after Portal was turned off.
+
+## 0.1.0~beta2
+
+*Test build only; never published in HCG Repo. Its startup fixes are included in 0.1.0~beta3.*
+
+Startup hardening after an observed SpringBoard Safe Mode incident (Sileo reached *Setting up HCG Portal*, then
+SpringBoard entered Safe Mode). Test build only; root cause and device recovery still need confirmation on the
+affected phone (the SpringBoard crash report has not been reviewed yet).
+
+- **No SpringBoard Lock Screen objects at launch.** In 0.1.0~beta1 the bootstrap ran from the dylib constructor on
+  every SpringBoard launch, enabled or not, and ended by writing its status. Building that status called
+  `+[SBCoverSheetPresentationManager sharedInstance]` and could fall through to `+[SBLockScreenManager sharedInstance]`,
+  creating SpringBoard's own Lock Screen singletons before SpringBoard does. The status path now consults them, and
+  companions' runtime interfaces, only while Portal is active, which never happens before SpringBoard has finished
+  launching. The preview checks that neither is touched while Portal is off or inactive.
+- **No load-time Substrate dependency.** The hooks are plain Objective-C (`src/Tweak.m`, no Logos), and the injector's
+  `MSHookMessageEx` is resolved with `dlsym` only when Portal is enabled. If it is unavailable, Portal stays inactive
+  and Settings shows why (*Incompatible: inactive* plus the reason); Enable off and on retries. `validate.sh` fails if
+  either slice links Substrate. (Published HCG Halo and Vortex builds do link it and run on the same phone, so this
+  alone is not thought to be the cause.)
+- The bootstrap is queued on the main queue from the constructor.
+- The hooks fall back to the superclass implementation should the injector ever report no original.
+
 ## 0.1.0~beta1
 
 First beta, free public candidate demo.

@@ -38,7 +38,7 @@ Current decisions (18 Nov 2026):
 | HCG Terminal Unleashed (`com.hakmicapitalgroup.hcgterminal.unleashed`) | `connect` |
 | HCG Halo (`com.hakmicapitalgroup.halo`) | `connect` (HCG default; production access not yet decided). **Exception (17 Nov 2026, owner):** HCG Halo candidate builds are free public demos; 0.1.0~beta1, 0.2.0~beta1 and 0.3.0~beta1 (approved 18 Nov 2026) are listed, candidate channel only |
 | HCG Animation Center (`com.hakmicapitalgroup.animationcenter`) | `connect` (HCG default; production access not decided). **Exception (owner, 18 Nov 2026):** 0.1.0~beta1 only is a free public beta demo, candidate channel only |
-| HCG Portal (`com.hakmicapitalgroup.portal`) | `connect` (HCG default; production access not decided). **Exception (owner, 18 Nov 2026):** 0.1.0~beta1 only is a free public beta demo, candidate channel only |
+| HCG Portal (`com.hakmicapitalgroup.portal`) | `connect` (HCG default; production access not decided). **Exception (owner, 18 Nov 2026):** 0.1.0~beta1 is a free public beta demo, candidate channel only. 0.1.0~beta3 is staged in `exception_versions` **pending the owner's per-version approval** (requested 21 Nov 2026) |
 | HCG Vortex (`com.hakmicapitalgroup.vortex`) | `public` by a scoped exception (owner, 16–18 Nov 2026): 0.1.0~beta1, 0.1.0~beta2, 0.3.0~beta1 and 0.3.1~beta1, candidate channel only |
 
 ## What the repository enforces
