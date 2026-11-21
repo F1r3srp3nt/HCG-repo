@@ -14,9 +14,7 @@ channel = "beta"
 # free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps it out of
 # the stable source. Any other version needs its own approval.
 level = "connect"
-# 0.1.0~beta3: STAGED, PENDING THE OWNER'S PER-VERSION APPROVAL (requested 21 Nov 2026 with the candidate import).
-# Do not merge or publish until that approval is recorded in the exception text below.
-exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Portal 0.1.0~beta1 as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), and of 0.1.0~beta3 (requested 21 Nov 2026; approval pending), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Portal 0.1.0~beta1 as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), and of 0.1.0~beta3 as a free public demo (21 Nov 2026: 'Approved — beta 3 is a free public demo, publish it'), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
 exception_versions = ["0.1.0~beta1", "0.1.0~beta3"]
 
 [display]
