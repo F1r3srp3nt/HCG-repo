@@ -24,7 +24,7 @@
 - **Public packages only.** The candidate has no payment provider, so protected (`connect` or `paid`) packages can
   never be put in it: `channel` refuses, and `validate` reports `candidate-protected`.
   - Each free exception is scoped to that package's `exception_versions` (Vortex: `0.1.0~beta1`, `0.1.0~beta2`,
-    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`, `0.3.0~beta1`; Animation Center: `0.1.0~beta1`; Portal: `0.1.0~beta1`, `0.1.0~beta3`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`, `0.3.0~beta1` (approved, never imported),
+    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`, `0.3.0~beta1`; Animation Center: `0.1.0~beta1`; Portal: `0.1.0~beta1`, `0.1.0~beta3`; Sentinel: `0.1.0~beta1`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`, `0.3.0~beta1` (approved, never imported),
     `0.3.1~beta1`).
   - It cannot make any other package, or any other version, public.
 - **Verified on every Publish.** Both sources are verified offline before deployment and online afterwards.
@@ -68,7 +68,7 @@ temporary HCG-repo workflow, run 44225029311). Every build below is the exact CI
 | HCG Animation Center (Beta) | **0.1.0~beta1** | HCG-Jailbreak-Research `2d642bd`, run 44242604467, artifact 14399579139, SHA-256 `27a161b3…873218697b49c995812f04e579f97429f60`, 360,342 bytes (gzip). Later builds reused this version with different bytes; only this one is imported | Simulator-tested (103 runtime checks); not yet device-tested. Lock Screen playback experimental and off by default; Live Photos unsupported; AI generation not connected | **Included** |
 | HCG Portal (Beta) | **0.1.0~beta3** / 0.1.0~beta1 (superseded) | HCG-Jailbreak-Research `579213e`, run 44861951914, artifact 14690321654, SHA-256 `9af1575a…de945abe9a8dcb34`, 284,190 bytes (gzip). 0.1.0~beta1: `4bfed33`, run 44395826216, SHA-256 `9ccfeb9b…bb139220dae`. 0.1.0~beta2 (run 44663876626) was a test build and is not imported | 0.1.0~beta3: Simulator validated (67/67 runtime; preview 115/115 with lock / wake / menu / unlock cycles); physical iPhone verification pending. 0.1.0~beta1: SpringBoard Safe Mode reported during installation through Sileo (phone not confirmed; cause not confirmed; no crash report reviewed) | **Included** (owner-approved free demo, 21 Nov 2026) |
 | HCG Terminal Unleashed | — (0.1.0-1 recorded as protected) | HCG-Terminal CI uploads logs only, no `.deb` | — | **Blocked**: connect access with no free-demo approval, and no CI-built `.deb` |
-| HCG Sentinel | — | HCG-Sentinel CI produces archives, simulator apps and screenshots | — | **Pending**: no jailbreak `.deb` exists; the privileged helper is a specification |
+| HCG Sentinel (Beta) | **0.1.0~beta1** | HCG-Sentinel `490858c` (scheme HCGSentinelModern, iOS 15.0+, the standard app unchanged), built and packaged by HCG Executable Maker's Unleashify, run 44867375894 (`73edc9d`), artifact `hcg-sentinel-unleashify-deb`, SHA-256 `f1111fef…f75643e73846`, 4,899,018 bytes (gzip). Runs 44864284601 and 44873462584 built identical bytes | Not yet device-tested. Validated: Maker's rootless validator (iOS 16.5), dpkg sandbox install/reinstall/remove/purge, HCG Repo importer dry run. Not for iOS below 15.0 (e.g. iPhone 8 on iOS 13.3). The optional privileged helper is a specification and is not packaged | **Included** (owner-approved free demo, 21 Nov 2026) |
 
 **Not eligible:**
 - **IPAs:** HCG Terminal (standard edition, and the unsigned Unleashed IPA), the HCG Nexus standalone app, HCG News,
