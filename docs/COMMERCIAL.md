@@ -1,8 +1,18 @@
 # Commercial releases (HCG Store products in the main HCG Repo)
 
-**Status (21 Nov 2026): HCG Animation Center is prepared as a commercial prerelease at $1.99 USD. Nothing is
-published or activated.** The listing is `prepared` and is not rendered on the public site. Purchases, downloads and
-installation are disabled; the commercial release is not approved; HCG Store readiness is pending.
+**Status (21 Nov 2026): the owner approved the public product listing of HCG Animation Center at $1.99 USD (introductory
+prerelease). Nothing else is approved.** The listing is rendered as a *Coming Soon* product page and home-page card once
+the change is merged and **Publish** is run. Purchases, downloads and installation are disabled; the commercial release
+is not approved; HCG Store readiness is pending; no commercial version is approved; no HCG Store page exists yet
+(`store_page = "pending"`).
+
+## Owner decisions (audit log)
+
+| Date | Setting | Value | Record |
+|---|---|---|---|
+| 2026-11-21 | `listing` | `approved` | "Approved for public product listing." HCG Animation Center, `com.hakmicapitalgroup.animationcenter`, $1.99 USD introductory prerelease. Purchases, downloads, installation and the commercial release: **not approved**. HCG Store readiness: pending. Approved commercial version: none. Not an approval of any executable package. |
+
+The authoritative record is the `[[products.commercial.approvals]]` entry in `config/products.toml`; this table mirrors it.
 
 ## Architecture this builds on (nothing duplicated)
 
@@ -60,12 +70,15 @@ shown, whether a version is indexed, and the next owner step. It changes nothing
 ## What visitors see
 
 With the listing approved and purchases disabled, `products/<key>/` and a **Coming soon to HCG Store** card on the home
-page show the name, the summary, **$1.99 USD · Introductory Prerelease Price**, **Coming Soon**, publisher, category,
+page show the name, the summary, **$1.99 USD | Introductory Prerelease Price**, **Coming Soon**, publisher, category,
 release channel, *Purchases: Disabled*, *Installation: Disabled*, and:
 
-> Purchasing and installation will become available once the HCG Store payment and licensing infrastructure is ready.
+> Purchasing and installation will become available once HCG Store’s payment and licensing infrastructure is ready.
 
-There is a disabled **Purchase unavailable · Coming Soon** control and a plain link to the future HCG Store product page.
+There is a disabled **Purchase unavailable · Coming Soon** control. While `store_page = "pending"` (HCG Store has no
+catalogue page for the product), the Store link is a non-link placeholder, **HCG Store page · Coming Soon**: no Store
+URL is invented, and `verify` fails if the page links HCG Store (`commercial-store-link`). Set `store_page = "live"`
+once the Store's page exists; purchases cannot be enabled before that.
 There is no install action, no `.deb` link, no add-source link, and no pointer to the free candidate demo.
 
 To review a prepared listing before approving it, build a preview:
@@ -138,12 +151,14 @@ neither a grant nor a denial, and "Downloads are not available yet." with the la
 
 Each step is a separate owner decision. Nothing happens automatically, and no step implies the next.
 
-1. **Approve the listing text and price.** Review the preview (`--preview-listings`) and the screenshots in the PR.
-2. **Publish the listing.** In `config/products.toml` (`hcg-animation-center`): `listing = "approved"` plus its approval
-   record; merge the PR; run **Actions → Publish repository** (target `production`, confirm `PUBLISH`). Check
+1. **Approve the listing text and price.** Done 2026-11-21 (see the audit log above).
+2. **Publish the listing.** `listing = "approved"` and its approval record are in `config/products.toml`
+   (PR #14). After the owner's separate confirmation: merge the PR; run **Actions → Publish repository** (target
+   `production`, confirm `PUBLISH`). Check
    `products/hcg-animation-center/` shows the price and *Coming Soon* and the main `Packages` has no Animation Center
    entry (Check transport).
-3. **HCG Store (in the Store repository and deployment, founder-approved):** catalogue entry `hcg-animation-center`
+3. **HCG Store (in the Store repository and deployment, founder-approved; details in
+   [STORE_HANDOFF_ANIMATION_CENTER.md](STORE_HANDOFF_ANIMATION_CENTER.md)):** catalogue entry `hcg-animation-center`
    with its central ID; approved payment provider; HCG Connect and the central grant endpoint configured; the
    commercial build approved as a release for public delivery to HCG Repo and stored privately; a `$1.99 USD` offer;
    protected downloads enabled.

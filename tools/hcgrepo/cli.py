@@ -250,7 +250,7 @@ def cmd_commercial(a, cfg) -> int:
     for p in products:
         c = p.commercial
         print(f"{p.name} ({p.key}) — {', '.join(p.package_ids)}")
-        print(f"  release channel  {c.release_channel}   price {c.price_text}{' · ' + c.price_note if c.price_note else ''}")
+        print(f"  release channel  {c.release_channel}   price {c.price_text}{' | ' + c.price_note if c.price_note else ''}   store page {c.store_page}")
         print(f"  source → dest    {c.source_channel} → {c.destination}")
         for k in COMMERCIAL_DEFAULTS:
             v = c.settings[k] or "(none)"

@@ -423,6 +423,8 @@ def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str,
         store_links = (("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p)))
         if p.commercial is not None and p.commercial.purchases != "enabled":
             store_links = store_links[1:]   # no sign-in or purchase path while purchases are disabled (_check_commercial)
+            if p.commercial.store_page != "live":
+                store_links = ()            # no Store page exists yet; _check_commercial refuses any Store link
         for what, link in (store_links if p.in_store else ()):
             if f'href="{html.escape(link)}"' not in text:
                 r.error("product-page-store-link", f"{url} does not link the {what} page {link}")
@@ -480,6 +482,9 @@ def _check_commercial(f: "Fetcher", r: Report, cfg: RepoConfig, public_base: str
         if "/candidate/" in text or "sileo://source/" in text:
             r.error("commercial-candidate-link", f"{url} points to the candidate (testing) source; a commercial product "
                     "page must not offer the free demo build")
+        if c.store_page != "live" and cfg.store_base_url and cfg.store_base_url in text:
+            r.error("commercial-store-link", f"{url} links HCG Store, but store_page is {c.store_page!r}: no Store page "
+                    "exists for this product yet")
         if c.purchases != "enabled":
             if "store-access.js" in text or "data-store-access" in text:
                 r.error("commercial-purchase-enabled", f"{url} runs the HCG Store purchase check while purchases are disabled")

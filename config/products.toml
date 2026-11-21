@@ -101,12 +101,23 @@ description = [
   "Developed by Hakmi Capital Group, Animation Center is designed to integrate with the expanding HCG software ecosystem.",
   "This introductory prerelease will become available once HCG Store’s payment and licensing infrastructure is operational. Rootless jailbreaks only (iphoneos-arm64); device compatibility has not been verified yet.",
 ]
+# No HCG Store catalogue page exists for this product yet: the listing shows a placeholder and links no Store URL.
+store_page = "pending"
 # Owner-controlled release settings. Each starts closed; any other value needs a matching approval below
 # (setting, value, approved_by, date, record). See docs/COMMERCIAL.md for the order and the exact steps.
-listing = "prepared"
+# Owner decision of 21 Nov 2026: the public product listing ONLY. Purchases, downloads, installation and the
+# commercial release are NOT approved, HCG Store readiness is pending, and no commercial version is approved.
+listing = "approved"
 purchases = "disabled"
 downloads = "disabled"
 installation = "disabled"
 commercial_release = "not-approved"
 store_readiness = "pending"
 approved_version = ""
+
+[[products.commercial.approvals]]
+setting = "listing"
+value = "approved"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-21"
+record = "Owner decision: Approved for public product listing. Product: HCG Animation Center. Package ID: com.hakmicapitalgroup.animationcenter. Price: $1.99 USD, introductory prerelease. Public listing: Approved. Purchases: Not approved. Downloads: Not approved. Installation: Not approved. Commercial release: Not approved. HCG Store readiness: Pending. Approved commercial version: None. This authorization applies only to publishing the product listing; it is not approval of any executable package. Deployment remains subject to successful validation and the owner's separate confirmation before merge and Publish."

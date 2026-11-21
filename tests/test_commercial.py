@@ -20,7 +20,8 @@ from hcgrepo.debinspect import inspect_deb
 from hcgrepo.importer import import_deb
 from hcgrepo.repo import check_commercial, check_repository, load_pool
 from hcgrepo.server import BackgroundServer
-from hcgrepo.site import COMMERCIAL_NOT_READY, NO_DOWNLOADS, PREVIEW_MARKER, BuildError, build
+from hcgrepo.config import ConfigError
+from hcgrepo.site import COMMERCIAL_NOT_READY, NO_DOWNLOADS, PREVIEW_MARKER, STORE_PAGE_PENDING, BuildError, build
 from hcgrepo.verify import verify
 
 PROD = "https://repo.hakmicapitalgroup.com/"
@@ -79,11 +80,12 @@ class CommercialTests(RepoTestCase):
     def set_commercial(self, **settings):
         """Rewrite the fixture product's settings; approve=True adds an owner approval record for each."""
         approve = settings.pop("approve", True)
+        store_page = settings.pop("store_page", "live" if settings.get("purchases") == "enabled" else "pending")
         p = self.root / "config" / "products.toml"
         text = p.read_text()
-        text = re.sub(r"\n(listing|purchases|downloads|installation|commercial_release|store_readiness|approved_version) = .*", "", text)
+        text = re.sub(r"\n(listing|purchases|downloads|installation|commercial_release|store_readiness|approved_version|store_page) = .*", "", text)
         text = re.sub(r"\n\[\[products\.commercial\.approvals\]\][^\[]*", "\n", text)
-        lines = "".join(f'\n{k} = "{v}"' for k, v in settings.items())
+        lines = f'\nstore_page = "{store_page}"' + "".join(f'\n{k} = "{v}"' for k, v in settings.items())
         text = text.replace('description = ["A product used by the test suite."]',
                             'description = ["A product used by the test suite."]' + lines)
         if approve:
@@ -172,10 +174,11 @@ class CommercialTests(RepoTestCase):
         self.set_commercial(listing="approved")
         site = self.site("a")
         page = (site / "products" / KEY / "index.html").read_text()
-        for text in ("Premium Tool", "Advanced test customization.", "$1.99 USD", "Introductory Prerelease Price",
-                     "Coming Soon to HCG Store", COMMERCIAL_NOT_READY, NO_DOWNLOADS,
+        for text in ("Premium Tool", "Advanced test customization.", "<strong>$1.99 USD</strong> | Introductory Prerelease Price",
+                     "Coming Soon to HCG Store", COMMERCIAL_NOT_READY, NO_DOWNLOADS, STORE_PAGE_PENDING,
                      'disabled aria-disabled="true">Purchase unavailable', 'data-purchases="disabled"'):
             self.assertIn(text, page)
+        self.assertNotIn(self.cfg.store_base_url, page)      # no Store page exists: no invented Store URL
         for text in ("sileo://package/", "store-access.js", "data-store-access", "Buy Product", ".deb\"",
                      "/candidate/", "sileo://source/", "data-preview", "noindex"):
             self.assertNotIn(text, page)
@@ -188,6 +191,20 @@ class CommercialTests(RepoTestCase):
         self.assertTrue(rep.ok, rep.render())
 
     # ---- approvals and order are enforced
+
+    def test_store_page_link_only_when_the_store_page_exists(self):
+        self.set_commercial(listing="approved", store_page="live")
+        site = self.site("live")
+        page = (site / "products" / KEY / "index.html").read_text()
+        self.assertIn(f'href="{self.cfg.store_product_url(self.cfg.product_for_package(PKG))}"', page)
+        self.assertNotIn(STORE_PAGE_PENDING, page)
+        self.assertNotIn("store-access.js", page)                 # a Store link is still not a purchase path
+        self.assertTrue(self.served(site).ok)
+        self.set_commercial(listing="approved")                     # back to pending: an old page linking the Store fails
+        self.assertIn("commercial-store-link", self.served(site).codes())
+        with self.assertRaises(ConfigError):                        # nobody can buy without a Store page
+            self.set_commercial(listing="approved", store_readiness="ready", commercial_release="approved",
+                                approved_version="1.0.0", purchases="enabled", store_page="pending")
 
     def test_every_change_needs_an_owner_approval(self):
         self.set_commercial(listing="approved", approve=False)
@@ -291,7 +308,7 @@ class CommercialTests(RepoTestCase):
 class AnimationCenterListingTests(RepoTestCase):
     """The real HCG Animation Center entry: prepared, priced, closed, and not in the main index."""
 
-    def test_animation_center_is_prepared_and_closed(self):
+    def test_animation_center_listing_approved_everything_else_closed(self):
         cfg = load_config(REPO)
         p = next(x for x in cfg.products if x.key == "hcg-animation-center")
         c = p.commercial
@@ -301,20 +318,43 @@ class AnimationCenterListingTests(RepoTestCase):
                          ("commercial-prerelease", "$1.99 USD", "Introductory Prerelease Price", "Coming Soon",
                           "Hakmi Capital Group", "iOS Customization / Jailbreak Tweaks"))
         self.assertEqual((c.source_channel, c.destination), ("candidate", "main"))
-        self.assertEqual(c.settings, COMMERCIAL_DEFAULTS)
-        self.assertEqual(c.approvals, [])
-        self.assertFalse(p.listed())
+        self.assertEqual(c.settings, dict(COMMERCIAL_DEFAULTS, listing="approved"))
+        self.assertEqual(c.store_page, "pending")
+        self.assertEqual([(a["setting"], a["value"], a["date"]) for a in c.approvals], [("listing", "approved", "2026-11-21")])
+        record = c.approvals[0]["record"]
+        for text in ("Approved for public product listing", "com.hakmicapitalgroup.animationcenter", "$1.99 USD",
+                     "Purchases: Not approved", "Downloads: Not approved", "Installation: Not approved",
+                     "Commercial release: Not approved", "HCG Store readiness: Pending", "Approved commercial version: None",
+                     "not approval of any executable package"):
+            self.assertIn(text, record)
+        self.assertTrue(p.listed())
         self.assertFalse(c.installable)
+        self.assertEqual(c.approved_version, "")
         r = Report("animation center")
         check_commercial(cfg, load_lock(cfg), r)
         self.assertTrue(r.ok, r.render())
 
-    def test_real_build_keeps_the_candidate_demo_and_hides_the_listing(self):
+    def test_real_build_shows_coming_soon_listing_without_any_purchase_or_install(self):
         cfg = load_config(REPO)
         site = build(cfg, PROD, self.tmp / "real").out_dir
-        self.assertFalse((site / "products" / "hcg-animation-center").exists())
-        self.assertNotIn("hcg-animation-center", (site / "index.html").read_text())
-        self.assertNotIn("com.hakmicapitalgroup.animationcenter", (site / "repo" / "Packages").read_text())
+        page = (site / "products" / "hcg-animation-center" / "index.html").read_text()
+        for text in ("<h1>HCG Animation Center</h1>", "Advanced iOS animation customization.",
+                     "<strong>$1.99 USD</strong> | Introductory Prerelease Price", "Coming Soon to HCG Store",
+                     "Purchasing and installation will become available once HCG Store’s payment and licensing "
+                     "infrastructure is ready.", 'disabled aria-disabled="true">Purchase unavailable · Coming Soon',
+                     STORE_PAGE_PENDING, NO_DOWNLOADS, "videos and GIFs"):
+            self.assertIn(text, page)
+        for text in ("sileo://", ".deb", "/candidate/", "store-access.js", "data-store-access", "Buy Product",
+                     cfg.store_base_url, "system interface", "data-preview", "noindex"):
+            self.assertNotIn(text, page)
+        home = (site / "index.html").read_text()
+        self.assertIn('data-commercial="hcg-animation-center"', home)
+        self.assertIn('href="products/hcg-animation-center/"', home)
+        self.assertFalse((site / PREVIEW_MARKER).exists())
+        for name in ("Packages",):
+            self.assertNotIn("com.hakmicapitalgroup.animationcenter", (site / "repo" / name).read_text())
+        self.assertFalse(list((site / "repo" / "debs").glob("*animationcenter*")))
+        self.assertFalse((site / "repo" / "payment_endpoint").exists())
         cand = (site / "repo" / "candidate" / "Packages").read_text()
         self.assertIn("Package: com.hakmicapitalgroup.animationcenter\n", cand)
         self.assertIn("SHA256: 27a161b3cc323f09940211553b058873218697b49c995812f04e579f97429f60", cand)

@@ -131,6 +131,9 @@ class Commercial:
     category: str = ""
     source_channel: str = "candidate"
     destination: str = "main"
+    # "pending": HCG Store has no product page for it yet, so HCG Repo shows a placeholder and links no Store URL.
+    # "live": the Store's catalogue page exists; HCG Repo links it (never a purchase action while purchases are off).
+    store_page: str = "pending"
     description: list[str] = field(default_factory=list)
     settings: dict[str, str] = field(default_factory=lambda: dict(COMMERCIAL_DEFAULTS))
     approvals: list[dict] = field(default_factory=list)
@@ -184,7 +187,8 @@ class Commercial:
 
 def parse_commercial(d: dict, where: str) -> Commercial:
     known = set(COMMERCIAL_DEFAULTS) | {"release_channel", "price", "currency", "price_note", "availability", "publisher",
-                                        "category", "source_channel", "destination", "description", "approvals"}
+                                        "category", "source_channel", "destination", "store_page", "description",
+                                        "approvals"}
     for k in d:
         if k not in known:
             raise ConfigError(f"{where}: unknown commercial setting {k!r}")
@@ -193,6 +197,7 @@ def parse_commercial(d: dict, where: str) -> Commercial:
         price_note=str(d.get("price_note", "")), availability=str(d.get("availability", "Coming Soon")),
         publisher=str(d.get("publisher", "Hakmi Capital Group")), category=str(d.get("category", "")),
         source_channel=str(d.get("source_channel", "candidate")), destination=str(d.get("destination", "main")),
+        store_page=str(d.get("store_page", "pending")),
         description=[str(x) for x in d.get("description", [])],
         settings={k: str(d.get(k, v)) for k, v in COMMERCIAL_DEFAULTS.items()},
         approvals=[dict(a) for a in d.get("approvals", [])],
@@ -206,6 +211,10 @@ def parse_commercial(d: dict, where: str) -> Commercial:
     for k, allowed in COMMERCIAL_VALUES.items():
         if c.settings[k] not in allowed:
             raise ConfigError(f"{where}: {k} must be one of {allowed}, got {c.settings[k]!r}")
+    if c.store_page not in ("pending", "live"):
+        raise ConfigError(f"{where}: store_page must be 'pending' or 'live', got {c.store_page!r}")
+    if c.settings["purchases"] == "enabled" and c.store_page != "live":
+        raise ConfigError(f"{where}: purchases enabled needs store_page = 'live' (HCG Store sells it on its product page)")
     if c.source_channel != "candidate" or c.destination != "main":
         raise ConfigError(f"{where}: commercial releases move from source_channel 'candidate' to destination 'main'")
     for i, a in enumerate(c.approvals):

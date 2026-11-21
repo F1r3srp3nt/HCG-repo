@@ -873,15 +873,16 @@ NO_DOWNLOADS = "Downloads are not available yet."
 
 PREVIEW_MARKER = "PREVIEW-NOT-FOR-DEPLOYMENT.txt"
 PREVIEW_NOTICE = "Preview of a prepared listing. Not published: awaiting the owner's approval."
-COMMERCIAL_NOT_READY = ("Purchasing and installation will become available once the HCG Store payment and licensing "
+COMMERCIAL_NOT_READY = ("Purchasing and installation will become available once HCG Store’s payment and licensing "
                         "infrastructure is ready.")
+STORE_PAGE_PENDING = "HCG Store page · Coming Soon"
 COMMERCIAL_NO_INSTALL = ("It is not in the HCG Repo package index, so Sileo, Zebra and other package managers cannot "
                          "install it from HCG Repo. No package file is published here.")
 CHANNEL_NAMES = {"commercial-prerelease": "Commercial Prerelease", "commercial-release": "Commercial Release"}
 
 
 def commercial_price_line(c) -> str:
-    note = f" · {e(c.price_note)}" if c.price_note else ""
+    note = f" | {e(c.price_note)}" if c.price_note else ""
     return f'<p class="price"><strong>{e(c.price_text)}</strong>{note}</p>'
 
 
@@ -927,7 +928,7 @@ def commercial_product_page(cfg: RepoConfig, base: str, repo_url: str, p: Produc
         ("Publisher", e(c.publisher)),
         ("Category", e(c.category or p.kind)),
         ("Release channel", e(CHANNEL_NAMES[c.release_channel])),
-        ("Price", f"{e(c.price_text)}{' · ' + e(c.price_note) if c.price_note else ''}"),
+        ("Price", f"{e(c.price_text)}{' | ' + e(c.price_note) if c.price_note else ''}"),
         ("Availability", e(c.availability)),
         ("Purchases", e(yes_no[c.purchases])),
         ("Installation", e(yes_no["enabled" if installable else "disabled"])),
@@ -947,6 +948,12 @@ def commercial_product_page(cfg: RepoConfig, base: str, repo_url: str, p: Produc
     else:
         install = (f'<div class="card note note-warn" role="note"><p><strong>{NO_DOWNLOADS}</strong> '
                    f'{e(COMMERCIAL_NO_INSTALL)}</p></div>')
+    if c.store_page == "live":
+        store_link = f'<a class="btn btn-metal" href="{e(store_url)}">HCG Store product page</a>'
+        store_hint = "Nothing can be bought yet. The HCG Store page is informational until HCG Store opens sales."
+    else:   # no Store page exists yet: a placeholder, never an invented URL
+        store_link = f'<span class="btn btn-metal" aria-disabled="true">{e(STORE_PAGE_PENDING)}</span>'
+        store_hint = "Nothing can be bought yet. HCG Store does not have a page for this product yet."
     if c.purchases == "enabled" and not preview:
         login_url = cfg.store_login_url(p)
         buy = f"""<section class="section-tight card store" aria-labelledby="store-h" data-store-access data-store-base="{e(cfg.store_base_url)}"
@@ -968,9 +975,9 @@ def commercial_product_page(cfg: RepoConfig, base: str, repo_url: str, p: Produc
 <p>{e(COMMERCIAL_NOT_READY)}</p>
 <div class="actions">
   <button type="button" class="btn btn-metal" disabled aria-disabled="true">Purchase unavailable · {e(c.availability)}</button>
-  <a class="btn btn-metal" href="{e(store_url)}">HCG Store product page</a>
+  {store_link}
 </div>
-<p class="hint">Nothing can be bought yet. The HCG Store page is informational until HCG Store opens sales.</p>
+<p class="hint">{store_hint}</p>
 </section>
 """
         scripts = ()
