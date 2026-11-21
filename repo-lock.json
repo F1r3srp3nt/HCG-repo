@@ -168,6 +168,17 @@
     {
       "architecture": "iphoneos-arm64",
       "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.portal_0.1.0~beta4_iphoneos-arm64.deb",
+      "imported_at": "2026-11-21T06:57:58Z",
+      "package": "com.hakmicapitalgroup.portal",
+      "sha256": "8a186d99a63d38c2bc4fb25d40bcfd773bbc042e5309063e0a87fc4d584164e4",
+      "size": 293942,
+      "status": "published",
+      "version": "0.1.0~beta4"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "channel": "candidate",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb",
       "imported_at": "2026-11-16T23:04:48Z",
       "package": "com.hakmicapitalgroup.vortex",

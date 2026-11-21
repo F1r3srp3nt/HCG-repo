@@ -1,0 +1,28 @@
+# HCG Portal 0.1.0~beta4, rootless. Unlock gating and touch repair: Portal works only after iOS has unlocked the
+# iPhone (it no longer appears on the locked Lock Screen, and never requests or bypasses Face ID, Touch ID or the
+# passcode), and its orb and menu respond to touches despite SpringBoard's own Cover Sheet tap recognizers.
+# Simulator validated; physical iPhone verification pending.
+# Upgrades 0.1.0~beta3 and 0.1.0~beta1 under the same package ID.
+# Candidate channel only (free public demo; owner approval of 21 Nov 2026 for this exact version, docs/ACCESS.md).
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 1298ded (branch claude/portal-0.1.0-beta4-unlock-gate),
+# macOS CI run 44871433709 (HCG Portal build: Xcode), artifact hcg-portal-rootless-deb (ID 14693943993; zip SHA-256
+# b3232c3f44af47addce0d171c295ece59611f34061ab1bc234f53a3a9aee1573 as recorded by GitHub).
+# Project record (HCGPortal/README.md at d94ff80, qualification kit 8763365): 293,942 bytes; embedded build ID
+# 1298ded2d930; validate.sh --require-new-abi 0 failures / 0 warnings (in CI and on the downloaded bytes); host tests
+# 2,927,359 checks; Simulator runtime 65/65; preview run 44871433770 122/122 with synthesised UIKit touches.
+# Prepare packages refuses any other bytes. The same run would upload hcg-portal-rootless-deb-UNVALIDATED only if
+# validation failed; it did not, and that artifact is NOT this package.
+
+[request]
+package = "com.hakmicapitalgroup.portal"
+version = "0.1.0~beta4"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44871433709
+commit = "1298ded2d930cff2b788af5c5584adfa5f2fbfd7"
+artifact = "hcg-portal-rootless-deb"
+sha256 = "8a186d99a63d38c2bc4fb25d40bcfd773bbc042e5309063e0a87fc4d584164e4"
