@@ -1,0 +1,94 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:00c0e7d127dc8116e538dbbffc76529f4b7d97c16e4da298fd15838057023e1b",
+  "artifact_id": 14692919202,
+  "artifact_name": "hcg-sentinel-unleashify-deb",
+  "artifact_zip_sha256": "00c0e7d127dc8116e538dbbffc76529f4b7d97c16e4da298fd15838057023e1b",
+  "commit": "73edc9d2e25cacc9a4f60b2860d69a32d7e7cad7",
+  "downloaded_sha256": "f1111fef7ab0b5da000c6134905b29f571597b98938b6ce09e11f75643e73846",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgsentinel_0.1.0~beta1_iphoneos-arm64.deb",
+  "imported_at": "2026-11-21T07:57:28Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [
+      {
+        "bundle_id": "com.hcg.sentinel",
+        "executable": "HCGSentinelModern",
+        "minimum_os": "15.0",
+        "path": "var/jb/Applications/HCGSentinelModern.app"
+      }
+    ],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/usr/lib/libobjc.A.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/CFNetwork.framework/CFNetwork",
+          "/System/Library/Frameworks/Combine.framework/Combine",
+          "/System/Library/Frameworks/CoreBluetooth.framework/CoreBluetooth",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/CryptoKit.framework/CryptoKit",
+          "/System/Library/Frameworks/NetworkExtension.framework/NetworkExtension",
+          "/System/Library/Frameworks/Security.framework/Security",
+          "/System/Library/Frameworks/SwiftUI.framework/SwiftUI",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/swift/libswiftCore.dylib",
+          "/usr/lib/swift/libswiftCoreFoundation.dylib",
+          "/usr/lib/swift/libswiftCoreImage.dylib",
+          "/usr/lib/swift/libswiftDarwin.dylib",
+          "/usr/lib/swift/libswiftDispatch.dylib",
+          "/usr/lib/swift/libswiftMetal.dylib",
+          "/usr/lib/swift/libswiftOSLog.dylib",
+          "/usr/lib/swift/libswiftObjectiveC.dylib",
+          "/usr/lib/swift/libswiftQuartzCore.dylib",
+          "/usr/lib/swift/libswiftSpatial.dylib",
+          "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+          "/usr/lib/swift/libswiftXPC.dylib",
+          "/usr/lib/swift/libswift_Concurrency.dylib",
+          "/usr/lib/swift/libswiftos.dylib",
+          "/usr/lib/swift/libswiftsimd.dylib",
+          "/usr/lib/swift/libswiftFoundation.dylib",
+          "/usr/lib/swift/libswiftNetwork.dylib",
+          "/usr/lib/swift/libswiftCoreGraphics.dylib",
+          "/usr/lib/swift/libswiftUIKit.dylib"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Applications/HCGSentinelModern.app/HCGSentinelModern",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "15.0",
+    "depends": "firmware (>= 15.0), uikittools",
+    "maintainer_scripts": [
+      "postinst",
+      "postrm"
+    ],
+    "package": "com.hakmicapitalgroup.hcgsentinel",
+    "sha256": "f1111fef7ab0b5da000c6134905b29f571597b98938b6ce09e11f75643e73846",
+    "size": 4899018,
+    "version": "0.1.0~beta1"
+  },
+  "member": "com.hakmicapitalgroup.hcgsentinel_0.1.0~beta1_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.hcgsentinel",
+  "repository": "F1r3srp3nt/HCG-Executable-Maker",
+  "request": "hcg-sentinel-0.1.0-beta1-rootless",
+  "run_attempt": 1,
+  "run_id": 44867375894,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Executable-Maker/actions/runs/44867375894",
+  "schema": 1,
+  "sha256": "f1111fef7ab0b5da000c6134905b29f571597b98938b6ce09e11f75643e73846",
+  "sha512": "59fd8d88caf1c6101537bf159da5192c4b679b8b2f1034114a18cb8e2a69da64d411dd7bb96e84ad72a6e92ba6ff62b47f232da3da19a8ea76db340b17a56c49",
+  "size": 4899018,
+  "source": "github-workflow-artifact",
+  "version": "0.1.0~beta1",
+  "workflow": ".github/workflows/build.yml"
+}

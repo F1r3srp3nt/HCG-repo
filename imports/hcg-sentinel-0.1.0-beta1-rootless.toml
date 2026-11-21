@@ -1,0 +1,19 @@
+# HCG Sentinel 0.1.0~beta1, rootless (scheme HCGSentinelModern, iOS 15.0+), the standard app packaged unchanged.
+# App source: F1r3srp3nt/HCG-Sentinel commit 490858c15343e9c24e6fe85a9a83f498d744a7af. Built, packaged and validated by
+# HCG Executable Maker's Unleashify CI (job unleashify-sentinel) in the run below. Runs 135-137 built byte-identical
+# packages; run 137 (c074245) did not conclude successfully (an unrelated job), so this request pins run 136, whose
+# artifact holds the same bytes. Owner authorization for Candidate publication: 21 Nov 2026, this SHA-256 only.
+
+[request]
+package = "com.hakmicapitalgroup.hcgsentinel"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Executable-Maker"
+run_id = 44867375894
+commit = "73edc9d2e25cacc9a4f60b2860d69a32d7e7cad7"
+artifact = "hcg-sentinel-unleashify-deb"
+sha256 = "f1111fef7ab0b5da000c6134905b29f571597b98938b6ce09e11f75643e73846"

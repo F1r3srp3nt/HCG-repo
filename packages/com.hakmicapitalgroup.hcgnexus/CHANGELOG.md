@@ -1,5 +1,16 @@
 # HCG Nexus changelog
 
+## 0.3.3~beta1
+
+Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.3.2~beta1, plus:
+
+- **Command Mode keeps your panel glass.** Its card now uses the blur and opacity set in Settings › HCG Nexus › Panel glass, like the panel itself (before, it always used a thin blur and a fixed tint).
+  - With blur off, the card keeps the panel's minimum opacity so text stays readable.
+  - Increase Contrast makes the card at least 86% opaque.
+  - Reduce Transparency still makes it solid, with no blur, whatever the setting.
+  - Changing the setting updates the card straight away.
+- Works with HCG Halo 0.3.1~beta1 exactly as 0.3.2~beta1 does. Works offline; no sign-in needed.
+
 ## 0.3.2~beta1
 
 Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.3.1~beta1, plus:
