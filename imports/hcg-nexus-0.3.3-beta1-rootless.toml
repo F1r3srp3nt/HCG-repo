@@ -1,0 +1,26 @@
+# HCG Nexus 0.3.3~beta1 (free candidate beta of a paid tweak), rootless. Simulator-tested; real-device testing pending.
+# Everything in 0.3.2~beta1, plus: Command Mode's card uses the configured panel glass (HCG Nexus > Panel glass: blur
+# Off / Light / Standard / Strong and opacity, by the panel's own rules: readability floor with blur off, Increase
+# Contrast minimum 0.86); Reduce Transparency still makes it opaque and unblurred; settings changes apply live.
+# Compatible with HCG Halo 0.3.1~beta1 exactly as 0.3.2~beta1.
+# Owner approval, 21 Nov 2026: 'Approve publishing to repo candidate' (for 0.3.3~beta1, after the run #30 report).
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #30, id 44569229745 (route both, rootless), from commit
+# a58ff70 on branch claude/nexus-0.3.3-command-glass (based on the published 0.3.2~beta1, cd81084). All four jobs
+# passed: lint + 27,833 Core host checks; Device Link + HCGConnectVerify; app XCTests and screenshots; jailbreak package.
+# Re-checked locally on the downloaded file: zip sha256 4610089e...c24f matches GitHub; inspect-package.py
+# --require-new-arm64e-abi all OK; control Version 0.3.3~beta1; HaloBorder.plist nexusVersion 0.3.3~beta1, interface 1;
+# .deb 1,199,034 bytes. Artifact hcg-nexus-rootless-deb (ID 14553841955) EXPIRES 2026-11-26.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.3.3~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 44569229745
+commit = "a58ff705d6853e48ff53ae9cbc87db3059274b84"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "e42efb6da782fba82d48ee678495dfdb5df4cc0c501da9383102b3e2d25e9c6f"
