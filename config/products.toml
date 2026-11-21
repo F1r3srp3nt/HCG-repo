@@ -66,3 +66,47 @@ access = "public"
 status = "Experimental beta in testing: installation failed"
 summary = "Home Screen page transitions with six icon effects (Tornado, Orbital, Warp, Holographic Layers, Circuit Flow, Magnetic Grid), plus Reverse Slide, Vertical Rise, Vertical Fall and custom directions."
 detail = "Free experimental beta, no sign-in, in the HCG Repo Candidate testing channel only. Rootless (iphoneos-arm64). Offered: 0.3.1~beta1, not yet installed on a device. A phone recording of the previous build (version not confirmed) showed 3 of 6 effects running, with visual bugs that 0.3.1~beta1 fixes. Performance and battery impact unmeasured. 0.1.0~beta1 failed to install on iPhone 11 Pro Max, iOS 17.4."
+
+[[products]]
+# HCG Animation Center: first commercial prerelease listing (docs/COMMERCIAL.md). The product registry entry is the
+# only place HCG Repo describes it; HCG Store (catalogue + server-side offers) stays authoritative for pricing,
+# purchases, entitlements and delivery. The free candidate demo 0.1.0~beta1 stays in HCG Repo Candidate under its
+# own approval and is never the commercial build.
+key = "hcg-animation-center"
+name = "HCG Animation Center"
+package_ids = ["com.hakmicapitalgroup.animationcenter"]
+layouts = ["iphoneos-arm64"]
+kind = "Jailbreak tweak"
+access = "paid"
+status = "Coming Soon"
+summary = "Advanced iOS animation customization."
+detail = "Introductory prerelease. Purchasing and installation open once HCG Store is ready."
+store_slug = "hcg-animation-center"
+
+[products.commercial]
+release_channel = "commercial-prerelease"
+publisher = "Hakmi Capital Group"
+category = "iOS Customization / Jailbreak Tweaks"
+# Announced introductory price, shown on the listing. HCG Store's server-side offer sets the price actually charged.
+price = "1.99"
+currency = "USD"
+price_note = "Introductory Prerelease Price"
+availability = "Coming Soon"
+source_channel = "candidate"
+destination = "main"
+# Owner wording, adjusted only where the build does not support it: 0.1.0~beta1 plays the user's own videos and GIFs
+# as animated backgrounds (it does not change system interface animations), and no device has been verified.
+description = [
+  "HCG Animation Center brings advanced animation customization to jailbroken iPhones, providing new ways to personalize the iPhone experience through configurable animated backgrounds: your own videos and GIFs, playing behind the Home Screen icons.",
+  "Developed by Hakmi Capital Group, Animation Center is designed to integrate with the expanding HCG software ecosystem.",
+  "This introductory prerelease will become available once HCG Store’s payment and licensing infrastructure is operational. Rootless jailbreaks only (iphoneos-arm64); device compatibility has not been verified yet.",
+]
+# Owner-controlled release settings. Each starts closed; any other value needs a matching approval below
+# (setting, value, approved_by, date, record). See docs/COMMERCIAL.md for the order and the exact steps.
+listing = "prepared"
+purchases = "disabled"
+downloads = "disabled"
+installation = "disabled"
+commercial_release = "not-approved"
+store_readiness = "pending"
+approved_version = ""

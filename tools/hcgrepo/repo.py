@@ -169,8 +169,57 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
         if len(hashes) > 1:
             report.error("lock-conflict", f"repo-lock.json records different contents for {' '.join(k)}")
 
+    # Commercial release settings (docs/COMMERCIAL.md)
+    check_commercial(cfg, lock, report)
+
     # Dependencies
     check_dependencies(cfg, [p.info for p in pkgs], report)
+
+
+def check_commercial(cfg: RepoConfig, lock: dict, report: Report) -> None:
+    """Owner-controlled commercial settings: every non-default value approved, the workflow order kept, and the
+    approved version a protected (never public) stable build. A free candidate demo is never the commercial build."""
+    for p in cfg.products:
+        c = p.commercial
+        if c is None:
+            continue
+        where = f"config/products.toml {p.key}"
+        for k, v in c.unapproved():
+            report.error("commercial-unapproved", f"{where}: {k} = {v!r} has no owner approval record "
+                         "([[products.commercial.approvals]] with setting, value, approved_by, date and record)")
+        for msg in c.order_problems():
+            report.error("commercial-order", f"{where}: {msg}")
+        for pkg in p.package_ids:
+            meta = load_package_meta(cfg, pkg)
+            if meta.access_explicit and meta.access != "paid":
+                report.error("commercial-access", f"{where}: packages/{pkg}/package.toml [access] level must be \"paid\" "
+                             f"for a product sold through HCG Store (is {meta.access!r})")
+        ver = c.approved_version
+        if ver:
+            entries = [e for e in lock["packages"] if e["package"] in p.package_ids and e["version"] == ver]
+            if not entries:
+                report.error("commercial-version", f"{where}: approved_version {ver} is not in repo-lock.json")
+            for e in entries:
+                if entry_channel(e) != "stable" or e.get("status") != "protected":
+                    report.error("commercial-version", f"{where}: approved_version {ver} must be a protected stable build "
+                                 f"({e['filename']} is {entry_channel(e)}/{e.get('status', 'published')})")
+                if load_package_meta(cfg, e["package"]).is_free_demo(ver):
+                    report.error("commercial-version", f"{where}: approved_version {ver} is a free candidate demo; the "
+                                 "commercial release must be its own build")
+        # The main (stable) source needs the provider; the candidate source never has one and never indexes paid builds.
+        if c.installation == "enabled" and not cfg.payment_endpoint and cfg.channel == "stable":
+            report.error("commercial-order", f"{where}: installation enabled needs [access] payment_endpoint "
+                         "(HCG Store's payment provider) in config/repo.toml")
+
+
+def commercial_gate(cfg: RepoConfig, p: PoolPackage) -> bool:
+    """Whether a protected stable build may be indexed in the main source. Builds of a commercial product are
+    indexed only when every commercial gate is open and only for the exact approved version."""
+    product = cfg.product_for_package(p.info.package)
+    if product is None or product.commercial is None:
+        return True
+    c = product.commercial
+    return c.installable and p.info.version == c.approved_version
 
 
 def check_dependencies(cfg: RepoConfig, infos: list[DebInfo], report: Report) -> None:

@@ -11,6 +11,9 @@
   "use strict";
   var box = document.querySelector("[data-store-access]");
   if (!box || !window.fetch) return;
+  // A commercial product whose purchases the owner has not enabled is never upgraded to "Buy", whatever the
+  // store answers (docs/COMMERCIAL.md). HCG Store enforces the same rule on its server.
+  if (box.getAttribute("data-purchases") === "disabled") return;
   var base = box.getAttribute("data-store-base") || "";
   var accessUrl = box.getAttribute("data-access-url") || "";
   var storeUrl = box.getAttribute("data-store-url") || "";

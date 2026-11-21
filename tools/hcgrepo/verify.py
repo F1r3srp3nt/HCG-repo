@@ -184,7 +184,8 @@ def parse_release_hashes(fields: list[tuple[str, str]]) -> dict[str, dict[str, t
 
 def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pubkey: Path | None = None,
            require_signature: bool = False, check_debs: bool = True, evidence: Path | None = None,
-           check_provider: bool = False, site_checks: bool = True, icons: bool = True) -> VerifyResult:
+           check_provider: bool = False, site_checks: bool = True, icons: bool = True,
+           allow_preview: bool = False) -> VerifyResult:
     """Walk the repository as Sileo does. With `evidence`, every response body and a responses.json
     (status, redirect hops, headers, size, SHA-256) are saved there, so a report can be checked later."""
     from .config import normalize_base_url
@@ -198,6 +199,8 @@ def verify(public_base: str, fetch_base: str, cfg: RepoConfig | None = None, pub
     r = Report(repo_public)
     res = VerifyResult(r)
     _walk(f, r, res, public_base, repo_public, sub, cfg, pubkey, require_signature, check_debs, site_checks, icons)
+    if site_checks and cfg:
+        _check_commercial(f, r, cfg, public_base, allow_preview)
     _check_payment_endpoint(f, r, cfg, repo_public, res.protected_indexed, check_provider)
     _check_transport(f, r, repo_public)
     res.checked_urls = f.log
@@ -317,6 +320,12 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
         if (pkg, ver, arch) in seen:
             r.error("stanza-duplicate", f"{label} appears more than once in Packages")
         seen.add((pkg, ver, arch))
+        if cfg and cfg.channel == "stable":
+            product = cfg.product_for_package(pkg)
+            c = product.commercial if product else None
+            if c is not None and not (c.installable and ver == c.approved_version):
+                r.error("commercial-indexed", f"{label}: {product.key} is a commercial product without an approved, "
+                        "activated release for this version; the main index must not list it (docs/COMMERCIAL.md)")
         if arch and arch != "all" and arch not in archs:
             r.error("stanza-arch", f"{label}: architecture not announced in Release")
         fn = debian.field(st, "Filename") or ""
@@ -388,7 +397,7 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
         for st in stanzas:
             if f"sileo://package/{debian.field(st, 'Package')}".encode() not in data:
                 r.error("site-missing-package", f"website does not offer {debian.field(st, 'Package')}")
-        for product in cfg.products if cfg else []:
+        for product in cfg.visible_products if cfg else []:
             if f'href="products/{product.key}/"'.encode() not in data:
                 r.error("site-product-link", f"website does not link the product page products/{product.key}/")
     if cfg:
@@ -404,14 +413,17 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
 def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str, indexed: set[str],
                        candidate_indexed: set[str] | None = None) -> None:
     """Product pages link HCG Store, never link a .deb, and offer installation only for indexed packages."""
-    for p in cfg.products:
+    for p in cfg.visible_products:
         url = f"{public_base}products/{p.key}/"
         code, data, _ = f.get(url)
         if code != 200:
             r.error("product-page-missing", f"product page {url} returns HTTP {code}")
             continue
         text = data.decode("utf-8", "replace")
-        for what, link in ((("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p))) if p.in_store else ()):
+        store_links = (("sign-in", cfg.store_login_url(p)), ("HCG Store", cfg.store_product_url(p)))
+        if p.commercial is not None and p.commercial.purchases != "enabled":
+            store_links = store_links[1:]   # no sign-in or purchase path while purchases are disabled (_check_commercial)
+        for what, link in (store_links if p.in_store else ()):
             if f'href="{html.escape(link)}"' not in text:
                 r.error("product-page-store-link", f"{url} does not link the {what} page {link}")
         if not p.in_store and cfg.store_base_url and cfg.store_base_url in text:
@@ -423,11 +435,63 @@ def _check_store_pages(f: Fetcher, r: Report, cfg: RepoConfig, public_base: str,
         offered = set(re.findall(r"sileo://package/([^\"'<>\s]+)", text))
         for pkg in sorted(offered - indexed):
             r.error("product-page-install-link", f"{url} offers sileo://package/{pkg}, which is not in the index")
-        in_testing = set(p.package_ids) & (candidate_indexed or set())
+        # A commercial product's page never points to a candidate build (_check_commercial checks it).
+        in_testing = set(p.package_ids) & (candidate_indexed or set()) if p.commercial is None else set()
         if not set(p.package_ids) & indexed and not in_testing and NO_DOWNLOADS not in text:
             r.error("product-page-download-notice", f"{url} does not say {NO_DOWNLOADS!r}")
         if in_testing and not set(p.package_ids) & indexed and "HCG Repo Candidate" not in text:
             r.error("product-page-candidate", f"{url} does not point to the testing channel where {sorted(in_testing)} is")
+
+
+def _check_commercial(f: "Fetcher", r: Report, cfg: RepoConfig, public_base: str, allow_preview: bool) -> None:
+    """docs/COMMERCIAL.md: a prepared listing is not published; a published one shows its price and availability,
+    offers no purchase while purchases are disabled, no installation unless activated, and never the free
+    candidate build. A preview build (prepared listings rendered for review) is never accepted as deployable."""
+    from .site import COMMERCIAL_NOT_READY, PREVIEW_MARKER
+    if not allow_preview:
+        code, _, _ = f.get(public_base + PREVIEW_MARKER)
+        if code == 200:
+            r.error("preview-build", f"{PREVIEW_MARKER} is served: this is a preview build of prepared listings and "
+                    "must never be deployed")
+    code, home, _ = f.get(public_base)
+    home_text = home.decode("utf-8", "replace") if code == 200 else ""
+    for p in cfg.products:
+        c = p.commercial
+        if c is None:
+            continue
+        url = f"{public_base}products/{p.key}/"
+        code, data, _ = f.get(url)
+        if not p.listed(cfg.preview_listings):
+            if code == 200:
+                r.error("commercial-listing-exposed", f"{url} is served, but the {p.key} listing is {c.listing!r}, "
+                        "not approved by the owner")
+            if f'data-commercial="{p.key}"' in home_text or f'href="products/{p.key}/"' in home_text:
+                r.error("commercial-listing-exposed", f"the home page lists {p.key}, whose listing is not approved")
+            continue
+        if code != 200:
+            r.error("product-page-missing", f"product page {url} returns HTTP {code}")
+            continue
+        text = data.decode("utf-8", "replace")
+        for what, needle in (("price", html.escape(c.price_text)), ("availability", html.escape(c.availability))):
+            if needle not in text:
+                r.error("commercial-page-content", f"{url} does not show the {what} {needle!r}")
+        if "data-preview" in text and not allow_preview:
+            r.error("preview-build", f"{url} is a preview page; prepared listings must never be deployed")
+        if "/candidate/" in text or "sileo://source/" in text:
+            r.error("commercial-candidate-link", f"{url} points to the candidate (testing) source; a commercial product "
+                    "page must not offer the free demo build")
+        if c.purchases != "enabled":
+            if "store-access.js" in text or "data-store-access" in text:
+                r.error("commercial-purchase-enabled", f"{url} runs the HCG Store purchase check while purchases are disabled")
+            if 'data-purchases="disabled"' not in text or "disabled" not in text:
+                r.error("commercial-purchase-enabled", f"{url} lacks the disabled purchase control")
+        if not c.installable:
+            if "sileo://package/" in text:
+                r.error("commercial-install-link", f"{url} offers installation, but the commercial release is not activated")
+            if NO_DOWNLOADS not in text:
+                r.error("commercial-page-content", f"{url} does not say that downloads are not available")
+        if c.purchases != "enabled" and COMMERCIAL_NOT_READY not in text:
+            r.error("commercial-page-content", f"{url} does not say that purchasing is not available yet")
 
 
 def _check_deb(f: Fetcher, r: Report, st, url: str, label: str) -> None:

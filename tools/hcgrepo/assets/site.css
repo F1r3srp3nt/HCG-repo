@@ -228,6 +228,8 @@ main:focus { outline: none; }
 .dev-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .dev-head h3 { color: var(--text); }
 .dev-kind { margin: 2px 0 0; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.price { margin: 8px 0 0; color: var(--muted); }
+.price strong { color: var(--cyan); font-size: 1.15rem; letter-spacing: 0.01em; }
 @media (max-width: 520px) { .empty { flex-direction: column; } }
 
 /* Prose and help */
