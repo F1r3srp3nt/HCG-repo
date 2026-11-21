@@ -237,11 +237,53 @@ def _base(a, cfg) -> str:
     return cfg.base_url(getattr(a, "target", None), getattr(a, "base_url", None))
 
 
+def cmd_commercial(a, cfg) -> int:
+    """Read-only report of each commercial product's release settings (docs/COMMERCIAL.md). It changes nothing:
+    every setting is changed by editing config/products.toml with an owner approval record, reviewed in a PR."""
+    from .config import COMMERCIAL_DEFAULTS
+    from .repo import check_commercial
+    products = [p for p in cfg.products if p.commercial and (not a.key or p.key == a.key)]
+    if not products:
+        print(f"no commercial product{' ' + a.key if a.key else ''} in config/products.toml")
+        return 1
+    lock = load_lock(cfg)
+    for p in products:
+        c = p.commercial
+        print(f"{p.name} ({p.key}) — {', '.join(p.package_ids)}")
+        print(f"  release channel  {c.release_channel}   price {c.price_text}{' | ' + c.price_note if c.price_note else ''}   store page {c.store_page}")
+        print(f"  source → dest    {c.source_channel} → {c.destination}")
+        for k in COMMERCIAL_DEFAULTS:
+            v = c.settings[k] or "(none)"
+            ap = c.approval_for(k, c.settings[k]) if c.settings[k] != COMMERCIAL_DEFAULTS[k] else None
+            mark = f"approved by {ap['approved_by']} on {ap['date']}" if ap else (
+                "default (closed)" if c.settings[k] == COMMERCIAL_DEFAULTS[k] else "NOT APPROVED")
+            print(f"  {k:<19}{v:<15}{mark}")
+        builds = [f"{e['version']} {e.get('channel', 'stable')}/{e.get('status', 'published')}" for e in lock["packages"]
+                  if e["package"] in p.package_ids]
+        print(f"  recorded builds  {', '.join(builds) or 'none'}")
+        print(f"  public listing   {'shown' if p.listed() else 'not shown'}   main index   "
+              f"{'approved version indexed' if c.installable else 'not indexed'}")
+        steps = (("listing", "approved"), ("store_readiness", "ready"), ("approved_version", None),
+                 ("commercial_release", "approved"), ("purchases", "enabled"), ("downloads", "enabled"),
+                 ("installation", "enabled"))
+        todo = [(k, v) for k, v in steps if (not c.settings[k] if v is None else c.settings[k] != v)]
+        nxt = (f"{todo[0][0]} → {todo[0][1] or '<the exact protected stable version>'}" if todo
+               else "none: fully activated")
+        print(f"  next owner step  {nxt}")
+    r = Report("commercial settings")
+    check_commercial(cfg, lock, r)
+    return _print_report(r, "commercial settings consistent")
+
+
 def cmd_build(a, cfg) -> int:
     from .site import BuildError, build
     base = _base(a, cfg)
     try:
-        res = build(cfg, base, Path(a.out), sign_key=a.sign_key, require_signature=True if a.require_signature else None)
+        if a.preview_listings and a.diagnostics:
+            print("--preview-listings builds a review copy only; it cannot be combined with --diagnostics")
+            return 2
+        res = build(cfg, base, Path(a.out), sign_key=a.sign_key, require_signature=True if a.require_signature else None,
+                    preview_listings=a.preview_listings)
     except BuildError as exc:
         if exc.report:
             print(exc.report.render())
@@ -270,6 +312,9 @@ def cmd_build(a, cfg) -> int:
             print("BUILD FAILED: a diagnostic source failed verification")
             return 1
     print(f"built {res.out_dir} for {res.repo_url}")
+    if a.preview_listings:
+        print("  PREVIEW: prepared commercial listings are rendered for review. Never deploy this build "
+              "(verify refuses it).")
     print(f"  packages: {len(res.packages)}; files: {len(res.files)}")
     print(f"  metadata signature: {res.signature_detail if res.signed else 'unsigned'}")
     return 0
@@ -436,7 +481,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--require-signature", action="store_true")
     p.add_argument("--diagnostics", action="store_true",
                    help="also write the isolated Sileo diagnostic sources under diag/ (docs/SILEO_CRASH.md); never by default")
+    p.add_argument("--preview-listings", action="store_true",
+                   help="also render prepared commercial listings, marked as previews, for owner review (docs/COMMERCIAL.md); "
+                        "the result is never deployable")
     p.set_defaults(fn=cmd_build)
+
+    p = sp.add_parser("commercial", help="show the owner-controlled commercial release settings and what blocks the next step")
+    p.add_argument("key", nargs="?", help="product key (default: every commercial product)")
+    p.set_defaults(fn=cmd_commercial)
 
     p = sp.add_parser("verify", help="verify a deployed or locally served repository like a client would")
     target_args(p)

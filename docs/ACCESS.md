@@ -37,7 +37,7 @@ Current decisions (18 Nov 2026):
 | HCG Nexus (`com.hakmicapitalgroup.hcgnexus`) | `paid`. **Exception (owner, 17 and 18 Nov 2026):** 0.2.1~beta1, 0.2.2~beta1 and 0.3.1~beta1 are free in the candidate channel (0.3.0~beta1 is approved but never imported); every other version stays paid |
 | HCG Terminal Unleashed (`com.hakmicapitalgroup.hcgterminal.unleashed`) | `connect` |
 | HCG Halo (`com.hakmicapitalgroup.halo`) | `connect` (HCG default; production access not yet decided). **Exception (17 Nov 2026, owner):** HCG Halo candidate builds are free public demos; 0.1.0~beta1, 0.2.0~beta1 and 0.3.0~beta1 (approved 18 Nov 2026) are listed, candidate channel only |
-| HCG Animation Center (`com.hakmicapitalgroup.animationcenter`) | `connect` (HCG default; production access not decided). **Exception (owner, 18 Nov 2026):** 0.1.0~beta1 only is a free public beta demo, candidate channel only |
+| HCG Animation Center (`com.hakmicapitalgroup.animationcenter`) | `paid` (commercial prerelease at $1.99 USD announced 21 Nov 2026; not on sale, see [COMMERCIAL.md](COMMERCIAL.md)). **Exception (owner, 18 Nov 2026):** 0.1.0~beta1 only is a free public beta demo, candidate channel only |
 | HCG Portal (`com.hakmicapitalgroup.portal`) | `connect` (HCG default; production access not decided). **Exception (owner, 18 Nov 2026):** 0.1.0~beta1 is a free public beta demo, candidate channel only. 0.1.0~beta3 approved as a free public demo on 21 Nov 2026, candidate channel only |
 | HCG Vortex (`com.hakmicapitalgroup.vortex`) | `public` by a scoped exception (owner, 16–18 Nov 2026): 0.1.0~beta1, 0.1.0~beta2, 0.3.0~beta1 and 0.3.1~beta1, candidate channel only |
 

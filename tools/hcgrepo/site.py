@@ -23,7 +23,7 @@ from pathlib import Path
 
 from . import __version__, debian
 from .config import CANDIDATE_DIR, Product, Report, RepoConfig, entry_channel, load_lock
-from .repo import (PoolPackage, build_info_date, check_repository, compress_indexes, git_revision,
+from .repo import (PoolPackage, build_info_date, check_repository, commercial_gate, compress_indexes, git_revision,
                    load_pool, render_packages, render_release)
 
 TINT = "#2FD3E6"
@@ -298,8 +298,9 @@ def provenance_html(prov: dict) -> str:
 
 
 def page(title: str, body: str, rel: str, description: str, canonical: str, current: str = "",
-         scripts: tuple[str, ...] = ()) -> str:
+         scripts: tuple[str, ...] = (), noindex: bool = False) -> str:
     extra = "".join(f'\n<script src="{rel}assets/{e(name)}" defer></script>' for name in scripts)
+    robots = '\n<meta name="robots" content="noindex, nofollow">' if noindex else ""
 
     def nav(href: str, label: str) -> str:
         cur = ' aria-current="page"' if current == label else ""
@@ -311,7 +312,7 @@ def page(title: str, body: str, rel: str, description: str, canonical: str, curr
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#05080b">
+<meta name="theme-color" content="#05080b">{robots}
 <meta name="description" content="{e(description)}">
 <meta property="og:title" content="{e(title)}">
 <meta property="og:description" content="{e(description)}">
@@ -405,7 +406,7 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     badge = (channel_badge(p) + status_badge("device-tested" if statuses == {"device-tested"} else "experimental")
              + access_badge(p.meta.access_for(p.info.version)))
     detail = f"{repo_rel}depictions/{e(pkg)}/"
-    product = cfg.product_for_package(pkg)
+    product = cfg.visible_product_for_package(pkg)
     product_link = f'\n    <a class="btn btn-metal" href="products/{e(product.key)}/">Product page</a>' if product else ""
     install_btn = (f'<a class="btn btn-metal" href="sileo://package/{e(pkg)}">Open in Sileo (installation failed in testing)</a>'
                    if install_failed(p) else f'<a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>')
@@ -453,7 +454,8 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
 </div>"""
 
     indexed = set(groups) | set(cand_groups)
-    not_indexed = [p for p in cfg.products if not (set(p.package_ids) & indexed)]
+    commercial = [p for p in cfg.visible_products if p.commercial]
+    not_indexed = [p for p in cfg.visible_products if not p.commercial and not (set(p.package_ids) & indexed)]
     cand_html = ""
     if candidate:
         ccards = "".join(package_card(cfg, v, f"{cfg.repo_subdir}/{CANDIDATE_DIR}/") for v in cand_groups.values())
@@ -501,7 +503,7 @@ candidate and stable versions update.</p>
 <h2 id="packages-h">Available packages</h2>
 {packages_html}
 </section>
-{restricted_html}
+{commercial_section(cfg, commercial)}{restricted_html}
 {cand_html}
 {dev_html}
 
@@ -819,8 +821,8 @@ def candidate_index(cfg: RepoConfig, ccfg: RepoConfig, base: str, groups: dict, 
         f"<li><a href=\"depictions/{e(pkg)}/\">{e(display_name(v[0]))}</a> <code>{e(v[0].info.version)}</code> "
         f"<span class=\"small muted\">{e(status_text(v[0]))}</span></li>" for pkg, v in cand_groups.items())
     indexed = set(groups) | set(cand_groups)
-    pending = [p for p in cfg.products if not (set(p.package_ids) & indexed) and not p.restricted]
-    held = [p for p in cfg.products if p.restricted and not (set(p.package_ids) & indexed)]
+    pending = [p for p in cfg.visible_products if not (set(p.package_ids) & indexed) and not p.restricted]
+    held = [p for p in cfg.visible_products if p.restricted and not p.commercial and not (set(p.package_ids) & indexed)]
     pend = "".join(f"<li>{e(p.name)}: {e(p.status)}</li>" for p in pending)
     needs = {"connect": "HCG Connect sign-in", "paid": "HCG Connect sign-in and HCG Store ownership"}
     held_html = "".join(f"<li>{e(p.name)}: needs {needs.get(cfg.product_level(p) or p.access, 'sign-in')}, so it is never "
@@ -867,6 +869,145 @@ ACCESS_TEXT = {
 }
 NO_DOWNLOADS = "Downloads are not available yet."
 
+# ---------------------------------------------------------------------------- commercial listings (docs/COMMERCIAL.md)
+
+PREVIEW_MARKER = "PREVIEW-NOT-FOR-DEPLOYMENT.txt"
+PREVIEW_NOTICE = "Preview of a prepared listing. Not published: awaiting the owner's approval."
+COMMERCIAL_NOT_READY = ("Purchasing and installation will become available once HCG Store’s payment and licensing "
+                        "infrastructure is ready.")
+STORE_PAGE_PENDING = "HCG Store page · Coming Soon"
+COMMERCIAL_NO_INSTALL = ("It is not in the HCG Repo package index, so Sileo, Zebra and other package managers cannot "
+                         "install it from HCG Repo. No package file is published here.")
+CHANNEL_NAMES = {"commercial-prerelease": "Commercial Prerelease", "commercial-release": "Commercial Release"}
+
+
+def commercial_price_line(c) -> str:
+    note = f" | {e(c.price_note)}" if c.price_note else ""
+    return f'<p class="price"><strong>{e(c.price_text)}</strong>{note}</p>'
+
+
+def commercial_section(cfg: RepoConfig, products: list[Product]) -> str:
+    """Products HCG Store will sell. Each shows its announced price and availability, never an install action."""
+    if not products:
+        return ""
+    items = []
+    for p in products:
+        c = p.commercial
+        preview = (f'<p class="small"><span class="badge badge-warn">Preview</span> {e(PREVIEW_NOTICE)}</p>'
+                   if c.listing != "approved" else "")
+        items.append(f"""<li class="card dev-card commercial-card" data-commercial="{e(p.key)}">
+  <div class="dev-head"><h3>{e(p.name)}</h3><span class="badge badge-muted">{e(c.availability)}</span></div>
+  <p class="dev-kind">{e(CHANNEL_NAMES[c.release_channel])} · {e(c.category or p.kind)}</p>
+  <p>{e(p.summary)}</p>
+  {commercial_price_line(c)}
+  {preview}
+  <p class="small muted">{e(c.availability)} to HCG Store. {e(COMMERCIAL_NOT_READY)}</p>
+  <div class="actions"><a class="btn btn-metal" href="products/{e(p.key)}/">Product page</a></div>
+</li>""")
+    return f"""<section id="coming-soon" class="section" aria-labelledby="coming-h">
+<h2 id="coming-h">Coming soon to HCG Store</h2>
+<p class="section-lead">Paid HCG products that are announced but not on sale yet. They cannot be bought or installed until HCG Store
+is ready and the release is approved.</p>
+<ul class="cards cards-dev" role="list">{''.join(items)}</ul>
+</section>
+"""
+
+
+def commercial_product_page(cfg: RepoConfig, base: str, repo_url: str, p: Product, groups: dict) -> str:
+    """products/<key>/ for a product HCG Store will sell. Purchase and install actions follow the owner-controlled
+    commercial settings, never the visitor's browser: while purchases are disabled the page has no access check and
+    a disabled purchase control; it offers installation only for the approved version in the main index; and it
+    never points to a candidate (free demo) build or links a .deb."""
+    c = p.commercial
+    rel = "../../"
+    store_url = cfg.store_product_url(p)
+    installable = [pkg for pkg in p.package_ids if pkg in groups]
+    preview = c.listing != "approved"
+    yes_no = {"enabled": "Enabled", "disabled": "Disabled"}
+    rows = [
+        ("Publisher", e(c.publisher)),
+        ("Category", e(c.category or p.kind)),
+        ("Release channel", e(CHANNEL_NAMES[c.release_channel])),
+        ("Price", f"{e(c.price_text)}{' | ' + e(c.price_note) if c.price_note else ''}"),
+        ("Availability", e(c.availability)),
+        ("Purchases", e(yes_no[c.purchases])),
+        ("Installation", e(yes_no["enabled" if installable else "disabled"])),
+        ("Package", ", ".join(f"<code>{e(x)}</code>" for x in p.package_ids)),
+    ]
+    if p.layouts:
+        rows.append(("Planned layouts" if not installable else "Layouts",
+                     ", ".join(f"{describe_arch(a)} (<code>{e(a)}</code>)" for a in p.layouts)))
+    table = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in rows)
+    desc = "".join(f"<p>{e(x)}</p>" for x in c.description)
+    if installable:
+        install = "".join(
+            f"""<div class="actions actions-primary"><a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>
+<a class="btn btn-metal" href="{rel}{cfg.repo_subdir}/depictions/{e(pkg)}/">Details</a></div>""" for pkg in installable)
+        install += ('<p class="hint">Sileo asks you to sign in with HCG Connect, and HCG Store confirms your purchase '
+                    "before any download.</p>")
+    else:
+        install = (f'<div class="card note note-warn" role="note"><p><strong>{NO_DOWNLOADS}</strong> '
+                   f'{e(COMMERCIAL_NO_INSTALL)}</p></div>')
+    if c.store_page == "live":
+        store_link = f'<a class="btn btn-metal" href="{e(store_url)}">HCG Store product page</a>'
+        store_hint = "Nothing can be bought yet. The HCG Store page is informational until HCG Store opens sales."
+    else:   # no Store page exists yet: a placeholder, never an invented URL
+        store_link = f'<span class="btn btn-metal" aria-disabled="true">{e(STORE_PAGE_PENDING)}</span>'
+        store_hint = "Nothing can be bought yet. HCG Store does not have a page for this product yet."
+    if c.purchases == "enabled" and not preview:
+        login_url = cfg.store_login_url(p)
+        buy = f"""<section class="section-tight card store" aria-labelledby="store-h" data-store-access data-store-base="{e(cfg.store_base_url)}"
+  data-access-url="{e(cfg.store_access_url(p))}" data-store-url="{e(store_url)}" data-purchases="enabled"
+  data-repo-url="{e(repo_url)}" data-product-name="{e(p.name)}" data-access-level="paid">
+<h2 id="store-h">Buy Product</h2>
+<p class="muted">Purchases and access are handled by HCG Store and HCG Connect. HCG Repo never asks for your password.</p>
+<div class="actions" data-store-actions>
+  <a class="btn btn-primary" href="{e(login_url)}">Sign in to check access</a>
+  <a class="btn btn-metal" href="{e(store_url)}">View in HCG Store</a>
+</div>
+<p class="hint" data-store-status></p>
+</section>
+"""
+        scripts: tuple[str, ...] = ("store-access.js",)
+    else:
+        buy = f"""<section class="section-tight card store" aria-labelledby="store-h" data-purchases="disabled">
+<h2 id="store-h">{e(c.availability)} to HCG Store</h2>
+<p>{e(COMMERCIAL_NOT_READY)}</p>
+<div class="actions">
+  <button type="button" class="btn btn-metal" disabled aria-disabled="true">Purchase unavailable · {e(c.availability)}</button>
+  {store_link}
+</div>
+<p class="hint">{store_hint}</p>
+</section>
+"""
+        scripts = ()
+    banner = (f'<div class="card note note-warn" role="note" data-preview><p><strong>Preview.</strong> {e(PREVIEW_NOTICE)}</p></div>'
+              if preview else "")
+    body = f"""
+<article class="dep prose product commercial">
+<p class="crumbs"><a href="{rel}">HCG Repo</a> <span aria-hidden="true">›</span> <a href="{rel}#coming-soon">Coming soon</a></p>
+{banner}
+<div class="dep-title card">
+  <div>
+    <h1>{e(p.name)}</h1>
+    <p class="pkg-id"><span class="badge badge-muted">{e(c.availability)}</span>{access_badge("paid")} · {e(CHANNEL_NAMES[c.release_channel])}</p>
+    <p class="lead">{e(p.summary)}</p>
+    {commercial_price_line(c)}
+  </div>
+</div>
+{desc}
+<section class="section-tight" aria-labelledby="facts-h">
+<h2 id="facts-h">Details</h2>
+<dl class="kv card">{table}</dl>
+</section>
+{buy}<section class="section-tight" aria-labelledby="inst-h">
+<h2 id="inst-h">Install</h2>
+{install}
+</section>
+</article>"""
+    return page(f"{p.name} · HCG Repo", body, rel, p.summary or p.name, f"{base}products/{p.key}/",
+                scripts=scripts, noindex=preview)
+
 
 def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
                  groups: dict[str, list[PoolPackage]], candidate: dict | None = None) -> str:
@@ -877,6 +1018,8 @@ def product_page(cfg: RepoConfig, base: str, repo_url: str, product: Product,
     links a .deb. The store actions are plain links; assets/store-access.js upgrades them once
     HCG Store says what this visitor may do."""
     p = product
+    if p.commercial is not None:
+        return commercial_product_page(cfg, base, repo_url, p, groups)
     rel = "../../"
     level = cfg.product_level(p)
     store_url = cfg.store_product_url(p) if p.in_store else ""
@@ -965,9 +1108,15 @@ stable HCG Repo source. {e(tests_text(v))}</p>
 
 
 def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = None,
-          require_signature: bool | None = None, nested: bool = False) -> BuildResult:
+          require_signature: bool | None = None, nested: bool = False, preview_listings: bool = False) -> BuildResult:
+    """preview_listings also renders prepared commercial listings, each marked as an unpublished preview, writes
+    PREVIEW_MARKER and sets noindex. verify refuses such a build, so it can be reviewed but never deployed."""
     from . import sign as signmod
     from . import verify as verifymod
+
+    if preview_listings and not cfg.preview_listings:
+        import dataclasses
+        cfg = dataclasses.replace(cfg, preview_listings=True)
 
     repo_url = cfg.repo_url(base_url)
     report = Report("repository")
@@ -985,7 +1134,10 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         # Indexed as cydia::commercial (files are never deployed), but only when a person approved this exact
         # file for public delivery in HCG Store (import-store-release). Otherwise Sileo would list a package that
         # the provider can never deliver; drafts, rejected and unapproved releases stay out of the index.
-        pkgs = pkgs + [p for p in protected if p.store_release]
+        # A commercial product's build also needs every owner-controlled commercial gate open, for exactly the
+        # approved version (docs/COMMERCIAL.md). A prepared listing, disabled purchases or downloads, a pending
+        # HCG Store or an unapproved release keep it out of the index.
+        pkgs = pkgs + [p for p in protected if p.store_release and commercial_gate(cfg, p)]
 
     out_dir = Path(out_dir).resolve()
     out_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -1089,7 +1241,7 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         shutil.copyfile(cfg.root / "branding" / "apple-touch-icon.png", tmp / "apple-touch-icon.png")
         (tmp / "index.html").write_text(landing(cfg, base_url, repo_url, groups, info, cand), encoding="utf-8")
         (repo_dir / "index.html").write_text(repo_index(cfg, repo_url), encoding="utf-8")
-        for product in cfg.products:
+        for product in cfg.visible_products:    # a prepared commercial listing is not rendered (docs/COMMERCIAL.md)
             pdir = tmp / "products" / product.key
             pdir.mkdir(parents=True)
             (pdir / "index.html").write_text(product_page(cfg, base_url, repo_url, product, groups, cand), encoding="utf-8")
@@ -1124,6 +1276,16 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             if exposed:
                 raise BuildError(f"install links for protected packages without a payment endpoint: {exposed}")
 
+        # Commercial gate (docs/COMMERCIAL.md): a commercial product's build is in the main index only when every
+        # owner-controlled gate is open, for the approved version. Checked again here, after the index is written.
+        if cfg.channel == "stable":
+            gated = sorted({f"{p.info.package} {p.info.version}" for p in pkgs if not commercial_gate(cfg, p)})
+            if gated:
+                raise BuildError(f"commercial packages in the main index without an approved, activated release: {gated}")
+        if cfg.preview_listings and not nested:
+            (tmp / PREVIEW_MARKER).write_text("Preview of prepared commercial listings. Never deploy this build.\n",
+                                              encoding="utf-8")
+
         # Channel isolation: the stable index and stable debs/ never carry a candidate build.
         if cand:
             stable_keys = {(p.info.package, p.info.version, p.info.architecture) for p in pkgs}
@@ -1138,7 +1300,7 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         # Verify the finished tree offline before it replaces anything.
         vr = verifymod.verify(base_url, tmp.as_uri() + "/", cfg=cfg,
                               pubkey=(cfg.root / cfg.public_key_file) if res.signed else None,
-                              site_checks=not nested)
+                              site_checks=not nested, allow_preview=cfg.preview_listings)
         if not vr.report.ok:
             raise BuildError("the generated snapshot failed verification", vr.report)
         report.extend(vr.report)

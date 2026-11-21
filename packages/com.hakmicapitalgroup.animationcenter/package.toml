@@ -9,11 +9,12 @@
 channel = "beta"
 
 [access]
-# HCG's default access level for its packages (HCG Connect sign-in). Production pricing and access are NOT decided by
-# this file; the owner sets them before any release. The exception below makes ONLY the listed candidate version a
-# free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps it out of
-# the stable source. Any other version needs its own approval.
-level = "connect"
+# Paid: HCG Connect sign-in plus HCG Store ownership. The owner announced a commercial prerelease at an introductory
+# $1.99 USD (config/products.toml hcg-animation-center, docs/COMMERCIAL.md). Paid builds are never stored or served
+# publicly here; HCG Store delivers them after a verified purchase once the owner activates the release. The exception
+# below keeps ONLY the listed candidate version a free public demo (no sign-in, no payment) under HCG Repo's free-demo
+# policy (docs/ACCESS.md), which keeps it out of the stable source. Any other version needs its own approval.
+level = "paid"
 exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Animation Center candidate betas as free public demos at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
 exception_versions = ["0.1.0~beta1"]
 

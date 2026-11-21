@@ -17,6 +17,7 @@ update this file to match it.
 | `hcg-terminal-unleashed` | HCG Terminal Unleashed | `apps/hcg-terminal?edition=unleashed` | `com.hakmicapitalgroup.hcgterminal.unleashed` | `connect` (HCG Connect sign-in) |
 | `hcg-nexus` | HCG Nexus | `apps/hcg-nexus?edition=jailbreak` | `com.hakmicapitalgroup.hcgnexus` | `paid` (sign-in and HCG Store ownership) |
 | `hcg-sentinel` | HCG Sentinel | `apps/hcg-sentinel` | none | none |
+| `hcg-animation-center` | HCG Animation Center | `apps/hcg-animation-center` (no Store catalogue entry yet) | `com.hakmicapitalgroup.animationcenter` | `paid`; commercial listing **prepared, not published** ([COMMERCIAL.md](COMMERCIAL.md)) |
 
 HCG Sentinel has no jailbreak package. It is listed so that navigation between the store and the
 repository works. It cannot be installed from HCG Repo.

@@ -88,6 +88,146 @@ PRODUCT_ACCESS = ("", "public", "connect", "paid")
 SLUG_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 
+# ---------------------------------------------------------------------------- commercial release state
+#
+# [products.commercial] in config/products.toml: the owner-controlled release settings of a product that HCG Store
+# will sell (docs/COMMERCIAL.md). Each setting is independent, closed by default, and every non-default value must
+# carry an owner approval record. HCG Repo enforces them when it builds and verifies the site and the index; HCG
+# Store enforces purchases and delivery on its own server. Nothing here can grant access to anyone.
+
+COMMERCIAL_DEFAULTS = {
+    "listing": "prepared",              # prepared (not rendered publicly) | approved (public product page) | withdrawn
+    "purchases": "disabled",            # disabled | enabled
+    "downloads": "disabled",            # disabled | enabled (authorised delivery through HCG Store's payment provider)
+    "installation": "disabled",         # disabled | enabled (the approved version is indexed in the main source)
+    "commercial_release": "not-approved",   # not-approved | approved
+    "store_readiness": "pending",       # pending | ready (HCG Store payments, entitlements and licensing are live)
+    "approved_version": "",             # the exact Debian version approved for commercial release
+}
+COMMERCIAL_VALUES = {
+    "listing": ("prepared", "approved", "withdrawn"),
+    "purchases": ("disabled", "enabled"),
+    "downloads": ("disabled", "enabled"),
+    "installation": ("disabled", "enabled"),
+    "commercial_release": ("not-approved", "approved"),
+    "store_readiness": ("pending", "ready"),
+}
+COMMERCIAL_CHANNELS = ("commercial-prerelease", "commercial-release")
+PRICE_RE = re.compile(r"(0|[1-9][0-9]{0,5})\.[0-9]{2}")
+CURRENCY_RE = re.compile(r"[A-Z]{3}")
+ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+@dataclass
+class Commercial:
+    """The commercial release settings of one product (docs/COMMERCIAL.md)."""
+
+    release_channel: str
+    price: str
+    currency: str
+    price_note: str = ""
+    availability: str = "Coming Soon"
+    publisher: str = "Hakmi Capital Group"
+    category: str = ""
+    source_channel: str = "candidate"
+    destination: str = "main"
+    # "pending": HCG Store has no product page for it yet, so HCG Repo shows a placeholder and links no Store URL.
+    # "live": the Store's catalogue page exists; HCG Repo links it (never a purchase action while purchases are off).
+    store_page: str = "pending"
+    description: list[str] = field(default_factory=list)
+    settings: dict[str, str] = field(default_factory=lambda: dict(COMMERCIAL_DEFAULTS))
+    approvals: list[dict] = field(default_factory=list)
+
+    def __getattr__(self, name: str):   # c.listing, c.purchases, … read the settings
+        settings = self.__dict__.get("settings", {})
+        if name in COMMERCIAL_DEFAULTS:
+            return settings.get(name, COMMERCIAL_DEFAULTS[name])
+        raise AttributeError(name)
+
+    @property
+    def price_text(self) -> str:
+        sym = {"USD": "$"}.get(self.currency, "")
+        return f"{sym}{self.price} {self.currency}" if sym else f"{self.price} {self.currency}"
+
+    def approval_for(self, setting: str, value: str) -> dict | None:
+        return next((a for a in self.approvals if a.get("setting") == setting and str(a.get("value")) == value), None)
+
+    def unapproved(self) -> list[tuple[str, str]]:
+        """Settings changed from their closed default without a matching owner approval record."""
+        return [(k, v) for k, v in self.settings.items() if v != COMMERCIAL_DEFAULTS[k] and not self.approval_for(k, v)]
+
+    def order_problems(self) -> list[str]:
+        """The release workflow's order: listing → HCG Store ready → commercial approval → purchases → delivery."""
+        s, out = self.settings, []
+        if s["purchases"] == "enabled":
+            for k, need in (("listing", "approved"), ("store_readiness", "ready"), ("commercial_release", "approved")):
+                if s[k] != need:
+                    out.append(f"purchases enabled needs {k} = {need!r} (is {s[k]!r})")
+        for gate in ("downloads", "installation"):
+            if s[gate] == "enabled":
+                for k, need in (("purchases", "enabled"), ("store_readiness", "ready"), ("commercial_release", "approved")):
+                    if s[k] != need:
+                        out.append(f"{gate} enabled needs {k} = {need!r} (is {s[k]!r})")
+        if s["installation"] == "enabled" and s["downloads"] != "enabled":
+            out.append("installation enabled needs downloads = 'enabled': an indexed package must be deliverable")
+        if s["commercial_release"] == "approved" and not s["approved_version"]:
+            out.append("commercial_release approved needs approved_version")
+        if s["listing"] == "withdrawn" and any(s[k] == "enabled" for k in ("purchases", "downloads", "installation")):
+            out.append("a withdrawn listing cannot have purchases, downloads or installation enabled")
+        return out
+
+    @property
+    def installable(self) -> bool:
+        """Every gate for publishing the approved version in the main index is open."""
+        s = self.settings
+        return (s["installation"] == "enabled" and s["downloads"] == "enabled" and s["purchases"] == "enabled"
+                and s["commercial_release"] == "approved" and s["store_readiness"] == "ready"
+                and bool(s["approved_version"]) and not self.unapproved() and not self.order_problems())
+
+
+def parse_commercial(d: dict, where: str) -> Commercial:
+    known = set(COMMERCIAL_DEFAULTS) | {"release_channel", "price", "currency", "price_note", "availability", "publisher",
+                                        "category", "source_channel", "destination", "store_page", "description",
+                                        "approvals"}
+    for k in d:
+        if k not in known:
+            raise ConfigError(f"{where}: unknown commercial setting {k!r}")
+    c = Commercial(
+        release_channel=str(d.get("release_channel", "")), price=str(d.get("price", "")), currency=str(d.get("currency", "")),
+        price_note=str(d.get("price_note", "")), availability=str(d.get("availability", "Coming Soon")),
+        publisher=str(d.get("publisher", "Hakmi Capital Group")), category=str(d.get("category", "")),
+        source_channel=str(d.get("source_channel", "candidate")), destination=str(d.get("destination", "main")),
+        store_page=str(d.get("store_page", "pending")),
+        description=[str(x) for x in d.get("description", [])],
+        settings={k: str(d.get(k, v)) for k, v in COMMERCIAL_DEFAULTS.items()},
+        approvals=[dict(a) for a in d.get("approvals", [])],
+    )
+    if c.release_channel not in COMMERCIAL_CHANNELS:
+        raise ConfigError(f"{where}: release_channel must be one of {COMMERCIAL_CHANNELS}, got {c.release_channel!r}")
+    if not PRICE_RE.fullmatch(c.price) or c.price in ("0.00", "0.0"):
+        raise ConfigError(f"{where}: price must be a positive amount with two decimals, e.g. \"1.99\", got {c.price!r}")
+    if not CURRENCY_RE.fullmatch(c.currency):
+        raise ConfigError(f"{where}: currency must be an ISO 4217 code such as USD, got {c.currency!r}")
+    for k, allowed in COMMERCIAL_VALUES.items():
+        if c.settings[k] not in allowed:
+            raise ConfigError(f"{where}: {k} must be one of {allowed}, got {c.settings[k]!r}")
+    if c.store_page not in ("pending", "live"):
+        raise ConfigError(f"{where}: store_page must be 'pending' or 'live', got {c.store_page!r}")
+    if c.settings["purchases"] == "enabled" and c.store_page != "live":
+        raise ConfigError(f"{where}: purchases enabled needs store_page = 'live' (HCG Store sells it on its product page)")
+    if c.source_channel != "candidate" or c.destination != "main":
+        raise ConfigError(f"{where}: commercial releases move from source_channel 'candidate' to destination 'main'")
+    for i, a in enumerate(c.approvals):
+        missing = [k for k in ("setting", "value", "approved_by", "date", "record") if not str(a.get(k, "")).strip()]
+        if missing:
+            raise ConfigError(f"{where}: approval #{i + 1} needs {', '.join(missing)}")
+        if a["setting"] not in COMMERCIAL_DEFAULTS:
+            raise ConfigError(f"{where}: approval #{i + 1} names unknown setting {a['setting']!r}")
+        if not ISO_DATE_RE.fullmatch(str(a["date"])):
+            raise ConfigError(f"{where}: approval #{i + 1} date must be YYYY-MM-DD")
+    return c
+
+
 @dataclass
 class Product:
     """One entry of config/products.toml: a product page at products/<key>/ and, when it is sold or
@@ -104,6 +244,17 @@ class Product:
     status: str = "Not available"
     summary: str = ""
     detail: str = ""
+    commercial: Commercial | None = None
+
+    def listed(self, preview: bool = False) -> bool:
+        """Whether the public site shows this product. A commercial listing is shown only once the owner
+        approved it (a preview build also shows prepared listings, marked as previews; it is never deployed)."""
+        if self.commercial is None:
+            return True
+        if self.commercial.listing == "withdrawn":
+            return False
+        return self.commercial.listing == "approved" and not self.commercial.unapproved() or (
+            preview and self.commercial.listing == "prepared")
 
     @property
     def in_store(self) -> bool:
@@ -136,6 +287,12 @@ def parse_products(raw: list) -> list[Product]:
             summary=d.get("summary", ""), detail=d.get("detail", ""),
         )
         where = f"config/products.toml product {p.key!r}"
+        if "commercial" in d:
+            p.commercial = parse_commercial(d["commercial"], f"{where} [commercial]")
+            if p.access != "paid":
+                raise ConfigError(f"{where}: a commercial product must have access = \"paid\"")
+            if not p.package_ids:
+                raise ConfigError(f"{where}: a commercial product needs its package_ids")
         if p.store_edition and not p.store_slug:
             raise ConfigError(f"{where}: `store_edition` needs `store_slug`")
         if p.restricted and not p.store_slug:
@@ -182,6 +339,16 @@ class RepoConfig:
     access_require_explicit: bool = True
     payment_endpoint: str = ""
     channel: str = "stable"      # which channel this configuration builds: "stable" (/repo/) or "candidate"
+    preview_listings: bool = False   # build --preview-listings: also render prepared commercial listings (never deployed)
+
+    @property
+    def visible_products(self) -> list[Product]:
+        """The products the public site shows (docs/COMMERCIAL.md: a prepared commercial listing is not shown)."""
+        return [p for p in self.products if p.listed(self.preview_listings)]
+
+    def visible_product_for_package(self, package: str) -> Product | None:
+        p = self.product_for_package(package)
+        return p if p and p.listed(self.preview_listings) else None
 
     @property
     def pool_dir(self) -> Path:
