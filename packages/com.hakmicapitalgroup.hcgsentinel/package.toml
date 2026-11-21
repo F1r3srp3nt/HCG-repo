@@ -1,0 +1,49 @@
+# Presentation and review metadata for HCG Sentinel (rootless jailbreak app), exported by HCG Executable Maker's Unleashify
+# (CI run 44867375894) and reviewed for HCG Repo Candidate. Version, architecture and dependencies come from the .deb itself.
+
+[release]
+channel = "beta"
+
+[display]
+known_issues = """
+- **Not yet device-tested.** No device result is recorded for this build.
+- First test target: iPhone 13 Pro (Dopamine, rootless), iOS 16.5.
+- Sentinel's optional privileged helper exists only as a specification and is not part of this package; the app reports only what it implements.
+- **iOS 15.0 or later only.** Older devices (for example an iPhone 8 on iOS 13.3) cannot run it: the app's code requires iOS 15, and rootless jailbreaks exist only for iOS 15 and later.
+- **Another Sentinel build with bundle ID `com.hcg.sentinel`** (from Xcode, an IPA or TestFlight) cannot be installed at the same time. Remove it first if you choose to; its data goes with it.
+"""
+summary = "Toolkit for authorised testing of your own devices, networks and services. Candidate beta of the standard app, packaged for rootless jailbreaks."
+icon = "icon.png"
+notes = """
+Toolkit for authorised testing of your own devices, networks and services. Candidate beta of the standard app, packaged for rootless jailbreaks.
+
+**Beta / Experimental.** Device compatibility is unverified until a test is recorded.
+
+**Free public demo in HCG Repo Candidate:** downloading and installing needs no sign-in and no payment. HCG account data, server connections and protected features in the app still require their own HCG sign-in and permissions.
+"""
+limitations = """
+- **Tested:** nothing yet.
+- Rootless only (`iphoneos-arm64`), installed at `/var/jb/Applications/HCGSentinelModern.app`. The app's binaries declare iOS 15.0 or later (`firmware (>= 15.0)`).
+- The app's capabilities are those of the App Store-style build it was packaged from; the package adds none.
+"""
+install = """
+0. Check first that no other Sentinel build is installed: over SSH, `uicache -l | grep com.hcg.sentinel` should print nothing.
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Sentinel** 0.1.0~beta1.
+2. The package manager registers the app; its icon appears on the home screen. No respring is needed.
+3. Open **HCG Sentinel**.
+"""
+removal = """
+1. In your package manager, remove **HCG Sentinel**, or `sudo dpkg -r com.hakmicapitalgroup.hcgsentinel` in a terminal.
+2. The icon disappears. If it stays, run `uicache -a` or respring.
+3. The app's own data in its container is not removed by the package manager.
+"""
+
+[review]
+allow_setuid = []
+# No entitlements are embedded in this build.
+
+[access]
+# Production access for this product is NOT recorded in HCG Repo and was not decided here: HCG's default (connect) applies.
+level = "connect"
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's free-demo policy for approved candidate builds. Approved by the owner on 21 Nov 2026: 'I approve HCG Sentinel 0.1.0~beta1 as a free demonstration candidate for controlled testing.' Publication authorized by the owner on 21 Nov 2026: 'I confirm my owner authorization for HCG Sentinel 0.1.0~beta1 (com.hakmicapitalgroup.hcgsentinel) to be published as a free, publicly accessible beta on HCG Repo Candidate.' The authorization applies exclusively to the package with SHA-256 f1111fef7ab0b5da000c6134905b29f571597b98938b6ce09e11f75643e73846; not Stable. For the versions in exception_versions only; production access is unchanged."
+exception_versions = ["0.1.0~beta1"]
