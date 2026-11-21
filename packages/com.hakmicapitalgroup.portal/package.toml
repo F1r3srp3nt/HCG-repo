@@ -14,8 +14,8 @@ channel = "beta"
 # free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps it out of
 # the stable source. Any other version needs its own approval.
 level = "connect"
-exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Portal 0.1.0~beta1 as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
-exception_versions = ["0.1.0~beta1"]
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Portal 0.1.0~beta1 as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), and of 0.1.0~beta3 as a free public demo (21 Nov 2026: 'Approved — beta 3 is a free public demo, publish it'), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
+exception_versions = ["0.1.0~beta1", "0.1.0~beta3"]
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
@@ -23,6 +23,8 @@ icon = "icon.png"
 tint = "#33E6FF"
 notes = """
 **Free public beta demo.** No sign-in and no payment. Expect rough edges and please report problems.
+
+**0.1.0~beta3 is a Lock Screen lifecycle hardening build**, after SpringBoard entered Safe Mode while 0.1.0~beta1 was being installed. It joins the Lock Screen once per session and leaves it cleanly, never falls back to another container, stops its timers when it leaves, coalesces layout storms, and its crash guard now counts every launch. It also records its last lifecycle step so *Settings › HCG Portal › Diagnostics* can show where SpringBoard stopped. **Simulator validated; physical iPhone verification pending.**
 
 HCG Portal adds a **luminous, interactive portal** to your Lock Screen, below the clock and above your notifications: a dark translucent centre with slowly turning cyan-and-violet energy rings.
 
@@ -37,7 +39,8 @@ HCG Portal adds a **luminous, interactive portal** to your Lock Screen, below th
 No account, telemetry or network access.
 """
 known_issues = """
-- **Not yet device-tested.** Built and validated with Xcode and tested in the iOS Simulator with stand-ins for the Lock Screen. That is not a device result.
+- **SpringBoard Safe Mode with 0.1.0~beta1 (cause not confirmed).** A screen recording shows Sileo reaching *Setting up HCG Portal* while installing 0.1.0~beta1, then SpringBoard entering Safe Mode. The phone and iOS version for that recording are not confirmed, and no SpringBoard crash report has been reviewed yet. **If you are in Safe Mode, follow Removal step 1 before anything else.**
+- **0.1.0~beta3: Simulator validated; physical iPhone verification pending.** It removes every Lock Screen lifecycle and startup hazard found in review (0.1.0~beta2's startup fixes are included). Simulator: 67/67 runtime checks; preview 115/115 checks, including 20 lock / wake / menu / unlock cycles, a layout storm, the Lock Screen container unavailable, late callbacks and 10 disable / re-enable cycles. That is not a device result, and it does not prove the incident is fixed.
 - **Nexus cannot be opened yet:** HCG Nexus 0.3.1~beta1 offers no way for another tweak to open its panel. Portal shows *Update needed*.
 - **Backgrounds opens Settings,** not HCG Animation Center's page directly: Animation Center has no deep link yet.
 - The Lock Screen layout differs between iOS versions; if Portal can't find the clock it estimates its position, and if it can't find room it hides. Settings shows what it measured.
@@ -45,7 +48,7 @@ known_issues = """
 - Battery and performance impact have not been measured. The icon is provisional.
 """
 limitations = """
-- **Tested:** nothing on a device yet.
+- **Tested:** nothing on a device yet. 0.1.0~beta3 is validated in the iOS Simulator only; the short device test (install through Sileo, then lock / wake / menu / unlock cycles) is pending.
 - Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim.
 - Devices is a placeholder (*Not connected*). Typed commands, voice, device selection and Agent Runtime actions are on the roadmap only.
 - Coexistence with other Lock Screen tweaks is untested.
@@ -57,17 +60,33 @@ install = """
 4. Optional: **Position & Size**, colours, and **HCG Apps** to choose your app shortcuts.
 """
 removal = """
-1. **Turn it off:** Settings › HCG Portal › **Enable HCG Portal** → off. The portal disappears at once.
-2. **Uninstall:** remove **HCG Portal (Beta)** in your package manager, then respring. Your Lock Screen is exactly as before.
-3. **If Settings can't be opened:** over SSH, `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled`, then respring.
-4. **If SpringBoard keeps crashing:** after three quick crashes in a row it turns itself off (*Auto-disabled*). Otherwise reboot: rootless jailbreaks such as Dopamine are semi-untethered, so the phone starts without tweaks. Remove the package before re-enabling tweak injection.
+**If SpringBoard is in Safe Mode** (tweaks are not running): do step 1 **before** you tap *Exit Safe Mode* or respring, or SpringBoard may load Portal again.
+
+1. **From Safe Mode, turn Portal off for good**, any one of:
+   - **Sileo / Zebra** (they still work in Safe Mode): remove **HCG Portal (Beta)** and confirm;
+   - **NewTerm / SSH:** `sudo apt remove com.hakmicapitalgroup.portal`;
+   - **keep the package but load nothing:** `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled`.
+
+   Then exit Safe Mode or respring. Before trying another build, save the newest `SpringBoard-*.ips` from *Settings › Privacy & Security › Analytics & Improvements › Analytics Data* and run `dpkg-query -W com.hakmicapitalgroup.portal`, and send both. If Safe Mode keeps returning after Portal is removed, Portal is not the cause of that loop.
+
+**Otherwise:**
+
+2. **Turn it off:** Settings › HCG Portal › **Enable HCG Portal** → off. The portal disappears at once.
+3. **Uninstall:** remove **HCG Portal (Beta)** in your package manager, then respring. Your Lock Screen is exactly as before. *Purge* also deletes Portal's own preference, status and kill-switch files, and nothing else.
+4. **If Settings can't be opened:** over SSH, `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled`, then respring.
+5. **If SpringBoard keeps crashing:** after three quick SpringBoard launches in a row that each end within 30 s, it turns itself off (*Auto-disabled*; 0.1.0~beta3 counts every launch, enabled or not). Otherwise reboot: rootless jailbreaks such as Dopamine are semi-untethered, so the phone starts without tweaks. Remove the package before re-enabling tweak injection.
 """
 
 [review]
 allow_setuid = []
 # No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
 
+[versions."0.1.0~beta3"]
+status = "experimental"
+label = "Experimental beta — Lock Screen lifecycle fixes; Simulator validated, physical iPhone verification pending."
+# No device_tests entry until a phone with a confirmed version has run the short test (HCGPortal/docs/DEVICE_TEST_CHECKLIST.md P1-P7).
+
 [versions."0.1.0~beta1"]
 status = "experimental"
-label = "Free public beta demo — Simulator-tested, not yet device-tested."
+label = "Superseded by 0.1.0~beta3 — SpringBoard Safe Mode reported during installation (cause not confirmed)."
 # No device_tests entry until a phone has attempted the install. Install and runtime are recorded separately.

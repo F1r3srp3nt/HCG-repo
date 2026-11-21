@@ -1,0 +1,23 @@
+# HCG Portal 0.1.0~beta3, rootless. Lock Screen lifecycle hardening after the SpringBoard Safe Mode incident with
+# 0.1.0~beta1 (cause not confirmed). Simulator validated; physical iPhone verification pending.
+# Upgrades 0.1.0~beta1 under the same package ID. 0.1.0~beta2 (run 44663876626) was a test build and is NOT imported.
+# Candidate channel only (free public demo; HCG-repo docs/ACCESS.md).
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 579213e (branch claude/portal-0.1.0-beta3-lifecycle),
+# macOS CI run 44861951914 (HCG Portal build: Xcode), artifact hcg-portal-rootless-deb (ID 14690321654).
+# Project record (HCGPortal/README.md at ab3f097): 284,190 bytes; validate.sh --require-new-abi 0 failures /
+# 0 warnings; Simulator runtime 67/67; preview run 44861951916 115/115. Prepare packages refuses any other bytes.
+# The same run also uploads hcg-portal-rootless-deb-UNVALIDATED; that artifact is NOT this package.
+
+[request]
+package = "com.hakmicapitalgroup.portal"
+version = "0.1.0~beta3"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44861951914
+commit = "579213e88f14b22040d7911b477d16cfd2c17a90"
+artifact = "hcg-portal-rootless-deb"
+sha256 = "9af1575a368d53537c7c094240d030704c1b45d3bc0b7616de945abe9a8dcb34"
