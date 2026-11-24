@@ -55,12 +55,16 @@ allow_setuid = []
 
 [versions."0.2.0~rc1"]
 status = "experimental"
-label = "Experimental release candidate — free Candidate-only test build; not yet verified on a physical device."
+label = "Failed physical-device launch test (iPhone 11 Pro Max, iOS 17.4, Dopamine, 2026-11-24): closes at launch. Use 0.2.0~rc2."
+
+[versions."0.2.0~rc2"]
+status = "experimental"
+label = "Experimental, pending device verification: free Candidate-only test build with startup recovery and Safe Mode."
 
 [access]
 # Free for users signed in with HCG Connect. Never stored or served publicly here.
 level = "connect"
-# Owner-approved per-version exception (docs/ACCESS.md): 0.2.0~rc1 only, candidate channel only. Every other version,
-# including future release candidates and releases, keeps level "connect". Not valid for the stable source.
-exception = "Owner approved 2026-11-24: free public Candidate-only distribution of HCG Terminal Unleashed 0.2.0~rc1 for physical-device and repository-access testing."
-exception_versions = ["0.2.0~rc1"]
+# Owner-approved per-version exceptions (docs/ACCESS.md): 0.2.0~rc1 and 0.2.0~rc2 only, candidate channel only. Every
+# other version, including future release candidates and releases, keeps level "connect". Not valid for the stable source.
+exception = "Owner approved 2026-11-24: free public Candidate-only distribution of HCG Terminal Unleashed 0.2.0~rc1 (SHA-256 02626804763200f9e29d651a213bdb92330351d3052073e6a52cb86d62fc5a28) and 0.2.0~rc2 (SHA-256 597eb8f11519c9a91a0daa8c72eb9f70f5e38c4fc2e1ffaba469d8420606ff84, CI run #77, source 22912b4: 'I explicitly approve HCG Terminal Unleashed 0.2.0~rc2 for free PUBLIC Candidate-only distribution through HCG Repo') for physical-device testing. Stable and future versions stay protected."
+exception_versions = ["0.2.0~rc1", "0.2.0~rc2"]
