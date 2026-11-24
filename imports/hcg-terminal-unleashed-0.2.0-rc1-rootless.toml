@@ -1,0 +1,22 @@
+# HCG Terminal Unleashed 0.2.0~rc1, rootless. Frozen release candidate (HCG-Terminal docs/releases/
+# hcg-terminal-unleashed-0.2.0-rc1/FREEZE.md). Owner approved 2026-11-24: free public Candidate-only distribution
+# for physical-device and repository-access testing. Not verified on a physical device yet.
+# Pinned to F1r3srp3nt/HCG-Terminal commit 1cc76a7 (branch claude/unleashed-jailbreak-edition, PR #3 not merged),
+# Apple build run #72 (run 45051075163), artifact hcg-terminal-unleashed-rootless-rc (ID 14765917921,
+# zip SHA-256 1752cd64…bd1b1f118, expires 2026-11-25). 7,020,986 bytes. Only these exact bytes are approved:
+# Prepare packages refuses any other file. If the artifact has expired, import the owner's frozen copy with
+# HCG-Terminal's hcg-repo-import-frozen-rc1.py instead; never rebuild.
+
+[request]
+package = "com.hakmicapitalgroup.hcgterminal.unleashed"
+version = "0.2.0~rc1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Terminal"
+run_id = 45051075163
+commit = "1cc76a791cf785f80f4bd742224cd681c612d806"
+artifact = "hcg-terminal-unleashed-rootless-rc"
+sha256 = "02626804763200f9e29d651a213bdb92330351d3052073e6a52cb86d62fc5a28"

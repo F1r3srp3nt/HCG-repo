@@ -12,18 +12,23 @@ This is a **separate app** from the standard HCG Terminal on the App Store / Tes
 
 Installing this package does not remove the iOS sandbox or change security settings globally. It installs a copy of the app signed with `ldid` for use outside the app sandbox, where your jailbreak permits that. Shell sessions run as the app's own user (normally `mobile`), never automatically as root.
 """
+known_issues = """
+- **0.2.0~rc1 is not yet verified on a physical device.** It is a free Candidate-only release candidate for testing installation through HCG Repo. Whether your jailbreak lets its `ldid` signature and the `com.apple.private.security.no-sandbox` entitlement start a shell is unverified: run *Run Shell Test* after installing.
+- *HCG Ecosystem* screen: the Agent Runtime row says no interface exists in any HCG product. Agent Runtime exists as a development project; its native release and HCG Terminal integration are not available yet. Fixed in the next candidate.
+- *Jailbreak Diagnostics*: if the jailbreak root is empty, some lines read "at ." instead of a path. Cosmetic; it does not appear on a normal Dopamine rootless install.
+"""
 limitations = """
 - **Requires iOS 17.0 or later** (the package declares `firmware (>= 17.0)`). Sileo hides it on iOS 16 and earlier, including the iPhone 13 Pro on iOS 16.5 / Dopamine that HCG Nexus targets.
 - **Not yet run on a physical device.** Whether your jailbreak lets this signature and entitlement (`com.apple.private.security.no-sandbox`) start a shell is unverified.
 - Rootless only (`iphoneos-arm64`).
-- The app embeds Apple's `libswiftCompatibilitySpan.dylib` with Apple's original signature, while the app executable is `ldid`-signed. Whether your jailbreak loads that combination is part of the first device test.
-- The package's `postinst` calls `uicache` but does not declare `uikittools`. If the icon does not appear, run `uicache -a`.
+- Shell sessions run as the app's user (`mobile`). `sudo` runs only when you type it and asks for its own password.
 - Delete any sideloaded *HCG Terminal Unleashed* (Xcode, IPA, TrollStore) first: it uses the same bundle identifier.
 """
 install = """
 1. Remove any sideloaded copy of *HCG Terminal Unleashed*.
 2. Install **HCG Terminal Unleashed** in Sileo.
-3. Open the app, then *Settings › Unleashed Environment › Run Shell Test*. *Verified working* means a shell can start. *Permission denied* means this jailbreak does not accept the package's signing; please report it.
+3. Open the app, then *Unleashed Tools › Jailbreak Diagnostics*: *Install location* and *Signature and entitlements* should be OK.
+4. *Unleashed Tools › Environment and Tests › Run Shell Test*. *Verified working* means a shell can start. *Permission denied* means this jailbreak does not accept the package's signing; please report it.
 """
 removal = """
 1. Sileo → *Installed* → **HCG Terminal Unleashed** → *Remove*. The removal script unregisters the app icon.
@@ -48,6 +53,14 @@ allow_setuid = []
 # [[versions."0.1.0-1".device_tests]]
 # device = "…"; ios = "17.x"; jailbreak = "…"; date = "…"; result = "pass"; evidence = "docs/device-tests/…"
 
+[versions."0.2.0~rc1"]
+status = "experimental"
+label = "Experimental release candidate — free Candidate-only test build; not yet verified on a physical device."
+
 [access]
 # Free for users signed in with HCG Connect. Never stored or served publicly here.
 level = "connect"
+# Owner-approved per-version exception (docs/ACCESS.md): 0.2.0~rc1 only, candidate channel only. Every other version,
+# including future release candidates and releases, keeps level "connect". Not valid for the stable source.
+exception = "Owner approved 2026-11-24: free public Candidate-only distribution of HCG Terminal Unleashed 0.2.0~rc1 for physical-device and repository-access testing."
+exception_versions = ["0.2.0~rc1"]
