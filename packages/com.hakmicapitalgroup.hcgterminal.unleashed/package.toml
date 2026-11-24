@@ -54,11 +54,11 @@ allow_setuid = []
 
 [versions."0.2.0~rc1"]
 status = "experimental"
-label = "Superseded by 0.2.0~rc2: installed but closed at launch on iPhone 11 Pro Max, iOS 17.4, Dopamine (reported 24 Nov 2026)."
+label = "Failed physical-device launch test (iPhone 11 Pro Max, iOS 17.4, Dopamine, 2026-11-24): closes at launch. Use 0.2.0~rc2."
 
 [versions."0.2.0~rc2"]
 status = "experimental"
-label = "Experimental release candidate: free Candidate-only test build with startup recovery and Safe Mode. Not yet verified on a device."
+label = "Experimental, pending device verification: free Candidate-only test build with startup recovery and Safe Mode."
 
 [access]
 # Free for users signed in with HCG Connect. Never stored or served publicly here.
