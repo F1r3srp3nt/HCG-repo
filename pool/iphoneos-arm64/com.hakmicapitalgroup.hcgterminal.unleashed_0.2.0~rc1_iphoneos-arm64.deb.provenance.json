@@ -1,0 +1,133 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:1752cd64fdae41d89401db9002256f9de993b2c883b52f91a39646cbd1b1f118",
+  "artifact_id": 14765917921,
+  "artifact_name": "hcg-terminal-unleashed-rootless-rc",
+  "artifact_zip_sha256": "1752cd64fdae41d89401db9002256f9de993b2c883b52f91a39646cbd1b1f118",
+  "commit": "1cc76a791cf785f80f4bd742224cd681c612d806",
+  "downloaded_sha256": "02626804763200f9e29d651a213bdb92330351d3052073e6a52cb86d62fc5a28",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgterminal.unleashed_0.2.0~rc1_iphoneos-arm64.deb",
+  "imported_at": "2026-11-24T00:50:32Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [
+      {
+        "bundle_id": "com.hakmicapitalgroup.hcgterminal.unleashed",
+        "executable": "HCGTerminalUnleashed",
+        "minimum_os": "17.0",
+        "path": "var/jb/Applications/HCGTerminalUnleashed.app"
+      }
+    ],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/swift/libswiftCore.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "12.2",
+          "14.0"
+        ],
+        "path": "var/jb/Applications/HCGTerminalUnleashed.app/Frameworks/libswiftCompatibilitySpan.dylib",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64"
+        ],
+        "entitlements": {
+          "com.apple.private.security.no-sandbox": true
+        },
+        "libraries": [
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/usr/lib/libobjc.A.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/AVFoundation.framework/AVFoundation",
+          "/System/Library/Frameworks/Combine.framework/Combine",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/System/Library/Frameworks/CoreText.framework/CoreText",
+          "/System/Library/Frameworks/CryptoKit.framework/CryptoKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/QuickLook.framework/QuickLook",
+          "/System/Library/Frameworks/Security.framework/Security",
+          "/System/Library/Frameworks/SwiftUI.framework/SwiftUI",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/swift/libswiftAVFoundation.dylib",
+          "/usr/lib/swift/libswiftCore.dylib",
+          "/usr/lib/swift/libswiftCoreAudio.dylib",
+          "/usr/lib/swift/libswiftCoreFoundation.dylib",
+          "/usr/lib/swift/libswiftCoreImage.dylib",
+          "/usr/lib/swift/libswiftCoreMIDI.dylib",
+          "/usr/lib/swift/libswiftCoreMedia.dylib",
+          "/usr/lib/swift/libswiftDarwin.dylib",
+          "/usr/lib/swift/libswiftDispatch.dylib",
+          "/usr/lib/swift/libswiftMetal.dylib",
+          "/usr/lib/swift/libswiftOSLog.dylib",
+          "/usr/lib/swift/libswiftObjectiveC.dylib",
+          "/usr/lib/swift/libswiftObservation.dylib",
+          "/usr/lib/swift/libswiftQuartzCore.dylib",
+          "/usr/lib/swift/libswiftSpatial.dylib",
+          "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+          "/usr/lib/swift/libswiftXPC.dylib",
+          "/usr/lib/swift/libswift_Concurrency.dylib",
+          "/usr/lib/swift/libswiftos.dylib",
+          "/usr/lib/swift/libswiftsimd.dylib",
+          "/usr/lib/swift/libswiftCoreGraphics.dylib",
+          "@rpath/libswiftCompatibilitySpan.dylib"
+        ],
+        "minimum_ios": [
+          "17.0"
+        ],
+        "path": "var/jb/Applications/HCGTerminalUnleashed.app/HCGTerminalUnleashed",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "17.0"
+        ],
+        "path": "var/jb/Applications/HCGTerminalUnleashed.app/hcg-pty-helper",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "17.0",
+    "depends": "firmware (>= 17.0), uikittools",
+    "maintainer_scripts": [
+      "postinst",
+      "postrm"
+    ],
+    "package": "com.hakmicapitalgroup.hcgterminal.unleashed",
+    "sha256": "02626804763200f9e29d651a213bdb92330351d3052073e6a52cb86d62fc5a28",
+    "size": 7020986,
+    "version": "0.2.0~rc1"
+  },
+  "member": "com.hakmicapitalgroup.hcgterminal.unleashed_0.2.0~rc1_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.hcgterminal.unleashed",
+  "repository": "F1r3srp3nt/HCG-Terminal",
+  "request": "hcg-terminal-unleashed-0.2.0-rc1-rootless",
+  "run_attempt": 1,
+  "run_id": 45051075163,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Terminal/actions/runs/45051075163",
+  "schema": 1,
+  "sha256": "02626804763200f9e29d651a213bdb92330351d3052073e6a52cb86d62fc5a28",
+  "sha512": "2c80a821c699beadcef9282f59f3882c75fcb4b9a8416b26b8af0c1306dcb165d69a8e74e95b3eab9976f1897b63a86e4f17a3e234810062d8f8116b7d6f06f6",
+  "size": 7020986,
+  "source": "github-workflow-artifact",
+  "version": "0.2.0~rc1",
+  "workflow": ".github/workflows/apple-build.yml"
+}

@@ -146,6 +146,17 @@
     {
       "architecture": "iphoneos-arm64",
       "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgterminal.unleashed_0.2.0~rc1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-24T00:50:31Z",
+      "package": "com.hakmicapitalgroup.hcgterminal.unleashed",
+      "sha256": "02626804763200f9e29d651a213bdb92330351d3052073e6a52cb86d62fc5a28",
+      "size": 7020986,
+      "status": "published",
+      "version": "0.2.0~rc1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "channel": "candidate",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.portal_0.1.0~beta1_iphoneos-arm64.deb",
       "imported_at": "2026-11-18T21:12:25Z",
       "package": "com.hakmicapitalgroup.portal",
