@@ -1,0 +1,21 @@
+# HCG Terminal Unleashed 0.2.0~rc2, rootless. Frozen release candidate (HCG-Terminal docs/releases/
+# hcg-terminal-unleashed-0.2.0-rc2/FREEZE.md). Owner approved 2026-11-24: free public Candidate-only demo of this
+# exact package (SHA-256 below). Supersedes 0.2.0~rc1, which closed at launch on a device.
+# Pinned to F1r3srp3nt/HCG-Terminal main @ 22912b4, Apple build run #77 (run 45365201577, manual run with
+# release_version=0.2.0~rc2), artifact hcg-terminal-unleashed-rootless-release-candidate (ID 14907036848,
+# zip SHA-256 0d91d5a29f43d770dd8ede70ca3125033151f943b25f6189b911ad790eeb3983, kept until 2026-12-24).
+# 7,053,756 bytes. Only these exact bytes are approved; never rebuilt.
+
+[request]
+package = "com.hakmicapitalgroup.hcgterminal.unleashed"
+version = "0.2.0~rc2"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Terminal"
+run_id = 45365201577
+commit = "22912b4c7dc05de4256ffe12ab7070456de85622"
+artifact = "hcg-terminal-unleashed-rootless-release-candidate"
+sha256 = "597eb8f11519c9a91a0daa8c72eb9f70f5e38c4fc2e1ffaba469d8420606ff84"

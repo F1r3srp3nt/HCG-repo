@@ -25,7 +25,7 @@ kind = "Jailbreak app"
 access = "connect"
 status = "Not yet available"
 summary = "Jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal using the access the device already grants. Separate from the sandboxed App Store / TestFlight edition."
-detail = "Requires iOS 17 or later. Free release candidate 0.2.0~rc1 in the HCG Repo Candidate testing channel (owner-approved, not yet verified on a physical device). Other versions need HCG Connect sign-in, which is not live yet."
+detail = "Requires iOS 17 or later. Free release candidate 0.2.0~rc2 in the HCG Repo Candidate testing channel (owner-approved, not yet verified on a physical device); 0.2.0~rc1 is superseded. Other versions need HCG Connect sign-in, which is not live yet."
 store_slug = "hcg-terminal"
 store_edition = "unleashed"
 

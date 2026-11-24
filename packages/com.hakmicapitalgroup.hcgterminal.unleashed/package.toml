@@ -13,9 +13,8 @@ This is a **separate app** from the standard HCG Terminal on the App Store / Tes
 Installing this package does not remove the iOS sandbox or change security settings globally. It installs a copy of the app signed with `ldid` for use outside the app sandbox, where your jailbreak permits that. Shell sessions run as the app's own user (normally `mobile`), never automatically as root.
 """
 known_issues = """
-- **0.2.0~rc1 is not yet verified on a physical device.** It is a free Candidate-only release candidate for testing installation through HCG Repo. Whether your jailbreak lets its `ldid` signature and the `com.apple.private.security.no-sandbox` entitlement start a shell is unverified: run *Run Shell Test* after installing.
-- *HCG Ecosystem* screen: the Agent Runtime row says no interface exists in any HCG product. Agent Runtime exists as a development project; its native release and HCG Terminal integration are not available yet. Fixed in the next candidate.
-- *Jailbreak Diagnostics*: if the jailbreak root is empty, some lines read "at ." instead of a path. Cosmetic; it does not appear on a normal Dopamine rootless install.
+- **0.2.0~rc2 is not yet verified on a physical device.** It is a free Candidate-only release candidate. After a launch that did not finish, it opens on *Startup Recovery*: share the startup report, *Start in Safe Mode*, or *Start Normally*. Whether your jailbreak lets its `ldid` signature and the `com.apple.private.security.no-sandbox` entitlement start a shell is unverified: run *Run Shell Test* after installing.
+- **0.2.0~rc1 (superseded) installed but closed at launch** on an iPhone 11 Pro Max, iOS 17.4, Dopamine rootless (reported 24 Nov 2026). The cause needs the device's crash report. Package managers offer 0.2.0~rc2 as the upgrade.
 """
 limitations = """
 - **Requires iOS 17.0 or later** (the package declares `firmware (>= 17.0)`). Sileo hides it on iOS 16 and earlier, including the iPhone 13 Pro on iOS 16.5 / Dopamine that HCG Nexus targets.
@@ -55,12 +54,17 @@ allow_setuid = []
 
 [versions."0.2.0~rc1"]
 status = "experimental"
-label = "Experimental release candidate — free Candidate-only test build; not yet verified on a physical device."
+label = "Superseded by 0.2.0~rc2: installed but closed at launch on iPhone 11 Pro Max, iOS 17.4, Dopamine (reported 24 Nov 2026)."
+
+[versions."0.2.0~rc2"]
+status = "experimental"
+label = "Experimental release candidate: free Candidate-only test build with startup recovery and Safe Mode. Not yet verified on a device."
 
 [access]
 # Free for users signed in with HCG Connect. Never stored or served publicly here.
 level = "connect"
 # Owner-approved per-version exception (docs/ACCESS.md): 0.2.0~rc1 only, candidate channel only. Every other version,
 # including future release candidates and releases, keeps level "connect". Not valid for the stable source.
-exception = "Owner approved 2026-11-24: free public Candidate-only distribution of HCG Terminal Unleashed 0.2.0~rc1 for physical-device and repository-access testing."
-exception_versions = ["0.2.0~rc1"]
+# Two separate owner approvals, one per version; neither extends to any other version.
+exception = "Owner approved 2026-11-24: free public Candidate-only distribution of HCG Terminal Unleashed 0.2.0~rc1 for physical-device and repository-access testing. Separately, owner approved 2026-11-24: 0.2.0~rc2 (SHA-256 597eb8f11519c9a91a0daa8c72eb9f70f5e38c4fc2e1ffaba469d8420606ff84) as a free public Candidate-only demo."
+exception_versions = ["0.2.0~rc1", "0.2.0~rc2"]
