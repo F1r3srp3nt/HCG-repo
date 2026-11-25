@@ -24,7 +24,7 @@
 - **Public packages only.** The candidate has no payment provider, so protected (`connect` or `paid`) packages can
   never be put in it: `channel` refuses, and `validate` reports `candidate-protected`.
   - Each free exception is scoped to that package's `exception_versions` (Vortex: `0.1.0~beta1`, `0.1.0~beta2`,
-    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`, `0.3.0~beta1`; Animation Center: `0.1.0~beta1`; Portal: `0.1.0~beta1`, `0.1.0~beta3`, `0.1.0~beta4`; Terminal Unleashed: `0.2.0~rc1`, `0.2.0~rc2`; Sentinel: `0.1.0~beta1`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`, `0.3.0~beta1` (approved, never imported),
+    `0.3.0~beta1`, `0.3.1~beta1`; Halo: `0.1.0~beta1`, `0.2.0~beta1`, `0.3.0~beta1`; Animation Center: `0.1.0~beta1`; Portal: `0.1.0~beta1`, `0.1.0~beta3`, `0.1.0~beta4`; Terminal Unleashed: `0.2.0~rc1`, `0.2.0~rc2`; Sentinel: `0.1.0~beta1`; Mail Unleashed: `0.1.0~beta1`; Nexus: `0.2.1~beta1`, `0.2.2~beta1`, `0.3.0~beta1` (approved, never imported),
     `0.3.1~beta1`).
   - It cannot make any other package, or any other version, public.
 - **Verified on every Publish.** Both sources are verified offline before deployment and online afterwards.

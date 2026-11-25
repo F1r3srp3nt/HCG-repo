@@ -1,0 +1,174 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:8e0354fb5aad2565142d6f559fcafad2a2c08256b856eece495d1e4de6f7503b",
+  "artifact_id": 15008300234,
+  "artifact_name": "hcg-mail-unleashed-deb",
+  "artifact_zip_sha256": "8e0354fb5aad2565142d6f559fcafad2a2c08256b856eece495d1e4de6f7503b",
+  "commit": "b0c6fee17c756a1dffff62e77574ad60b22415be",
+  "downloaded_sha256": "ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgmail.unleashed_0.1.0~beta1_iphoneos-arm64.deb",
+  "imported_at": "2026-11-25T09:53:55Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [
+      {
+        "bundle_id": "com.hakmicapitalgroup.hcgmail.unleashed",
+        "executable": "HCGMail.iOS",
+        "minimum_os": "16.0",
+        "path": "var/jb/Applications/HCGMail.iOS.app"
+      }
+    ],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "11.0"
+        ],
+        "path": "var/jb/Applications/HCGMail.iOS.app/Frameworks/libHarfBuzzSharp.framework/libHarfBuzzSharp",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/System/Library/Frameworks/CoreText.framework/CoreText",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/System/Library/Frameworks/MetalKit.framework/MetalKit",
+          "/System/Library/Frameworks/Metal.framework/Metal",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libobjc.A.dylib"
+        ],
+        "minimum_ios": [
+          "11.0"
+        ],
+        "path": "var/jb/Applications/HCGMail.iOS.app/Frameworks/libSkiaSharp.framework/libSkiaSharp",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64"
+        ],
+        "entitlements": {
+          "keychain-access-groups": [
+            "com.hakmicapitalgroup.hcgmail.unleashed"
+          ]
+        },
+        "libraries": [
+          "@rpath/libHarfBuzzSharp.framework/libHarfBuzzSharp",
+          "@rpath/libSkiaSharp.framework/libSkiaSharp",
+          "/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox",
+          "/System/Library/Frameworks/AuthenticationServices.framework/AuthenticationServices",
+          "/System/Library/Frameworks/CFNetwork.framework/CFNetwork",
+          "/System/Library/Frameworks/CloudKit.framework/CloudKit",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/System/Library/Frameworks/CoreLocation.framework/CoreLocation",
+          "/System/Library/Frameworks/CoreMotion.framework/CoreMotion",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/Intents.framework/Intents",
+          "/System/Library/Frameworks/IOSurface.framework/IOSurface",
+          "/System/Library/Frameworks/Metal.framework/Metal",
+          "/System/Library/Frameworks/MobileCoreServices.framework/MobileCoreServices",
+          "/System/Library/Frameworks/Network.framework/Network",
+          "/System/Library/Frameworks/OpenGLES.framework/OpenGLES",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/SafariServices.framework/SafariServices",
+          "/System/Library/Frameworks/Security.framework/Security",
+          "/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/UniformTypeIdentifiers.framework/UniformTypeIdentifiers",
+          "/System/Library/Frameworks/WebKit.framework/WebKit",
+          "/System/Library/Frameworks/GSS.framework/GSS",
+          "/usr/lib/libz.1.dylib",
+          "/usr/lib/libiconv.2.dylib",
+          "/usr/lib/libcompression.dylib",
+          "/usr/lib/libicucore.A.dylib",
+          "/usr/lib/libobjc.A.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "16.0"
+        ],
+        "path": "var/jb/Applications/HCGMail.iOS.app/HCGMail.iOS",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "16.0",
+    "depends": "firmware (>= 16.0), uikittools",
+    "maintainer_scripts": [
+      "postinst",
+      "postrm"
+    ],
+    "package": "com.hakmicapitalgroup.hcgmail.unleashed",
+    "sha256": "ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a",
+    "size": 43663718,
+    "version": "0.1.0~beta1"
+  },
+  "member": "com.hakmicapitalgroup.hcgmail.unleashed_0.1.0~beta1_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.hcgmail.unleashed",
+  "repository": "F1r3srp3nt/HCG-Mail",
+  "request": "hcg-mail-unleashed-0.1.0-beta1-rootless",
+  "run_attempt": 1,
+  "run_id": 45580748239,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Mail/actions/runs/45580748239",
+  "schema": 1,
+  "sha256": "ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a",
+  "sha512": "3099d54cb8781776a33ed92cd6b1f0104897a65d7aed13fd099591f1bc40cd90e931c51cec4cf36afef4fd6813df79b30f3d402c8ab8f72f4c0177bf4e868be9",
+  "size": 43663718,
+  "source": "github-workflow-artifact",
+  "validation_levels": {
+    "physical_device": {
+      "recorded": false
+    },
+    "simulated_lifecycle": {
+      "passed": true,
+      "scripts_executed": false,
+      "steps": [
+        {
+          "ok": true,
+          "problems": [],
+          "status": "install ok installed",
+          "step": "install"
+        },
+        {
+          "ok": true,
+          "problems": [],
+          "status": "install ok installed",
+          "step": "reinstall"
+        },
+        {
+          "ok": true,
+          "problems": [],
+          "status": "not-installed",
+          "step": "remove"
+        },
+        {
+          "ok": true,
+          "problems": [],
+          "status": "not-installed",
+          "step": "purge"
+        }
+      ]
+    },
+    "static": {
+      "passed": true
+    }
+  },
+  "version": "0.1.0~beta1",
+  "workflow": ".github/workflows/unleashed.yml"
+}
