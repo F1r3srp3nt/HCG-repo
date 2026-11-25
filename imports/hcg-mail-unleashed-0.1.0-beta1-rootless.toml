@@ -2,8 +2,8 @@
 # app built from source (Release, ios-arm64, Mono AOT, Xcode 27.2) as its own edition, with its own data and Keychain.
 # App source: F1r3srp3nt/HCG-Mail commit b0c6fee17c756a1dffff62e77574ad60b22415be. Built, packaged with HCG Executable Maker's
 # rootless packager (pinned 595e989, twice, byte-identical) and validated by HCG-Mail's Unleashed workflow in the run below.
-# NOT YET IMPORTABLE: no owner approval of this version as a free public Candidate demo is recorded
-# (packages/com.hakmicapitalgroup.hcgmail.unleashed/package.toml [access] exception is commented out).
+# Owner approval (25 Nov 2026) of this exact SHA-256 as a free public Candidate demo is recorded in
+# packages/com.hakmicapitalgroup.hcgmail.unleashed/package.toml [access] exception (0.1.0~beta1 only, not Stable).
 
 [request]
 package = "com.hakmicapitalgroup.hcgmail.unleashed"

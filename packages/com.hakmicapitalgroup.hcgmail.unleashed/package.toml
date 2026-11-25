@@ -54,9 +54,7 @@ label = "Experimental, pending device verification: first rootless candidate of 
 [access]
 # Production access for this product is NOT recorded in HCG Repo and was not decided here: HCG's default (connect) applies.
 level = "connect"
-# INACTIVE: no owner approval of 0.1.0~beta1 as a free public demo is recorded (approval is per version and per SHA-256,
-# docs/ACCESS.md), and HCG Repo Candidate serves only public builds. Until the owner approves this exact artifact
-# (SHA-256 ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a), this version stays protected and is not
-# offered in Candidate. Once approved, record who, when and their words, and uncomment:
-# exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's free-demo policy for approved candidate builds. Approved by the owner on <date>: '<their words>'. The approval applies exclusively to the package with SHA-256 ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a; not Stable. For the versions in exception_versions only; production access is unchanged."
-# exception_versions = ["0.1.0~beta1"]
+# Owner-approved per-version exception (docs/ACCESS.md): 0.1.0~beta1 only, candidate channel only, this SHA-256 only.
+# Every other version keeps level "connect". Not valid for the stable source.
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's free-demo policy for approved candidate builds. Approved by the owner on 25 Nov 2026: 'I approve HCG Mail Unleashed 0.1.0~beta1 (SHA-256 ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a) as a free demonstration candidate for controlled testing.' The approval applies exclusively to the package with SHA-256 ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a; not Stable. For the versions in exception_versions only; production access is unchanged."
+exception_versions = ["0.1.0~beta1"]
