@@ -418,6 +418,8 @@ class AwaitingLocalImport(Exception):
 # on the owner's Mac) and committed next to the request under imports/local/. The source repository may be private:
 # only its name and commit are recorded, never its contents, and no token is needed to import.
 LOCAL_DIR = "imports/local/"
+# Debian file names carry the version, so a committed .deb's path may also hold "~" and "+" (e.g. 0.1.0~beta1).
+LOCAL_PATH = re.compile(r"^[A-Za-z0-9._/~+-]+$")
 LOCAL_PROVENANCE = ("built_by", "toolchain", "built_at", "host", "source_visibility", "validation")
 
 
@@ -448,7 +450,7 @@ def load_request(path: Path) -> dict:
             problems.append("github-release needs an exact tag (not 'latest') and asset")
     elif kind == "local-file":
         rel = src.get("path", "")
-        if not rel.startswith(LOCAL_DIR) or not rel.endswith(".deb") or not SAFE_PATH.match(rel) or ".." in rel.split("/"):
+        if not rel.startswith(LOCAL_DIR) or not rel.endswith(".deb") or not LOCAL_PATH.match(rel) or ".." in rel.split("/"):
             problems.append(f"local-file path must be a .deb under {LOCAL_DIR} (plain relative path)")
         if not src.get("sha256"):
             problems.append("local-file needs the exact sha256 of the committed .deb")

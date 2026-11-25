@@ -4,6 +4,7 @@ committed under imports/local/ with its exact SHA-256 and the provenance of a po
 import hashlib
 import json
 import shutil
+from pathlib import Path
 
 from support import NS, RepoTestCase, tool_deb
 from hcgrepo.importer import GitHub, ImportError_, load_request, run_request
@@ -42,6 +43,15 @@ class LocalFileImportTests(RepoTestCase):
         flat = json.dumps(prov)
         for want in ("local-file", "F1r3srp3nt/HCG-Signal-Contractor", COMMIT, "Xcode 27.2", "private", "Unleashify, local"):
             self.assertIn(want, flat)
+
+    def test_debian_version_characters_in_the_file_name(self):
+        rel, sha = self.commit_deb()
+        tilde = "imports/local/" + Path(rel).name.replace(".deb", "~beta1+local.deb")
+        (self.root / rel).rename(self.root / tilde)
+        status, rep = run_request(self.cfg, self.request(tilde, sha), GitHub(token=""), self.work)
+        self.assertEqual(status, "imported", rep.render())
+        with self.assertRaises(ImportError_):
+            self.request("imports/local/x y.deb", sha)
 
     def test_checksum_must_match(self):
         rel, _ = self.commit_deb()
