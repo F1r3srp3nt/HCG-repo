@@ -45,11 +45,12 @@ store_edition = "jailbreak"
 [[products]]
 key = "hcg-sentinel"
 name = "HCG Sentinel"
-package_ids = []
-kind = "App — no jailbreak package"
+package_ids = ["com.hakmicapitalgroup.hcgsentinel"]
+layouts = ["iphoneos-arm64"]
+kind = "Jailbreak app"
 status = "In development"
 summary = "Toolkit for authorised testing of your own devices, networks and services."
-detail = "Sentinel ships as a standard app. Its optional privileged helper exists only as a specification, so there is nothing to install from this repository yet."
+detail = "The standard app, packaged unchanged for rootless jailbreaks: free beta 0.1.0~beta1 in the HCG Repo Candidate testing channel (owner-approved, not yet verified on a physical device). Its optional privileged helper exists only as a specification and is not included."
 store_slug = "hcg-sentinel"
 
 [[products]]

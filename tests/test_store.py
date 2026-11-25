@@ -18,7 +18,7 @@ PROV = {"source": "test"}
 REAL = {  # key: (store_slug, store_edition, package_ids, product access)
     "hcg-terminal-unleashed": ("hcg-terminal", "unleashed", [NS + "hcgterminal.unleashed"], "connect"),
     "hcg-nexus": ("hcg-nexus", "jailbreak", [NS + "hcgnexus"], "paid"),
-    "hcg-sentinel": ("hcg-sentinel", "", [], ""),
+    "hcg-sentinel": ("hcg-sentinel", "", ["com.hakmicapitalgroup.hcgsentinel"], ""),
 }
 
 
@@ -112,7 +112,9 @@ class StoreTests(RepoTestCase):
         self.assertIn(">Buy Product</h2>", nexus)
         self.assertIn("HCG Store ownership", nexus)
         self.assertIn(">Get access</h2>", term)
-        self.assertIn("This product has no Debian package", (site / "products" / "hcg-sentinel" / "index.html").read_text())
+        sentinel = (site / "products" / "hcg-sentinel" / "index.html").read_text()
+        self.assertIn("<code>com.hakmicapitalgroup.hcgsentinel</code>", sentinel)   # its real package, no duplicate
+        self.assertNotIn("This product has no Debian package", sentinel)
         v = self.verify_dir(site)
         self.assertTrue(v.report.ok, v.report.render())
 

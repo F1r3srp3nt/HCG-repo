@@ -75,6 +75,7 @@ allow_setuid = []
 
 [versions."0.1.0~beta1"]
 status = "experimental"
+label = "Known incompatible: failed to install (unpack) on iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x, Zebra 1.1.x (2026-11-17). Use a later version."
 # Observed results only. The installation attempt failed, so runtime behaviour has not been tested at all.
 [[versions."0.1.0~beta1".device_tests]]
 device = "iPhone 11 Pro Max"

@@ -38,9 +38,15 @@ def cmd_inspect(a, cfg) -> int:
         deep, evidence = deep_validate(info, lifecycle=not a.no_lifecycle)
         r.extend(deep)
     if a.json:
-        print(json.dumps({"summary": info.summary(), "control": dict(info.control),
-                          "problems": [{"level": l, "code": c, "message": m} for l, c, m in r.items],
-                          "evidence": evidence}, indent=2))
+        out = {"summary": info.summary(), "control": dict(info.control),
+               "problems": [{"level": l, "code": c, "message": m} for l, c, m in r.items], "evidence": evidence}
+        if evidence:
+            from . import levels as lv
+            from .deepcheck import stage_of
+            fs = [{"stage": stage_of(c), "level": l, "code": c, "message": m} for l, c, m in r.items]
+            out["levels"] = lv.all_levels(lv.machine_levels(fs, evidence["lifecycle"], sorted(info.scripts)),
+                                          meta.device_tests(info.version))
+        print(json.dumps(out, indent=2))
         return 0 if r.ok else 1
     print(f"{info.path.name}: {info.size} bytes, sha256 {info.sha256}")
     print(info.control_text.rstrip())
@@ -54,13 +60,13 @@ def cmd_inspect(a, cfg) -> int:
             print(f"  links: {lib}")
     print(f"maintainer scripts: {', '.join(s['maintainer_scripts']) or 'none'}")
     if evidence:
-        lc = evidence["lifecycle"]
-        print(f"static checks (secrets, scripts, helpers): {'passed' if evidence['static']['passed'] else 'FAILED'}")
-        if lc:
-            steps = ", ".join(f"{st['step']} {'ok' if st['ok'] else 'FAILED'}" for st in lc["steps"])
-            print(f"simulated lifecycle: {'passed' if lc['passed'] else 'FAILED'} ({steps or 'not run'}); "
-                  "maintainer scripts not executed")
-        print("physical-device testing: not recorded (never inferred)")
+        from . import levels as lv
+        from .deepcheck import stage_of
+        findings = [{"stage": "static", "level": l, "code": c, "message": m} for l, c, m in r.items
+                    if not any(c == dc for _, dc, _ in deep.items)]
+        findings += [{"stage": stage_of(c), "level": l, "code": c, "message": m} for l, c, m in deep.items]
+        machine = lv.machine_levels(findings, evidence["lifecycle"], sorted(info.scripts))
+        print("\n".join(lv.render(lv.all_levels(machine, meta.device_tests(info.version)))))
     return _print_report(r, "package passes package-level validation")
 
 
@@ -478,6 +484,10 @@ def cmd_compat(a, cfg) -> int:
             print(f"  {v['version']:<16} {v['channel']:<9} {v['layout']:<9} {ios:<10} {v['status']}")
             if v["label"]:
                 print(f"      label: {v['label']}")
+            for k in ("device_installation", "application_launch", "runtime_verification"):
+                st = v["levels"][k]["state"]
+                if st != "not-recorded":
+                    print(f"      {k.replace('_', ' ')}: {st}" + (f" ({v['levels'][k]['note']})" if v['levels'][k].get('note') else ""))
             for t in v["device_evidence"]:
                 print(f"      {t['stage'] or 'runtime'} {t['result']}: {t['device']}, iOS {t['ios']}, {t['jailbreak']} "
                       f"({t['date']}; {t['evidence']})")

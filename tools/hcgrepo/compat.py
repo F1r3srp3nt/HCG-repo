@@ -49,15 +49,23 @@ def _imported_levels(prov: dict) -> dict | None:
 
 
 def derive_status(entry: dict, prov: dict, tests: list[dict]) -> str:
+    """Strongest recorded evidence, never inferred upward. A recorded failure to install or to launch with no recorded
+    success at that stage makes the version Known incompatible (on the recorded configurations); its evidence levels
+    still show what did pass (e.g. the installation)."""
     if entry.get("status") == "withdrawn":
         return WITHDRAWN
-    passes = [t for t in tests if t.get("result") == "pass"]
-    if any(t.get("stage", "runtime") == "runtime" for t in passes):
+    stage = lambda t: t.get("stage", "runtime")  # noqa: E731
+    runtime = [t for t in tests if stage(t) in ("runtime", "verification")]
+    installs = [t for t in tests if stage(t) == "install"]
+    if any(t.get("result") == "pass" for t in runtime):
         return PHYS_LAUNCH
-    if any(t.get("stage") == "install" for t in passes) or any(
-            t.get("stage", "runtime") == "runtime" and t.get("result") == "partial" for t in tests):
+    if any(t.get("result") == "partial" for t in runtime):
         return PHYS_INSTALL
-    if tests and all(t.get("result") == "fail" for t in tests):
+    if runtime and all(t.get("result") == "fail" for t in runtime):
+        return INCOMPATIBLE
+    if any(t.get("result") == "pass" for t in installs):
+        return PHYS_INSTALL
+    if installs and all(t.get("result") == "fail" for t in installs):
         return INCOMPATIBLE
     from .levels import from_legacy
     machine = from_legacy(prov.get("validation_levels")) or {}
@@ -66,6 +74,11 @@ def derive_status(entry: dict, prov: dict, tests: list[dict]) -> str:
     if prov.get("inspection"):
         return STATIC
     return UNTESTED
+
+
+def known_failures(tests: list[dict]) -> list[dict]:
+    return [{k: t.get(k) for k in ("stage", "result", "device", "ios", "jailbreak", "date", "evidence")}
+            for t in tests if t.get("result") in ("fail", "partial")]
 
 
 def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
@@ -95,6 +108,7 @@ def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
                                 for t in tests],
             "label": meta.label(e["version"]),
             "levels": all_levels(from_legacy(prov.get("validation_levels")) or _imported_levels(prov), tests),
+            "known_failures": known_failures(tests),
             "last_physical_pass": max((t.get("date", "") for t in last_pass), default=None),
         }
         out.setdefault(e["package"], {"package": e["package"], "versions": [], "known_issues": meta.known_issues.strip()})
@@ -103,7 +117,9 @@ def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
     for pkg in out.values():
         pkg["versions"].sort(key=functools.cmp_to_key(lambda a, b: debian.compare_versions(a["version"], b["version"])))
         verified = [v["version"] for v in pkg["versions"] if v["status"] in (PHYS_INSTALL, PHYS_LAUNCH)]
-        pkg["last_verified_version"] = verified[-1] if verified else None
+        launched = [v["version"] for v in pkg["versions"] if v["status"] == PHYS_LAUNCH]
+        pkg["last_verified_version"] = verified[-1] if verified else None    # installed (at least) on a real device
+        pkg["last_launched_version"] = launched[-1] if launched else None
     return {"format": "hcg.repo.compatibility", "formatVersion": 1, "statuses": list(STATUSES),
             "packages": [out[k] for k in sorted(out)]}
 

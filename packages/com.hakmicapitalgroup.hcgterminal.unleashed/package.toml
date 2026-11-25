@@ -55,6 +55,25 @@ allow_setuid = []
 [versions."0.2.0~rc1"]
 status = "experimental"
 label = "Failed physical-device launch test (iPhone 11 Pro Max, iOS 17.4, Dopamine, 2026-11-24): closes at launch. Use 0.2.0~rc2."
+# The owner's device report of 24 Nov 2026 (docs/device-tests/hcg-terminal-unleashed-0.2.0-rc1.md): installed and
+# registered, then closed about a second after launch. No crash report.
+[[versions."0.2.0~rc1".device_tests]]
+device = "iPhone 11 Pro Max"
+ios = "17.4"
+jailbreak = "Dopamine (rootless)"
+date = "2026-11-24"
+stage = "install"
+result = "pass"
+evidence = "docs/device-tests/hcg-terminal-unleashed-0.2.0-rc1.md"
+
+[[versions."0.2.0~rc1".device_tests]]
+device = "iPhone 11 Pro Max"
+ios = "17.4"
+jailbreak = "Dopamine (rootless)"
+date = "2026-11-24"
+stage = "runtime"
+result = "fail"
+evidence = "docs/device-tests/hcg-terminal-unleashed-0.2.0-rc1.md"
 
 [versions."0.2.0~rc2"]
 status = "experimental"
