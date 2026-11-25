@@ -1,0 +1,60 @@
+# Presentation and review metadata for HCG Mail Unleashed (rootless jailbreak edition of HCG Mail), exported by HCG
+# Executable Maker's rootless packager (pinned 595e989) in F1r3srp3nt/HCG-Mail CI run 45580748239 and reviewed for HCG Repo
+# Candidate. Version, architecture and dependencies come from the .deb itself.
+
+[release]
+channel = "beta"
+
+[display]
+known_issues = """
+- **Not yet device-tested.** No device result is recorded for this build: installation, launch, Keychain storage and mail on a jailbroken device are unverified.
+- Microsoft and Google sign-in are not available in this build: IMAP/SMTP accounts with a password (or app password) only.
+- **Another copy with bundle ID `com.hakmicapitalgroup.hcgmail.unleashed`** (from Xcode, an IPA or TrollStore) cannot be installed at the same time. Remove it first if you choose to; its data goes with it.
+"""
+summary = "Private email for your own IMAP/SMTP mailbox. Candidate beta of HCG Mail, packaged for rootless jailbreaks, with its own data and Keychain, separate from HCG Mail."
+icon = "icon.png"
+notes = """
+Private email for your own IMAP/SMTP mailbox. Candidate beta of HCG Mail, packaged for rootless jailbreaks, with its own data and Keychain, separate from HCG Mail.
+
+This is a **separate app** from the standard HCG Mail (bundle ID `com.hakmicapitalgroup.hcgmail`), which is unaffected: the two never share accounts, settings or passwords.
+
+**Beta / Experimental.** Device compatibility is unverified until a test is recorded.
+
+**Free public demo in HCG Repo Candidate:** downloading and installing needs no sign-in and no payment. HCG Mail needs no HCG account: it connects only to the mail servers you enter, with TLS certificate validation.
+"""
+limitations = """
+- **Tested:** nothing yet.
+- Rootless only (`iphoneos-arm64`), installed at `/var/jb/Applications/HCGMail.iOS.app`. The app's binaries declare iOS 16.0 or later (`firmware (>= 16.0)`).
+- The app's capabilities are those of the App Store-style build it was packaged from. The package adds only its own Keychain group (`keychain-access-groups`): no sandbox exemption, no platform-application, no root and no filesystem entitlements.
+"""
+install = """
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Mail Unleashed** 0.1.0~beta1.
+2. The package manager registers the app; its icon appears on the home screen. No respring is needed.
+3. Open **HCG Mail Unleashed** and add your IMAP/SMTP account.
+"""
+removal = """
+1. In your package manager, remove **HCG Mail Unleashed**, or `sudo dpkg -r com.hakmicapitalgroup.hcgmail.unleashed` in a terminal.
+2. The icon disappears. If it stays, run `uicache -a` or respring.
+3. The package manager does not remove the app's own data (account list, settings, log, in its `HCG Mail Unleashed` data folder) or its saved passwords (Keychain group `com.hakmicapitalgroup.hcgmail.unleashed`). Remove the account in the app first if you want those gone. Mail on your server is not affected.
+"""
+
+[review]
+allow_setuid = []
+
+# Reviewed: HCG Mail Unleashed's own Keychain group only (F1r3srp3nt/HCG-Mail
+# src/HCG.Mail.iOS/Entitlements.Unleashed.ldid.plist at b0c6fee), where it stores IMAP/SMTP passwords.
+# No no-sandbox, platform-application, task ports, root or filesystem entitlements. Keys must stay ABOVE this table.
+[review.entitlements."var/jb/Applications/HCGMail.iOS.app/HCGMail.iOS"]
+"keychain-access-groups" = ["com.hakmicapitalgroup.hcgmail.unleashed"]
+
+[versions."0.1.0~beta1"]
+status = "experimental"
+label = "Experimental, pending device verification: first rootless candidate of HCG Mail."
+
+[access]
+# Production access for this product is NOT recorded in HCG Repo and was not decided here: HCG's default (connect) applies.
+level = "connect"
+# Owner-approved per-version exception (docs/ACCESS.md): 0.1.0~beta1 only, candidate channel only, this SHA-256 only.
+# Every other version keeps level "connect". Not valid for the stable source.
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's free-demo policy for approved candidate builds. Approved by the owner on 25 Nov 2026: 'I approve HCG Mail Unleashed 0.1.0~beta1 (SHA-256 ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a) as a free demonstration candidate for controlled testing.' The approval applies exclusively to the package with SHA-256 ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a; not Stable. For the versions in exception_versions only; production access is unchanged."
+exception_versions = ["0.1.0~beta1"]
