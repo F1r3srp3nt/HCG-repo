@@ -81,6 +81,7 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 - [docs/ACCESS.md](docs/ACCESS.md): public / HCG Connect / paid access levels and the protected-delivery contract.
 - [imports/README.md](imports/README.md): pinned import requests and the **Prepare packages** workflow.
 - [docs/DISTRIBUTION_V2.md](docs/DISTRIBUTION_V2.md): artifact providers, the submission manifest, the Candidate Release Manager (`bin/hcgrepo release`), validation levels and the compatibility registry.
+- [docs/EXECUTABLE_MAKER_SUBMISSION.md](docs/EXECUTABLE_MAKER_SUBMISSION.md), [docs/RELEASE_PASSPORT.md](docs/RELEASE_PASSPORT.md), [docs/ADMIN_DASHBOARD.md](docs/ADMIN_DASHBOARD.md): the submission contract, release records and the local dashboard.
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): importing, provenance, immutability, building, publishing, withdrawing.
 - [docs/ROOTLESS_ROOTFUL.md](docs/ROOTLESS_ROOTFUL.md): architectures, paths, libroot, separate sources.
 - [docs/SIGNING.md](docs/SIGNING.md): repository-metadata signing and key management. This is not iOS code signing.

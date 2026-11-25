@@ -552,6 +552,21 @@ def cmd_passport(a, cfg) -> int:
     return 0
 
 
+def cmd_admin(a, cfg) -> int:
+    import time
+    from . import admin
+    from .release import incoming_root
+    srv, url, _ = admin.serve(cfg, incoming_root(a.incoming), port=a.port)
+    print(f"HCG Repo administration (local only): {url}")
+    print("The token in the URL is required for every request. Ctrl+C stops the dashboard. Nothing here publishes.")
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        srv.shutdown()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="hcgrepo", description=__doc__)
     ap.add_argument("--version", action="version", version=f"hcgrepo {__version__}")
@@ -670,6 +685,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--public", action="store_true", help="the sanitized public compatibility.json (for review)")
     p.add_argument("--out", help="with --public: write to this file")
     p.set_defaults(fn=cmd_compat)
+
+    p = sp.add_parser("admin", help="local administration dashboard over the Release Manager (127.0.0.1 only)")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--incoming", help="private incoming store (default $HCG_REPO_INCOMING)")
+    p.set_defaults(fn=cmd_admin)
 
     p = sp.add_parser("passport", help="HCG Release Passport records (hcg.release-passport v1) from the repository's records")
     p.add_argument("package", nargs="?")

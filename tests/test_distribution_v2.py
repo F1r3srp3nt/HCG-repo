@@ -527,6 +527,72 @@ class PassportAndPublicCompatTests(RepoTestCase):
         self.assertEqual(v["levels"]["application_launch"], "failed")
 
 
+class AdminDashboardTests(RepoTestCase):
+    def setUp(self):
+        super().setUp()
+        from hcgrepo import admin
+        self._store = tempfile.TemporaryDirectory(prefix="hcg-incoming-")
+        self.store = Path(self._store.name)
+        self.deb = app_deb(self.work, version="0.1.0~beta1")
+        self.review = rm.submit(self.cfg, self.store, handoff=make_handoff(self.work, self.deb), lifecycle=False)
+        self.srv, self.url, _ = admin.serve(self.cfg, self.store, port=0, token="t0ken")
+        self.base = self.url.split("/#")[0]
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+        self._store.cleanup()
+        super().tearDown()
+
+    def req(self, path, body=None, token="t0ken", origin=None, host=None):
+        import urllib.error
+        import urllib.request
+        r = urllib.request.Request(self.base + path, data=json.dumps(body).encode() if body is not None else None)
+        if token:
+            r.add_header("X-HCG-Admin-Token", token)
+        if origin:
+            r.add_header("Origin", origin)
+        if host:
+            r.add_header("Host", host)
+        try:
+            with urllib.request.urlopen(r, timeout=10) as resp:
+                return resp.status, resp.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read()
+
+    def test_page_and_overview(self):
+        self.assertEqual(self.req("/", token=None)[0], 200)
+        code, body = self.req("/api/overview")
+        self.assertEqual(code, 200)
+        d = json.loads(body)
+        self.assertEqual(d["pending_approvals"][0]["id"], self.review["submission"])
+        self.assertIn("history", d)
+
+    def test_token_host_and_origin_are_required(self):
+        self.assertEqual(self.req("/api/overview", token=None)[0], 403)
+        self.assertEqual(self.req("/api/overview", token="wrong")[0], 403)
+        self.assertEqual(self.req("/api/overview", host="evil.example")[0], 403)
+        body = {"id": self.review["submission"], "sha256": self.review["sha256"], "by": "Owner", "record": "ok"}
+        self.assertEqual(self.req("/api/act/approve", body)[0], 403)                           # no Origin
+        self.assertEqual(self.req("/api/act/approve", body, origin="https://evil.example")[0], 403)
+        self.assertEqual(rm.load_review(self.store, self.review["submission"])[1]["state"], "validated")
+
+    def test_actions_use_the_release_manager(self):
+        origin = self.base
+        bad = {"id": self.review["submission"], "sha256": "0" * 64, "by": "Owner", "record": "ok"}
+        code, body = self.req("/api/act/approve", bad, origin=origin)
+        self.assertEqual(code, 400)                                                            # same rule as the CLI
+        good = dict(bad, sha256=self.review["sha256"])
+        code, body = self.req("/api/act/approve", good, origin=origin)
+        self.assertEqual(code, 200, body)
+        self.assertEqual(rm.load_review(self.store, self.review["submission"])[1]["state"], "approved")
+        code, body = self.req("/api/submission?id=" + self.review["submission"])
+        self.assertTrue(json.loads(body)["result"]["requirements"][0]["satisfied"])
+        code, body = self.req("/api/act/withdraw", {"package": PKG, "version": "9", "architecture": "iphoneos-arm64",
+                                                   "reason": "x", "confirm": "nope"}, origin=origin)
+        self.assertEqual(code, 400)
+
+
 class RequestKindTests(RepoTestCase):
     def write(self, body: str) -> Path:
         p = self.root / "imports"

@@ -1,8 +1,10 @@
 # HCG Repo Distribution Infrastructure v2
 
-**Status (25 Nov 2026):** implemented on `main`, not deployed. The published repository is unchanged: the production
-build is byte-identical before and after this change (88 files, `diff -r` clean), the Stable and Candidate URLs,
-package identifiers, `repo-lock.json` and every published checksum are untouched. Nothing was published.
+**Status (25 Nov 2026):** implemented on `main`, nothing published by these changes. Stable and Candidate URLs,
+package identifiers, published bytes and checksums are unchanged. Integration round 2 (this page's later sections)
+consolidated the two local import routes, added the Executable Maker contract, the six evidence levels, the Release
+Passport, the public compatibility API (preview, off) and the local administration dashboard. Its only change to the
+generated site is the corrected HCG Sentinel product entry (section 6).
 
 v2 adds what HCG Repo needs to accept packages from more than GitHub Actions, without loosening any existing rule:
 
@@ -12,7 +14,11 @@ v2 adds what HCG Repo needs to accept packages from more than GitHub Actions, wi
 | Local import contract | `hcg.repo.artifact-submission` v1 manifest; adapter for Executable Maker's Unleashify handoff | `submission.py`, [schema](schemas/artifact-submission-v1.schema.json) |
 | Candidate Release Manager | `bin/hcgrepo release submit / incoming / show / approve / prepare / withdraw` | `release.py` |
 | Validation engine | secrets, maintainer-script behaviour, privileged helpers, simulated dpkg lifecycle | `deepcheck.py`, `bin/hcgrepo inspect --deep` |
-| Compatibility registry | evidence-based status per version | `compat.py`, `bin/hcgrepo compat` |
+| Compatibility registry | evidence-based status per version; public API (off) | `compat.py`, `bin/hcgrepo compat [--public]` |
+| Executable Maker contract | submission folder, `submission.json`, CLI, machine-readable result | [EXECUTABLE_MAKER_SUBMISSION.md](EXECUTABLE_MAKER_SUBMISSION.md) |
+| Release Passport | `hcg.release-passport` v1 per release | [RELEASE_PASSPORT.md](RELEASE_PASSPORT.md), `bin/hcgrepo passport` |
+| Administration dashboard | local page over the same engine | [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md), `bin/hcgrepo admin` |
+| Inspect artifact | review a pinned CI artifact, report its exact SHA-256, commit nothing | `.github/workflows/inspect-artifact.yml`, `bin/hcgrepo inspect-artifact` |
 
 The separation of **Prepare packages** and **Publish repository** is unchanged. No step uploads, publishes, approves
 or promotes anything on its own.
@@ -26,15 +32,20 @@ are obtained. Provenance records the provider; a run ID exists **only** for GitH
 |---|---|---|
 | `github-actions` | workflow-run artifact, public repository | `github-artifact` (unchanged) |
 | `github-actions-private` | workflow-run artifact, private repository, read with the `HCG_IMPORT_TOKEN` secret (read-only, `actions:read` + `contents:read`). The source repository stays private; a 404 from GitHub now says which token is missing. | `github-artifact` |
-| `executable-maker-local` | the owner's machine: `bin/hcgrepo release submit --handoff <folder>` | `local-submission` |
+| `executable-maker-local` | the owner's machine: `bin/hcgrepo release submit --handoff <folder>`; private store by default | `local-submission` (imported locally by `release prepare`, the default) or `local-file` (`release prepare --via local-file`: the approved bytes are staged under `imports/local/` and Prepare packages imports them in CI) |
 | `hcg-server-build-host` | authorized HTTPS download; the token comes from a CI secret named by `auth_env` (`HCG_…`), never stored in Git, never sent to a redirect | `https-artifact` |
 | `developer-upload` | as above, from HCG Server's upload storage, after review | `https-artifact` |
 
-A related proposal, draft PR #20 (`kind = "local-file"`, from the Executable Maker work), commits the approved `.deb` under `imports/local/` so that Prepare packages imports it in CI. It is compatible with v2: the v2 validation engine applies to it too, and `submissions/` stays the only place where package files are refused. The owner decides whether to keep both routes.
+**Both local routes share one validation engine, one approval and one provenance record** (PR #20, merged after
+reconciliation). The Release Manager validates in the private store. The owner approves the exact SHA-256 once, and
+that approval in `submissions/<id>/review.json` is what `local-submission`, `local-file` and `https-artifact` all
+require. `submission.provenance()` writes the same provenance for every route, recording which route was used.
+`validate` refuses any package file in `imports/` that is not an approved `local-file` named by its request, and any
+package file at all in `submissions/`. So no unapproved package ever enters Git.
 
 Rules enforced in code:
 
-- `local-submission` and `https-artifact` need the approved `sha256`, a `submission` path, and the owner's approval of
+- `local-submission`, `local-file` and `https-artifact` need the approved `sha256`, a `submission` path, and the owner's approval of
   that exact SHA-256 in `submissions/<id>/review.json`. A `run_id` is refused for them, so a local build can never
   carry an invented CI run. Both import to **Candidate only**.
 - `https-artifact` needs `https://`, the exact `size` (download stops beyond it), and refuses redirects to plain HTTP.
@@ -87,7 +98,9 @@ bin/hcgrepo release submit --handoff <folder>            # or --deb FILE --manif
 bin/hcgrepo release incoming                             # submissions, plus superseded Candidate versions
 bin/hcgrepo release show <id>                            # review, levels, findings, the exact SHA-256
 bin/hcgrepo release approve <id> --sha256 <sha> --by "<name>" --record "<approval, verbatim>"
-bin/hcgrepo release prepare <id> [--free-demo-approval "<owner's words>"] [--create-package-metadata]
+bin/hcgrepo release prepare <id> [--via pool|local-file] [--free-demo-approval "<owner's words>"] [--create-package-metadata]
+bin/hcgrepo release status <id>                          # machine-readable result (Executable Maker)
+bin/hcgrepo admin                                        # the same operations in a local dashboard
 bin/hcgrepo release withdraw <id> --reason "…"           # before prepare; afterwards: bin/hcgrepo withdraw
 ```
 
@@ -113,49 +126,57 @@ bin/hcgrepo release withdraw <id> --reason "…"           # before prepare; aft
   installable by exact version, and package managers offer the newest one. Withdrawal is the existing
   `bin/hcgrepo withdraw`: the lock record stays and the bytes are never reused.
 
-## 4. Validation levels
+## 4. Validation levels (six, kept apart)
 
-These three levels are reported separately everywhere: `release show`, `inspect --deep`, provenance and the
-compatibility registry.
+Every review, `inspect --deep`, provenance record, submission result, passport, the compatibility registry and the
+dashboard report the same six levels (`tools/hcgrepo/levels.py`), each with its own state (`passed`,
+`passed-with-warnings`, `failed`, `partial`, `not-run`, `not-recorded`, `not-applicable`):
 
-| Level | What it proves | How |
+| Level | What it proves | Where it comes from |
 |---|---|---|
-| **Static** | the package is well formed and contains nothing it must not | Debian structure, control fields, architecture, minimum iOS, rootless paths, dependencies, Mach-O, signatures and entitlements review, setuid, **embedded secrets** (private keys; GitHub, AWS, Slack, Stripe, Anthropic and OpenAI tokens; `.p12`; values never printed), **maintainer-script behaviour** (network fetches, obfuscation, package-manager calls, writes to system paths outside `/var/jb` are errors; launchd, resprings, kills and changes to the user's own data are review warnings), **privileged helpers** (LaunchDaemons/Agents and who they run as, sensitive entitlements), checksum and index consistency |
-| **Simulated lifecycle** | dpkg can install, reinstall, remove and purge the payload cleanly (and upgrade from the previous version in the pool) | real `dpkg` with its own `--instdir`/`--admindir`/`--log` in a throwaway directory, on a **copy whose maintainer scripts are removed**: no submitted script is ever executed. Paths installed through the package's own symlinks are refused before extraction. Runs on the CI runner or the owner's machine, never on production infrastructure. |
-| **Physical device** | it installs or launches on a real phone | only from a device report recorded in `package.toml` `device_tests` with evidence. Never inferred. |
+| **Static package inspection** | the package is well formed and holds nothing it must not | Debian structure, control fields, architecture, minimum iOS, rootless paths, dependencies, Mach-O, signatures and entitlements review, setuid, **embedded secrets** (private keys; GitHub, AWS, Slack, Stripe, Anthropic and OpenAI tokens; `.p12`; values never printed), **privileged helpers** (LaunchDaemons/Agents and who they run as, sensitive entitlements), manifest claims, checksum and index consistency |
+| **Maintainer script review** | what the scripts would do, **read, not run** | static analysis: network fetches, obfuscation, package-manager calls and writes to system paths outside `/var/jb` are errors; launchd, resprings, kills and changes to the user's own data are review warnings |
+| **Script-free dpkg lifecycle** | dpkg installs, reinstalls, removes and purges the payload cleanly (and upgrades from the previous pool version) | real `dpkg` with its own `--instdir`/`--admindir`/`--log` in a throwaway directory, on a **copy with the maintainer scripts removed**. Paths installed through the package's own symlinks are refused first. It runs on the CI runner or the owner's machine, never on production infrastructure. **It is never evidence that the original maintainer scripts work.** Every record of it says so. |
+| **Device installation** | a real device installed the package | `device_tests` with `stage = "install"` and evidence (a launch record also shows the install, and says so) |
+| **Application launch** | the app or tweak started on a real device | `device_tests` with `stage = "runtime"` |
+| **Full runtime verification** | the product's documented checklist passed on a real device | `device_tests` with `stage = "verification"` |
 
-`bin/hcgrepo inspect --deep <file.deb>` runs the static and lifecycle levels on any package.
+The three device levels are never inferred from the machine levels.
 
-## 5. Compatibility registry
+## 5. Compatibility registry and public API
 
-`bin/hcgrepo compat [--channel candidate] [--json]` derives one status per released version from recorded evidence
-only:
+`bin/hcgrepo compat [--channel candidate] [--json | --public]` derives one status per released version from recorded
+evidence only:
 
-`Withdrawn` → `Known incompatible` (failing device tests only) → `Physical launch passed` (runtime pass) →
-`Physical installation passed` (install pass, or a partial runtime) → `Lifecycle validation passed` (v2 import) →
-`Static validation passed` (imported) → `Untested`.
+`Withdrawn` → `Physical launch passed` (a runtime pass) → `Physical installation passed` (an install pass, or a
+partial runtime) → `Known incompatible` (a recorded failure to launch, or to install, with no success at that stage,
+on the recorded configurations) → `Lifecycle validation passed` (v2 import) → `Static validation passed` (imported)
+→ `Untested`.
 
-Each entry also shows layout (rootless/rootful), minimum and maximum iOS, dependencies, device evidence, the owner's
-version label, known issues and the last physically verified version. Publishing `repo/compatibility.json` is
-**off** (`[compatibility] publish = false` by default) until the owner turns it on in `config/repo.toml`. Depiction
-pages already show device tests, labels, known issues and the Candidate/Stable status. Example today: Vortex
-0.1.0~beta1 is `Known incompatible` (the recorded install failure), and Halo 0.1.0~beta1 is
-`Physical installation passed` (a partial runtime record). Terminal Unleashed 0.2.0~rc1's launch failure is recorded
-as a version label, not a `device_tests` entry, so it shows `Static validation passed` with that label. Recording it
-as a `device_tests` entry needs the device report as evidence.
+Current state: Vortex 0.1.0~beta1 and Terminal Unleashed 0.2.0~rc1 are `Known incompatible`. rc1 installed, then
+closed at launch (structured from the owner's report of 24 Nov 2026,
+[test record](device-tests/hcg-terminal-unleashed-0.2.0-rc1.md)). Halo 0.1.0~beta1 is `Physical installation passed`
+(a partial launch, not more). Each version lists its six levels and known failures. The last physically verified
+version and the last launched version are reported separately.
 
-## 6. Upcoming packages (inspected 25 Nov 2026)
+**Public API, for review (not active).** `bin/hcgrepo compat --public` produces exactly what `<repo>/compatibility.json`
+would contain ([schema](schemas/compatibility-v1.schema.json)). That covers availability and the download file with its
+SHA-256 and size; requirements (layout, minimum and maximum iOS, `Depends`); tested jailbreaks; the six level states;
+known failures (device model, iOS, jailbreak, date); and the owner's version label. It holds no source repositories or
+commits (some are private), CI runs, toolchains, hosts, approval records, evidence paths or device identifiers.
+Consumers are HCG Nexus, HCG Store, HCG Executable Maker, HCG System Tester and HCG Sentinel. Publishing it needs the
+owner's approval and `[compatibility] publish = true` in `config/repo.toml`, which is still off.
 
-| Package | In HCG Repo today | What v2 needs before an import |
+## 6. Upcoming packages and corrected metadata (25 Nov 2026)
+
+| Package | State in HCG Repo | Next step |
 |---|---|---|
-| Signal Contractor rootless 0.1.0~beta1 | nothing (no product entry, no package metadata) | a real `.deb`. The Unleashify CI workflow in HCG-Signal-Contractor (`hcg/unleashify-0.1.0-beta1`, run 45544038539) failed and uploaded no artifact; earlier CI runs there failed too. A local Unleashify handoff from the owner works equally well (`release submit --handoff`). |
-| Mail Unleashed | nothing | a jailbreak packaging of HCG-Mail; none exists yet |
-| Terminal Unleashed updates | `com.hakmicapitalgroup.hcgterminal.unleashed`, rc2 latest on Candidate | a new version (never new bytes for rc2); existing `build` recipe or any provider |
-| Nexus, Portal, Vortex, Halo, Animation Center, Sentinel | existing packages and metadata | new versions through any provider; Sentinel's product entry has empty `package_ids` (pre-existing, unchanged) |
-| Agent Runtime | nothing | design only; it gets an identifier when it has a build |
-
-No placeholder metadata was created. `release prepare --create-package-metadata` creates a package's metadata from
-its handoff draft when the real artifact arrives.
+| Signal Contractor rootless 0.1.0~beta1 | nothing (no product entry, no package metadata, no checksum) | **no validated artifact exists.** Its hosted CI is blocked: the Unleashify run 45544038539 was never assigned a runner and every CI run in that private repository fails. The local Executable Maker build is the route ([EXECUTABLE_MAKER_SUBMISSION.md](EXECUTABLE_MAKER_SUBMISSION.md)), then the acceptance test (section 9) |
+| Mail Unleashed 0.1.0~beta1 | **imported to Candidate** by PR #21 (another session), from HCG-Mail run 45580748239 (commit `b0c6fee`), SHA-256 `ac4b31b1…563099a`, 43,663,718 bytes, with the owner's version- and checksum-specific free-demo approval | independently re-inspected here: the only entitlement is its own Keychain group (`keychain-access-groups` = `com.hakmicapitalgroup.hcgmail.unleashed`), matching `[review.entitlements]`; static inspection, script review and the script-free lifecycle pass; no device evidence yet. It has no product entry in `config/products.toml` (as with Halo and Portal) |
+| Terminal Unleashed | rc2 latest on Candidate; rc1 now has structured evidence (install pass, launch fail) | rc2 device test |
+| Sentinel | **fixed:** the product entry now maps to its existing package `com.hakmicapitalgroup.hcgsentinel` (0.1.0~beta1, Candidate) instead of "no jailbreak package"; nothing duplicated | device test |
+| Nexus, Portal, Vortex, Halo, Animation Center | existing packages; Vortex 0.1.0~beta1 now carries a "Known incompatible" label; Halo stays at a partial launch | new versions through any provider |
+| Agent Runtime | planned; nothing created | a genuine build |
 
 ## 7. Ecosystem integration plan (not activated)
 
