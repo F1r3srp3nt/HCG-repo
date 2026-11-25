@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo.hakmicapitalgroup.com/schemas/artifact-submission-v1.schema.json",
+  "title": "HCG Repo artifact submission, format version 1",
+  "description": "Claims about one built .deb. HCG Repo verifies every claim against the package itself (tools/hcgrepo/submission.py is authoritative; docs/DISTRIBUTION_V2.md).",
+  "type": "object",
+  "required": ["format", "formatVersion", "package", "artifact", "compatibility", "source", "build", "dependencies", "maintainerScripts", "validation", "channel"],
+  "properties": {
+    "format": {"const": "hcg.repo.artifact-submission"},
+    "formatVersion": {"const": 1},
+    "package": {
+      "type": "object", "required": ["identifier", "version", "architecture"],
+      "properties": {
+        "identifier": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.+-]+$"},
+        "version": {"type": "string", "description": "Debian version, e.g. 0.1.0~beta1"},
+        "architecture": {"enum": ["iphoneos-arm64", "iphoneos-arm", "iphoneos-arm64e"]},
+        "name": {"type": ["string", "null"]}
+      }
+    },
+    "artifact": {
+      "type": "object", "required": ["filename", "sha256", "size"],
+      "properties": {
+        "filename": {"type": "string", "pattern": "^[^/\\\\.][^/\\\\]*\\.deb$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size": {"type": "integer", "minimum": 1}
+      }
+    },
+    "compatibility": {
+      "type": "object", "required": ["minimumOS", "environment"],
+      "properties": {
+        "minimumOS": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$"},
+        "environment": {"enum": ["rootless", "rootful", "roothide"], "description": "must match the architecture: rootless=iphoneos-arm64, rootful=iphoneos-arm, roothide=iphoneos-arm64e"},
+        "jailbreaks": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "deviceFamilies": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "source": {
+      "type": "object", "required": ["repository", "commit", "dirty"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "dirty": {"const": false},
+        "branch": {"type": ["string", "null"]}
+      }
+    },
+    "build": {
+      "type": "object", "required": ["provider", "toolchain", "builtAt"],
+      "properties": {
+        "provider": {"enum": ["github-actions", "github-actions-private", "executable-maker-local", "hcg-server-build-host", "developer-upload"]},
+        "toolchain": {"type": "string", "minLength": 1},
+        "builtAt": {"type": "string", "format": "date-time"},
+        "runId": {"type": "integer", "minimum": 1, "description": "GitHub providers only (required there, refused otherwise)"},
+        "runUrl": {"type": ["string", "null"]},
+        "artifactName": {"type": "string"},
+        "runRepository": {"type": "string"},
+        "runCommit": {"type": ["string", "null"]}
+      },
+      "if": {"properties": {"provider": {"enum": ["github-actions", "github-actions-private"]}}},
+      "then": {"required": ["runId", "artifactName", "runRepository"]},
+      "else": {"not": {"anyOf": [{"required": ["runId"]}, {"required": ["artifactName"]}, {"required": ["runRepository"]}]}}
+    },
+    "dependencies": {"type": "array", "items": {"type": "string"}, "description": "package names in Depends"},
+    "maintainerScripts": {
+      "type": "object", "required": ["declared"],
+      "properties": {"declared": {"type": ["array", "null"], "items": {"enum": ["preinst", "postinst", "prerm", "postrm", "config"]}}}
+    },
+    "validation": {"type": "object", "properties": {"checks": {"type": "array"}}, "description": "the provider's own report, kept as a claim"},
+    "channel": {"const": "candidate"},
+    "origin": {"type": "object"}
+  }
+}

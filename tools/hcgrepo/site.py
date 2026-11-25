@@ -1171,6 +1171,10 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
                     "banners": [{"url": f"{repo_url}assets/{REPO_BANNER}", "title": "HCG Repo",
                                  "displayText": False, "hideShadow": True}]}
         (repo_dir / "sileo-featured.json").write_text(json.dumps(featured, indent=2) + "\n", encoding="utf-8")
+        if cfg.publish_compatibility:
+            # Off by default ([compatibility] publish in config/repo.toml): the owner decides when it goes public.
+            from . import compat
+            compat.write(cfg, repo_dir / "compatibility.json", channel=cfg.channel)
 
         # Per-package assets and depictions
         groups = _groups_from_index(pkgs, repo_dir / "Packages")

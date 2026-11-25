@@ -340,6 +340,7 @@ class RepoConfig:
     payment_endpoint: str = ""
     channel: str = "stable"      # which channel this configuration builds: "stable" (/repo/) or "candidate"
     preview_listings: bool = False   # build --preview-listings: also render prepared commercial listings (never deployed)
+    publish_compatibility: bool = False   # [compatibility] publish: write <repo>/compatibility.json (owner decision)
 
     @property
     def visible_products(self) -> list[Product]:
@@ -456,6 +457,7 @@ def load_config(root: Path | None = None) -> RepoConfig:
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
         external_deps=ext, products=parse_products(products), store_base_url=store_base,
         access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint,
+        publish_compatibility=bool(cfg.get("compatibility", {}).get("publish", False)),
     )
 
 

@@ -80,6 +80,7 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 - [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis, the settings fix, phone-side 522 checks and Sileo refresh steps.
 - [docs/ACCESS.md](docs/ACCESS.md): public / HCG Connect / paid access levels and the protected-delivery contract.
 - [imports/README.md](imports/README.md): pinned import requests and the **Prepare packages** workflow.
+- [docs/DISTRIBUTION_V2.md](docs/DISTRIBUTION_V2.md): artifact providers, the submission manifest, the Candidate Release Manager (`bin/hcgrepo release`), validation levels and the compatibility registry.
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): importing, provenance, immutability, building, publishing, withdrawing.
 - [docs/ROOTLESS_ROOTFUL.md](docs/ROOTLESS_ROOTFUL.md): architectures, paths, libroot, separate sources.
 - [docs/SIGNING.md](docs/SIGNING.md): repository-metadata signing and key management. This is not iOS code signing.

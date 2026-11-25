@@ -32,9 +32,15 @@ def cmd_inspect(a, cfg) -> int:
         return 1
     meta = load_package_meta(cfg, info.package)
     r = validate_deb(info, cfg, meta)
+    evidence = None
+    if getattr(a, "deep", False):
+        from .deepcheck import deep_validate
+        deep, evidence = deep_validate(info, lifecycle=not a.no_lifecycle)
+        r.extend(deep)
     if a.json:
         print(json.dumps({"summary": info.summary(), "control": dict(info.control),
-                          "problems": [{"level": l, "code": c, "message": m} for l, c, m in r.items]}, indent=2))
+                          "problems": [{"level": l, "code": c, "message": m} for l, c, m in r.items],
+                          "evidence": evidence}, indent=2))
         return 0 if r.ok else 1
     print(f"{info.path.name}: {info.size} bytes, sha256 {info.sha256}")
     print(info.control_text.rstrip())
@@ -47,6 +53,14 @@ def cmd_inspect(a, cfg) -> int:
         for lib in b["libraries"]:
             print(f"  links: {lib}")
     print(f"maintainer scripts: {', '.join(s['maintainer_scripts']) or 'none'}")
+    if evidence:
+        lc = evidence["lifecycle"]
+        print(f"static checks (secrets, scripts, helpers): {'passed' if evidence['static']['passed'] else 'FAILED'}")
+        if lc:
+            steps = ", ".join(f"{st['step']} {'ok' if st['ok'] else 'FAILED'}" for st in lc["steps"])
+            print(f"simulated lifecycle: {'passed' if lc['passed'] else 'FAILED'} ({steps or 'not run'}); "
+                  "maintainer scripts not executed")
+        print("physical-device testing: not recorded (never inferred)")
     return _print_report(r, "package passes package-level validation")
 
 
@@ -154,7 +168,11 @@ def cmd_import_plan(a, cfg) -> int:
 
 
 def cmd_import_request(a, cfg) -> int:
-    from .importer import GitHub, ImportError_, load_request, request_is_done, run_request, temp_workdir
+    import os
+    from .importer import (AwaitingLocalImport, GitHub, ImportError_, load_request, request_is_done, run_request,
+                           temp_workdir)
+    from .release import INCOMING_ENV
+    incoming = Path(a.incoming or os.environ.get(INCOMING_ENV) or Path.home() / ".local/share/hcg-repo/incoming")
     rc = 0
     for f in a.requests:
         try:
@@ -178,7 +196,11 @@ def cmd_import_request(a, cfg) -> int:
         builder = {"builder_run_url": a.builder_run_url} if a.builder_run_url else {}
         with temp_workdir() as tmp:
             try:
-                status, rep = run_request(cfg, r, GitHub(), Path(tmp), built, builder, dry_run=a.dry_run)
+                status, rep = run_request(cfg, r, GitHub(), Path(tmp), built, builder, dry_run=a.dry_run,
+                                          incoming=incoming if incoming.is_dir() else None)
+            except AwaitingLocalImport as exc:
+                print(f"AWAITING-LOCAL-IMPORT: {r['id']}: {exc}")
+                continue
             except ImportError_ as exc:
                 print(f"REJECTED: {r['id']}: {exc}")
                 rc = 1
@@ -383,6 +405,78 @@ def cmd_smoke(a, cfg) -> int:
     return rc
 
 
+def cmd_release(a, cfg) -> int:
+    from . import release as rm
+    from .submission import SubmissionError
+    store = rm.incoming_root(a.incoming)
+    try:
+        if a.action == "submit":
+            review = rm.submit(cfg, store, handoff=Path(a.handoff) if a.handoff else None,
+                               deb=Path(a.deb) if a.deb else None, manifest=Path(a.manifest) if a.manifest else None,
+                               lifecycle=not a.no_lifecycle)
+            m, review, _ = rm.load_review(store, review["submission"])
+            print(rm.render_review(m, review))
+            return 0 if review["state"] == "validated" else 1
+        if a.action == "incoming":
+            out = rm.list_incoming(cfg, store)
+            if a.json:
+                print(json.dumps(out, indent=2))
+                return 0
+            print(f"Incoming store: {store}")
+            for s in out["submissions"]:
+                print(f"  {s['state']:<10} {s['package']} {s['version']}  {s['sha256']}  [{s['provider']}] "
+                      f"{s['errors']} errors, {s['warnings']} warnings  id={s['id']}")
+            if not out["submissions"]:
+                print("  (no submissions)")
+            print("Superseded Candidate versions (still installable by exact version; not offered as the upgrade):")
+            for x in out["superseded_candidates"]:
+                print(f"  {x['package']} {x['version']} -> {x['superseded_by']}")
+            return 0
+        if a.action == "show":
+            m, review, _ = rm.load_review(store, a.id)
+            print(json.dumps(review, indent=2) if a.json else rm.render_review(m, review))
+            return 0
+        if a.action == "approve":
+            review = rm.approve(store, a.id, a.sha256, a.by, a.record)
+            print(f"APPROVED for Candidate import: {a.id} sha256 {review['approval']['sha256']}. Not published.")
+            return 0
+        if a.action == "prepare":
+            status, rep, review = rm.prepare(cfg, store, a.id, free_demo_approval=a.free_demo_approval,
+                                             create_package_metadata=a.create_package_metadata)
+            if rep.items:
+                print(rep.render())
+            print(f"{status.upper()}: {a.id} -> Candidate (pool/, repo-lock.json, imports/{a.id}.toml, "
+                  f"submissions/{a.id}/). Review and commit on a branch; publishing is the separate Publish workflow.")
+            return 0 if status in ("imported", "already-present") else 1
+        if a.action == "withdraw":
+            rm.withdraw_submission(store, a.id, a.reason)
+            print(f"WITHDRAWN: {a.id}")
+            return 0
+    except (rm.ReleaseError, SubmissionError) as exc:
+        print(f"REFUSED: {exc}")
+        return 1
+    return 2
+
+
+def cmd_compat(a, cfg) -> int:
+    from . import compat
+    reg = compat.registry(cfg, a.channel)
+    if a.json:
+        print(json.dumps(reg, indent=2, sort_keys=True))
+        return 0
+    for pkg in reg["packages"]:
+        print(f"{pkg['package']}  (last physically verified: {pkg['last_verified_version'] or 'none'})")
+        for v in pkg["versions"]:
+            ios = f"iOS {v['minimum_ios']}+" if v["minimum_ios"] else "iOS ?"
+            print(f"  {v['version']:<16} {v['channel']:<9} {v['layout']:<9} {ios:<10} {v['status']}")
+            if v["label"]:
+                print(f"      label: {v['label']}")
+            for t in v["device_evidence"]:
+                print(f"      {t['stage'] or 'runtime'} {t['result']}: {t['device']}, iOS {t['ios']}, {t['jailbreak']} "
+                      f"({t['date']}; {t['evidence']})")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="hcgrepo", description=__doc__)
     ap.add_argument("--version", action="version", version=f"hcgrepo {__version__}")
@@ -396,6 +490,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sp.add_parser("inspect", help="inspect and validate one .deb without importing it")
     p.add_argument("deb")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--deep", action="store_true",
+                   help="also scan for secrets, review maintainer scripts and helpers, and simulate the dpkg lifecycle")
+    p.add_argument("--no-lifecycle", action="store_true", help="with --deep: skip the simulated dpkg lifecycle")
     p.set_defaults(fn=cmd_inspect)
 
     p = sp.add_parser("validate", help="validate every package in pool/, the lock and dependencies")
@@ -444,8 +541,42 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("requests", nargs="+")
     p.add_argument("--built-dir", help="directory with <request-id>/<file>.deb for build requests")
     p.add_argument("--builder-run-url", help="URL of the CI run that built the package (provenance)")
+    p.add_argument("--incoming", help="private incoming store for local-submission requests (default $HCG_REPO_INCOMING)")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(fn=cmd_import_request)
+
+    p = sp.add_parser("release", help="Candidate Release Manager: submit, review, approve and prepare incoming packages")
+    p.add_argument("--incoming", help="private incoming store (default $HCG_REPO_INCOMING or ~/.local/share/hcg-repo/incoming)")
+    rs = p.add_subparsers(dest="action", required=True)
+    q = rs.add_parser("submit", help="validate an artifact into the private incoming store (never publishes)")
+    q.add_argument("--handoff", help="HCG Executable Maker Unleashify candidate-handoff folder")
+    q.add_argument("--deb", help="the .deb, with --manifest")
+    q.add_argument("--manifest", help="hcg.repo.artifact-submission v1 manifest (docs/DISTRIBUTION_V2.md)")
+    q.add_argument("--no-lifecycle", action="store_true", help="skip the simulated dpkg lifecycle")
+    q = rs.add_parser("incoming", help="list submissions and superseded Candidate versions")
+    q.add_argument("--json", action="store_true")
+    q = rs.add_parser("show", help="show one submission's review and exact checksum")
+    q.add_argument("id")
+    q.add_argument("--json", action="store_true")
+    q = rs.add_parser("approve", help="record the owner's approval of one exact SHA-256 for Candidate import")
+    q.add_argument("id")
+    q.add_argument("--sha256", required=True)
+    q.add_argument("--by", required=True, help="who approved")
+    q.add_argument("--record", required=True, help="the approval, verbatim")
+    q = rs.add_parser("prepare", help="import an approved submission into pool/ for Candidate (does not publish)")
+    q.add_argument("id")
+    q.add_argument("--free-demo-approval", help="owner's verbatim approval of this version as a free Candidate demo")
+    q.add_argument("--create-package-metadata", action="store_true",
+                   help="create packages/<id>/ from the submission's package.toml draft when it does not exist")
+    q = rs.add_parser("withdraw", help="withdraw a submission that has not been prepared")
+    q.add_argument("id")
+    q.add_argument("--reason", required=True)
+    p.set_defaults(fn=cmd_release)
+
+    p = sp.add_parser("compat", help="compatibility registry: evidence-based status of every released version")
+    p.add_argument("--channel", choices=["stable", "candidate"])
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_compat)
 
     p = sp.add_parser("keyring-deb", help="build the package that installs the public archive key on devices")
     p.add_argument("--layout", action="append", choices=["rootless", "rootful"], required=True)

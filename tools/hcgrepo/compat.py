@@ -1,0 +1,101 @@
+"""Compatibility registry: what is actually known about each released version.
+
+Statuses (strongest evidence wins; nothing is ever inferred upward):
+
+    Withdrawn                     the version was withdrawn (repo-lock.json)
+    Known incompatible            only failing device tests are recorded
+    Physical launch passed        a device test with stage "runtime" and result "pass"
+    Physical installation passed  a device test with stage "install" and result "pass", or a partial runtime
+    Lifecycle validation passed   the simulated dpkg lifecycle passed (scripts not executed) at import
+    Static validation passed      imported through HCG Repo's validation
+    Untested                      none of the above (e.g. a protected record without inspection)
+
+Physical statuses come only from `[[versions."<v>".device_tests]]` records with evidence in package.toml.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from . import debian
+from .config import RepoConfig, entry_channel, load_lock, load_package_meta
+
+UNTESTED = "Untested"
+STATIC = "Static validation passed"
+LIFECYCLE = "Lifecycle validation passed"
+PHYS_INSTALL = "Physical installation passed"
+PHYS_LAUNCH = "Physical launch passed"
+INCOMPATIBLE = "Known incompatible"
+WITHDRAWN = "Withdrawn"
+STATUSES = (UNTESTED, STATIC, LIFECYCLE, PHYS_INSTALL, PHYS_LAUNCH, INCOMPATIBLE, WITHDRAWN)
+
+
+def _provenance(cfg: RepoConfig, entry: dict) -> dict:
+    p = cfg.root / (entry["filename"] + ".provenance.json")
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def derive_status(entry: dict, prov: dict, tests: list[dict]) -> str:
+    if entry.get("status") == "withdrawn":
+        return WITHDRAWN
+    passes = [t for t in tests if t.get("result") == "pass"]
+    if any(t.get("stage", "runtime") == "runtime" for t in passes):
+        return PHYS_LAUNCH
+    if any(t.get("stage") == "install" for t in passes) or any(
+            t.get("stage", "runtime") == "runtime" and t.get("result") == "partial" for t in tests):
+        return PHYS_INSTALL
+    if tests and all(t.get("result") == "fail" for t in tests):
+        return INCOMPATIBLE
+    lc = (prov.get("validation_levels") or {}).get("simulated_lifecycle") or {}
+    if lc.get("passed") is True:
+        return LIFECYCLE
+    if prov.get("inspection"):
+        return STATIC
+    return UNTESTED
+
+
+def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
+    """The registry for every lock entry (or one channel's entries)."""
+    out: dict[str, dict] = {}
+    for e in load_lock(cfg)["packages"]:
+        if channel and entry_channel(e) != channel:
+            continue
+        meta = load_package_meta(cfg, e["package"])
+        prov = _provenance(cfg, e)
+        tests = meta.device_tests(e["version"])
+        insp = prov.get("inspection") or {}
+        depends = insp.get("depends", "")
+        try:
+            fw_min, fw_max = debian.firmware_bounds(depends)
+        except debian.ControlError:
+            fw_min = fw_max = None
+        last_pass = [t for t in tests if t.get("result") == "pass"]
+        rec = {
+            "version": e["version"], "architecture": e["architecture"], "channel": entry_channel(e),
+            "sha256": e["sha256"], "status": derive_status(e, prov, tests),
+            "layout": {"iphoneos-arm64": "rootless", "iphoneos-arm": "rootful", "iphoneos-arm64e": "roothide"}.get(
+                e["architecture"], e["architecture"]),
+            "minimum_ios": fw_min or insp.get("binary_minimum_ios"), "maximum_ios": fw_max,
+            "depends": depends,
+            "device_evidence": [{k: t.get(k) for k in ("device", "ios", "jailbreak", "date", "stage", "result", "evidence")}
+                                for t in tests],
+            "label": meta.label(e["version"]),
+            "last_physical_pass": max((t.get("date", "") for t in last_pass), default=None),
+        }
+        out.setdefault(e["package"], {"package": e["package"], "versions": [], "known_issues": meta.known_issues.strip()})
+        out[e["package"]]["versions"].append(rec)
+    import functools
+    for pkg in out.values():
+        pkg["versions"].sort(key=functools.cmp_to_key(lambda a, b: debian.compare_versions(a["version"], b["version"])))
+        verified = [v["version"] for v in pkg["versions"] if v["status"] in (PHYS_INSTALL, PHYS_LAUNCH)]
+        pkg["last_verified_version"] = verified[-1] if verified else None
+    return {"format": "hcg.repo.compatibility", "formatVersion": 1, "statuses": list(STATUSES),
+            "packages": [out[k] for k in sorted(out)]}
+
+
+def write(cfg: RepoConfig, path: Path, channel: str | None = None) -> None:
+    Path(path).write_text(json.dumps(registry(cfg, channel), indent=2, sort_keys=True) + "\n", encoding="utf-8")

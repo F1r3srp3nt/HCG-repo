@@ -30,3 +30,20 @@ sha256 = "<expected .deb sha256, optional but recommended>"
 # kind = "github-release"; tag = "v1.0.0"; asset = "file.deb"; commit = "<sha the tag points to>"
 # kind = "build"; recipe = "hcg-terminal-unleashed"; layout = "rootless"; entitlements = "path/in/source.plist"
 ```
+
+Distribution v2 ([docs/DISTRIBUTION_V2.md](../docs/DISTRIBUTION_V2.md)) adds two kinds. Both go to the candidate channel
+only, need the owner's approval of the exact `sha256` in `submissions/<id>/review.json`, and have no `run_id`:
+
+```toml
+# kind = "local-submission"   # written by `bin/hcgrepo release prepare`; the bytes come from the private incoming
+#                             # store, so in CI an unimported one reports AWAITING-LOCAL-IMPORT (not a failure)
+# provider = "executable-maker-local"; submission = "submissions/<id>/submission.json"; sha256 = "<approved>"
+
+# kind = "https-artifact"     # HCG Server Build Host or an approved developer upload
+# provider = "hcg-server-build-host"; url = "https://…/file.deb"; size = 123456; sha256 = "<approved>"
+# submission = "submissions/<id>/submission.json"; auth_env = "HCG_BUILD_HOST_TOKEN"   # names a CI secret
+```
+
+Private GitHub repositories use `kind = "github-artifact"` unchanged; the workflow reads them with the
+`HCG_IMPORT_TOKEN` secret. Every request-driven import also runs the v2 validation engine (secrets, maintainer
+scripts, privileged helpers, simulated dpkg lifecycle with scripts never executed).

@@ -9,3 +9,6 @@ __pycache__/
 *secret*.asc
 *private*.asc
 gnupg/
+
+# Submitted packages stay in the private incoming store (docs/DISTRIBUTION_V2.md).
+submissions/**/*.deb

@@ -129,12 +129,12 @@ jobs:
             echo "nothing new to commit"
           else
             git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -q -m "Import packages from pinned requests" -m "$(grep -E '^(IMPORTED|SKIPPED|REJECTED)' import.log)" -m "Prepared by $RUN_URL"
+              commit -q -m "Import packages from pinned requests" -m "$(grep -E '^(IMPORTED|SKIPPED|AWAITING-LOCAL-IMPORT|REJECTED)' import.log)" -m "Prepared by $RUN_URL"
             git push origin "HEAD:${GITHUB_REF_NAME}"
             git log --stat -1
           fi
           {
-            echo "## Import results"; echo '```'; grep -E '^(IMPORTED|SKIPPED|REJECTED|  ERROR|  warn)' import.log; echo '```'
+            echo "## Import results"; echo '```'; grep -E '^(IMPORTED|SKIPPED|AWAITING-LOCAL-IMPORT|REJECTED|  ERROR|  warn)' import.log; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit $rc
 

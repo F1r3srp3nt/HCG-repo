@@ -255,7 +255,9 @@ class GitHub:
             with urllib.request.urlopen(self._req(self.api + path), timeout=60) as resp:
                 return json.load(resp)
         except urllib.error.HTTPError as exc:
-            raise ImportError_(f"GitHub API {path}: HTTP {exc.code}") from exc
+            hint = (" (a private repository reads as 404 without access: set the HCG_IMPORT_TOKEN secret to a read-only "
+                    "token with actions:read and contents:read on it)") if exc.code in (401, 403, 404) else ""
+            raise ImportError_(f"GitHub API {path}: HTTP {exc.code}{hint}") from exc
 
     def download(self, url: str, dest: Path, accept: str = "application/octet-stream") -> None:
         try:
@@ -401,7 +403,15 @@ def temp_workdir() -> tempfile.TemporaryDirectory:
 RECIPES = {"hcg-terminal-unleashed"}
 LAYOUTS = {"rootless", "rootful"}
 SAFE_PATH = re.compile(r"^[A-Za-z0-9._/-]+$")
-REQUEST_KINDS = {"github-artifact", "github-release", "build"}
+REQUEST_KINDS = {"github-artifact", "github-release", "build", "local-submission", "https-artifact"}
+HTTPS_PROVIDERS = {"hcg-server-build-host", "developer-upload"}
+LOCAL_PROVIDERS = {"executable-maker-local", "hcg-server-build-host", "developer-upload"}
+AUTH_ENV_RE = re.compile(r"^HCG_[A-Z0-9_]{2,60}$")
+SUBMISSION_PATH_RE = re.compile(r"^submissions/[A-Za-z0-9._-]+/submission\.json$")
+
+
+class AwaitingLocalImport(Exception):
+    """A local-submission request whose approved bytes are only on the owner's machine (not an error)."""
 
 
 def load_request(path: Path) -> dict:
@@ -437,6 +447,26 @@ def load_request(path: Path) -> dict:
         ent = src.get("entitlements", "")
         if not SAFE_PATH.match(ent) or ".." in ent.split("/"):
             problems.append("build entitlements must be a plain relative path inside the source repository")
+    elif kind in ("local-submission", "https-artifact"):
+        if not src.get("sha256"):
+            problems.append(f"{kind} needs the approved sha256")
+        if not SUBMISSION_PATH_RE.match(str(src.get("submission", ""))):
+            problems.append(f"{kind} needs submission = \"submissions/<id>/submission.json\"")
+        if src.get("run_id") is not None:
+            problems.append(f"{kind} has no CI run: run_id is only for github-artifact")
+        if kind == "local-submission" and src.get("provider") not in LOCAL_PROVIDERS:
+            problems.append(f"local-submission provider must be one of {sorted(LOCAL_PROVIDERS)}")
+        if kind == "https-artifact":
+            if src.get("provider") not in HTTPS_PROVIDERS:
+                problems.append(f"https-artifact provider must be one of {sorted(HTTPS_PROVIDERS)}")
+            if not str(src.get("url", "")).startswith("https://"):
+                problems.append("https-artifact url must be https://")
+            if not isinstance(src.get("size"), int) or src.get("size", 0) <= 0:
+                problems.append("https-artifact needs the exact size in bytes")
+            if src.get("auth_env") is not None and not AUTH_ENV_RE.match(str(src["auth_env"])):
+                problems.append("auth_env must name an environment variable HCG_..., never hold a credential")
+        if req.get("channel", "stable") != "candidate":
+            problems.append(f"{kind} imports go to the candidate channel only")
     if problems:
         raise ImportError_(f"{path.name}: " + "; ".join(problems))
     return {"id": path.stem, "file": str(path), "request": req, "source": src}
@@ -454,8 +484,69 @@ def pending_requests(cfg: RepoConfig) -> list[dict]:
     return [r for r in reqs if not request_is_done(cfg, r)]
 
 
+def _submission_approval(cfg: RepoConfig, src: dict) -> dict:
+    """The owner's recorded approval of exactly src.sha256 (submissions/<id>/review.json)."""
+    review_path = cfg.root / Path(src["submission"]).parent / "review.json"
+    try:
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ImportError_(f"{review_path.relative_to(cfg.root)}: no readable review: {exc}") from exc
+    a = review.get("approval") or {}
+    if a.get("sha256") != src["sha256"].lower() or not a.get("by") or not a.get("record"):
+        raise ImportError_(f"{review_path.relative_to(cfg.root)} records no owner approval of sha256 {src['sha256']}")
+    return a
+
+
+def _incoming_artifact(src: dict, incoming: Path | None) -> Path:
+    sid = Path(src["submission"]).parent.name
+    cand = (incoming / sid / "artifact.deb") if incoming else None
+    if cand is None or not cand.is_file():
+        raise AwaitingLocalImport(f"the approved bytes of {sid} are in the owner's private incoming store, not here; "
+                                  "run `bin/hcgrepo release prepare` where they are")
+    return cand
+
+
+class _HttpsOnly(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not newurl.startswith("https://"):
+            raise ImportError_(f"refused redirect to a non-HTTPS URL ({code})")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def fetch_https_artifact(url: str, workdir: Path, sha256: str, size: int, auth_env: str | None = None) -> Path:
+    """Download an approved artifact from an authorized HTTPS host (HCG Server Build Host, developer uploads).
+
+    The credential, if any, comes from the environment variable named by auth_env (a CI secret) and is
+    never sent to a redirect target. The exact size and SHA-256 must match.
+    """
+    if not url.startswith("https://"):
+        raise ImportError_("artifact URL must be https://")
+    req = urllib.request.Request(url, headers={"User-Agent": "hcgrepo-importer", "Accept": "application/octet-stream"})
+    if auth_env:
+        token = os.environ.get(auth_env)
+        if not token:
+            raise ImportError_(f"{auth_env} is not set; the artifact host needs an authorized token")
+        req.add_unredirected_header("Authorization", f"Bearer {token}")
+    dest = workdir / "artifact.deb"
+    opener = urllib.request.build_opener(_HttpsOnly)
+    try:
+        with opener.open(req, timeout=600) as resp, open(dest, "wb") as f:
+            got = 0
+            while chunk := resp.read(1 << 20):
+                got += len(chunk)
+                if got > size:
+                    raise ImportError_(f"download is larger than the approved {size} bytes")
+                f.write(chunk)
+    except urllib.error.HTTPError as exc:
+        raise ImportError_(f"download {url}: HTTP {exc.code}") from exc
+    if dest.stat().st_size != size:
+        raise ImportError_(f"downloaded {dest.stat().st_size} bytes, the approved size is {size}")
+    _verify_digest(dest, None, sha256)
+    return dest
+
+
 def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: Path | None = None,
-                builder: dict | None = None, dry_run: bool = False) -> tuple[str, Report]:
+                builder: dict | None = None, dry_run: bool = False, incoming: Path | None = None) -> tuple[str, Report]:
     req, src = r["request"], r["source"]
     expect = {"package": req["package"], "version": req["version"], "architecture": req["architecture"],
               "sha256": src.get("sha256")}
@@ -465,6 +556,16 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
     elif src["kind"] == "github-release":
         path, prov = fetch_release_asset(gh, src["repository"], src["tag"], src["commit"], src["asset"],
                                          workdir, src.get("sha256"))
+    elif src["kind"] in ("local-submission", "https-artifact"):
+        approval = _submission_approval(cfg, src)
+        if src["kind"] == "local-submission":
+            path = _incoming_artifact(src, incoming)
+        else:
+            path = fetch_https_artifact(src["url"], workdir, src["sha256"], src["size"], src.get("auth_env"))
+        prov = {"source": "artifact-submission", "provider": src["provider"], "repository": src["repository"],
+                "commit": src["commit"].lower(), "submission": src["submission"], "approval": approval}
+        if src["kind"] == "https-artifact":
+            prov["url"] = src["url"]
     else:
         if built_deb is None:
             raise ImportError_(f"{r['id']}: build requests need the built .deb (--deb)")
@@ -473,8 +574,23 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
                 "commit": src["commit"].lower(), "layout": src["layout"], "entitlements_file": src["entitlements"]}
         prov.update(builder or {})
     prov["request"] = r["id"]
+    # Distribution v2: secrets, maintainer-script behaviour, privileged helpers and a simulated dpkg lifecycle
+    # (scripts never executed) for every request-driven import.
+    from .deepcheck import deep_validate
+    try:
+        deep, evidence = deep_validate(inspect_deb(path))
+    except InspectError as exc:
+        deep, evidence = Report(path.name), None
+        deep.error("deb-unreadable", str(exc))
+    if not deep.ok:
+        return "rejected", deep
+    prov["validation_levels"] = {"static": {"passed": True},
+                                 "simulated_lifecycle": {k: evidence["lifecycle"][k] for k in ("passed", "scripts_executed", "steps")},
+                                 "physical_device": {"recorded": False}}
     ch = req.get("channel", "stable")
     status, rep = import_deb(cfg, path, prov, dry_run=dry_run, expect=expect, channel=ch)
+    for level, code, msg in deep.items:
+        rep.items.append((level, code, msg))
     if status == "imported" and not dry_run and ch != "stable":
         set_channel(cfg, req["package"], req["version"], req["architecture"], ch)
     return status, rep
