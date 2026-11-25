@@ -7,7 +7,7 @@ channel = "beta"
 
 [display]
 known_issues = """
-- **Not yet device-tested.** No device result is recorded for this build: installation, launch, Keychain storage and mail on a jailbroken device are unverified.
+- **0.1.0~beta1 closes immediately at launch** on the Owner's jailbroken iPhone (owner report, 25 Nov 2026): installation, registration and the Home Screen icon worked; the app never reached its first screen. The cause is being investigated; a fixed build will be a new version (0.1.0~beta2). Mail and Keychain storage are untested.
 - Microsoft and Google sign-in are not available in this build: IMAP/SMTP accounts with a password (or app password) only.
 - **Another copy with bundle ID `com.hakmicapitalgroup.hcgmail.unleashed`** (from Xcode, an IPA or TrollStore) cannot be installed at the same time. Remove it first if you choose to; its data goes with it.
 """
@@ -49,7 +49,26 @@ allow_setuid = []
 
 [versions."0.1.0~beta1"]
 status = "experimental"
-label = "Experimental, pending device verification: first rootless candidate of HCG Mail."
+label = "Failed physical-device launch test (owner's jailbroken iPhone, 25 Nov 2026): installs, then closes at launch."
+# Observed results only (docs/device-tests/hcg-mail-unleashed-0.1.0-beta1.md). Model, iOS and jailbreak version come
+# from the crash report and are added when it arrives.
+[[versions."0.1.0~beta1".device_tests]]
+device = "Owner's jailbroken iPhone (model not yet reported)"
+ios = "not yet reported"
+jailbreak = "rootless (version not yet reported), Zebra"
+date = "2026-11-25"
+stage = "install"
+result = "pass"
+evidence = "docs/device-tests/hcg-mail-unleashed-0.1.0-beta1.md"
+
+[[versions."0.1.0~beta1".device_tests]]
+device = "Owner's jailbroken iPhone (model not yet reported)"
+ios = "not yet reported"
+jailbreak = "rootless (version not yet reported), Zebra"
+date = "2026-11-25"
+stage = "runtime"
+result = "fail"
+evidence = "docs/device-tests/hcg-mail-unleashed-0.1.0-beta1.md"
 
 [access]
 # Production access for this product is NOT recorded in HCG Repo and was not decided here: HCG's default (connect) applies.
