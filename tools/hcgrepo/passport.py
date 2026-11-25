@@ -16,13 +16,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .compat import derive_status
+from .compat import derive_status, runtime_compatibility
 from .config import RepoConfig, entry_channel, load_lock, load_package_meta
 from .levels import all_levels, from_legacy
 from .submission import PROVIDERS
 
 FORMAT = "hcg.release-passport"
 FORMAT_VERSION = 1
+SCHEMA_STATUS = "final"   # v1 is frozen: new fields only in v2 (docs/RELEASE_PASSPORT.md)
 PLATFORMS = {"iphoneos-arm64": "ios-jailbreak-rootless", "iphoneos-arm": "ios-jailbreak-rootful",
              "iphoneos-arm64e": "ios-jailbreak-roothide"}
 
@@ -41,6 +42,15 @@ def _approvals(cfg: RepoConfig, entry: dict, meta, prov: dict) -> list[dict]:
     if a:
         out.append({"kind": "checksum-approval", "by": a.get("by"), "at": a.get("at"), "sha256": a.get("sha256"),
                     "record": a.get("record"), "scope": a.get("scope")})
+    from .approvals import check_artifact, find_artifact_approval
+    ap_path = find_artifact_approval(cfg, entry["package"], entry["version"], entry["architecture"], entry_channel(entry))
+    if ap_path.is_file():
+        rep = check_artifact(cfg, entry["package"], entry["version"], entry["architecture"], entry_channel(entry),
+                             entry["sha256"], prov.get("commit"), prov.get("repository"))
+        stmt = json.loads(ap_path.read_text(encoding="utf-8"))
+        out.append({"kind": "signed-artifact-approval", "verified": rep.ok, "approver": stmt.get("approver"),
+                    "approved_at": stmt.get("approved_at"), "file": str(ap_path.relative_to(cfg.root)),
+                    "problems": [m for _, m in rep.errors]})
     if meta.is_free_demo(entry["version"]):
         out.append({"kind": "free-demo-approval", "record": meta.access_exception,
                     "scope": "this version, Candidate only"})
@@ -89,11 +99,14 @@ def passport(cfg: RepoConfig, entry: dict) -> dict:
         "build": {"provider": _provider(prov), "toolchain": prov.get("toolchain"),
                   "built_at": prov.get("built_at"), "run_id": prov.get("run_id"), "artifact": prov.get("artifact_name")
                   or prov.get("artifact")},
-        "artifact": {"filename": Path(entry["filename"]).name, "sha256": entry["sha256"], "size": entry["size"]},
+        "artifact": {"filename": Path(entry["filename"]).name, "package": entry["package"], "version": entry["version"],
+                     "architecture": entry["architecture"], "sha256": entry["sha256"], "sha512": prov.get("sha512"),
+                     "size": entry["size"]},
         "validation": {"levels": all_levels(machine, tests)},
         "device_evidence": [{k: t.get(k) for k in ("device", "ios", "jailbreak", "date", "stage", "result", "evidence")}
                             for t in tests],
         "compatibility_status": derive_status(entry, prov, tests),
+        "runtime_compatibility": runtime_compatibility(tests),
         "approvals": _approvals(cfg, entry, meta, prov),
         "distribution": {"channel": channel, "access": meta.access_for(entry["version"])},
         # Two different signatures, never to be confused (docs/SIGNING.md):
@@ -101,6 +114,8 @@ def passport(cfg: RepoConfig, entry: dict) -> dict:
             "scope": "repository metadata (Release, InRelease, Release.gpg) of the channel that serves this package; "
                      "not the application",
             "configured": bool(cfg.signing_fingerprint),
+            # Never true for unsigned metadata: an unsigned index is not cryptographically authenticated.
+            "authenticated": bool(cfg.signing_fingerprint),
             "fingerprint": cfg.signing_fingerprint or None,
             "status": ("signed at every publication; verified per deploy by verify-deployed and bin/hcgrepo monitor"
                        if cfg.signing_fingerprint else "unsigned: no production repository signing key configured yet"),

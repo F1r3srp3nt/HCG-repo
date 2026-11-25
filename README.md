@@ -86,6 +86,7 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 - [docs/ROOTLESS_ROOTFUL.md](docs/ROOTLESS_ROOTFUL.md): architectures, paths, libroot, separate sources.
 - [docs/SIGNING.md](docs/SIGNING.md): repository-metadata signing, client behaviour, the founder key procedure, migration and rotation. This is not iOS code signing.
 - [docs/SENTINEL_MONITORING.md](docs/SENTINEL_MONITORING.md), [docs/SUPPLY_CHAIN_ASSESSMENT.md](docs/SUPPLY_CHAIN_ASSESSMENT.md): read-only monitoring contract and the authorized assessment plan.
+- [docs/KEYRING.md](docs/KEYRING.md), [docs/RELEASE_APPROVALS.md](docs/RELEASE_APPROVALS.md), [docs/NEXUS_TRUST_CENTER.md](docs/NEXUS_TRUST_CENTER.md): the keyring package and trust bootstrap, founder-signed approvals, and the read-only verification contracts.
 - [docs/CUSTOM_DOMAIN.md](docs/CUSTOM_DOMAIN.md): migrating to `repo.hakmicapitalgroup.com`. Not done yet.
 - [docs/TERMINAL_UNLEASHED.md](docs/TERMINAL_UNLEASHED.md): packaging review, and what is needed to publish it.
 - [docs/DEVICE_CHECKLIST.md](docs/DEVICE_CHECKLIST.md): physical-device test procedure.

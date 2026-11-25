@@ -32,14 +32,18 @@ test cases).
 | Access control | the admin dashboard from another origin, a foreign Host header, or without a token | 403 | `AdminDashboardTests` |
 | Malicious packages | embedded secrets, network-fetching or obfuscated maintainer scripts, writes outside `/var/jb`, privileged helpers | refused or flagged | `DeepCheckTests` |
 | Lifecycle isolation | maintainer scripts that try to run during validation | never executed | `test_lifecycle_never_runs_scripts` |
+| Replay and freshness | expired `Valid-Until`; `Date` in the future; an older valid `Release` served after a newer one | APT refuses expired and future metadata; replay inside the validity window is **not** detected (documented) | `ReplayProtectionTests` |
+| Unauthorized release attempts | an artifact or publication approval signed by an unknown key, by the repository signing key, tampered, or not canonical | refused | `tests/test_approvals.py` |
+| Key bootstrap | keyring install, transition update, removal; a test keyring offered for import | APT trusts exactly the installed keys; the test keyring is refused | `KeyringBootstrapTests` |
+| Artifact substitution seen by a verifier | a file with the right identity but other bytes | `verify-artifact`: failed | `TrustCenterTests` |
 | Secrets in Git | private key material in `keys/` | `validate` fails (`secret-key-committed`) | `test_signing_clients` (procedure) and `validate` |
 
 ## Not yet covered (for a future assessment)
 
-- **Replay of old signed metadata.** `Valid-Until` is not set (see [SIGNING.md](SIGNING.md) §6). Test against
-  Sileo before enabling it.
-- **Approval authenticity.** Approval records are protected by Git review, not cryptographically. Assess forging a
-  `review.json` in a pull request; mitigations are required reviewers, HCG Connect identity and signed commits.
+- **Replay inside the validity window.** APT does not detect it, and `Valid-Until` only bounds it (it is not enabled:
+  [SIGNING.md](SIGNING.md) §6).
+- **Approval authenticity before enforcement.** Until `[approvals]` enforcement is on, approvals are Git-reviewed
+  records. Assess forging a `review.json` in a pull request.
 - **GitHub workflow hardening.** Pinned actions are used. Review permissions and environment protection in a fork.
 
 ## Rules of engagement

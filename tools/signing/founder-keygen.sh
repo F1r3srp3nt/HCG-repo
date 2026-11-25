@@ -94,7 +94,8 @@ HCG Repo archive key created (offline). Self-test passed.
 Next (docs/SIGNING.md, Founder procedure):
   - compare the fingerprint above with the one you will publish, character by character;
   - commit $OUT/public/hcg-repo-archive-key.asc as HCG-repo keys/hcg-repo-archive-key.asc;
-  - paste $OUT/ci/hcg-repo-signing-subkey.asc into the GitHub environment secret, then shred that file;
+  - set the GitHub environment secret from $OUT/ci/hcg-repo-signing-subkey.asc with 'gh secret set ... < file'
+    (no clipboard), then detach and delete its encrypted container (deleting a plain file on an SSD is not secure);
   - move $OUT/offline/ to two encrypted offline media; keep the revocation certificate separately.
 No secret material was printed.
 EOF

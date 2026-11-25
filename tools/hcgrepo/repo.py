@@ -90,6 +90,9 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
             if f.is_file() and f.suffix in (".deb", ".ipa", ".partial"):
                 report.error("artifact-outside-pool", f"{f.relative_to(cfg.root)}: package files never belong in submissions/")
     _check_staged_local_files(cfg, report)
+    if cfg.approvals_required_for_import:
+        from .approvals import check_lock_approvals
+        report.extend(check_lock_approvals(cfg, cfg.approvals_since))
     # The public archive key directory must never hold secret key material (docs/SIGNING.md).
     kd = cfg.root / "keys"
     if kd.is_dir():
@@ -388,7 +391,7 @@ def compress_indexes(packages_text: str) -> dict[str, bytes]:
     }
 
 
-def render_release(cfg: RepoConfig, files: dict[str, bytes], date: datetime) -> str:
+def render_release(cfg: RepoConfig, files: dict[str, bytes], date: datetime, valid_until: datetime | None = None) -> str:
     lines = [
         f"Origin: {cfg.origin}",
         f"Label: {cfg.label}",
@@ -396,6 +399,7 @@ def render_release(cfg: RepoConfig, files: dict[str, bytes], date: datetime) -> 
         f"Version: {cfg.version}",
         f"Codename: {cfg.codename}",
         f"Date: {format_datetime(date, usegmt=True)}",
+    ] + ([f"Valid-Until: {format_datetime(valid_until, usegmt=True)}"] if valid_until else []) + [
         f"Architectures: {' '.join(cfg.architectures)}",
         "Components: main",
         f"Description: {cfg.description}",

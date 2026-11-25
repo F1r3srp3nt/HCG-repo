@@ -46,7 +46,9 @@ def export(home: str, fpr: str, dest: Path, armor: bool = True) -> Path:
 
 
 @unittest.skipUnless(HAVE, "gpg, gpgv and apt-get are needed")
-class SigningClientTests(RepoTestCase):
+class _ClientBase(RepoTestCase):
+    """Fixtures only: two throw-away keys, a Stable and a Candidate package, helpers to build and to run APT."""
+
     def setUp(self):
         super().setUp()
         self.home = tempfile.mkdtemp(prefix="gk", dir="/tmp")   # short path: gpg-agent socket length limit
@@ -85,7 +87,7 @@ class SigningClientTests(RepoTestCase):
     def site(self, name: str, key: str | None):
         return build(self.cfg, PAGES, self.tmp / name, sign_key=key).out_dir
 
-    def apt(self, site: Path, trusted: list[Path], sub: str = "repo/") -> tuple[int, str]:
+    def apt(self, site: Path, trusted: list[Path], sub: str = "repo/", trustedparts: Path | None = None) -> tuple[int, str]:
         d = Path(tempfile.mkdtemp(prefix="apt-", dir=self.tmp))
         for x in ("state/lists/partial", "cache/archives/partial", "etc/sources.list.d", "etc/preferences.d",
                   "etc/apt.conf.d", "etc/trusted.gpg.d"):
@@ -93,11 +95,12 @@ class SigningClientTests(RepoTestCase):
         for i, k in enumerate(trusted):
             subprocess.run(["gpg", "--batch", "--yes", "--output", str(d / "etc/trusted.gpg.d" / f"k{i}.gpg"),
                             "--dearmor", str(k)], check=True, capture_output=True)
+        parts = trustedparts or (d / "etc/trusted.gpg.d")
         with BackgroundServer(site, "/HCG-repo/") as srv:
             (d / "etc/sources.list").write_text(f"deb {srv.url}{sub} ./\n")
             p = subprocess.run(["apt-get", "-o", f"Dir::Etc={d}/etc", "-o", f"Dir::State={d}/state",
                                 "-o", f"Dir::Cache={d}/cache", "-o", f"Dir::Etc::trusted={d}/etc/trusted.gpg",
-                                "-o", f"Dir::Etc::trustedparts={d}/etc/trusted.gpg.d",
+                                "-o", f"Dir::Etc::trustedparts={parts}",
                                 "-o", "APT::Architecture=iphoneos-arm64", "-o", "APT::Architectures::=iphoneos-arm64",
                                 "-o", "Debug::NoLocking=1", "-o", "APT::Sandbox::User=" + os.environ.get("USER", "root"),
                                 "-o", "Acquire::http::Proxy=false", "-o", "Acquire::Retries=0", "update"],
@@ -114,6 +117,7 @@ class SigningClientTests(RepoTestCase):
         self.assertIn(why, out)
         self.assertRegex(out, r"(?m)^(E|W): ")
 
+class SigningClientTests(_ClientBase):
     def test_unsigned_today(self):
         site = self.site("unsigned", None)
         self.assertRefused(self.apt(site, [self.pub_a]), "is not signed")
@@ -225,6 +229,224 @@ class SigningClientTests(RepoTestCase):
         pub_d = export(self.home, fd, self.tmp / "d.asc")
         self.assertEqual([(l, c) for l, c, _ in check_key(pub_d, fd)], [("warning", "key-expiring")])
         self.assertIn("key-fingerprint", {c for _, c, _ in check_key(pub_d, fc)})
+
+
+def resign(repo: Path, fpr: str, date, valid_until=None) -> None:
+    """Rewrite Release's Date/Valid-Until and sign it again (Release.gpg + InRelease) with a test key."""
+    import re
+    from email.utils import format_datetime
+    rel = repo / "Release"
+    txt = re.sub(r"^Date: .*$", "Date: " + format_datetime(date, usegmt=True), rel.read_text(), flags=re.M)
+    txt = re.sub(r"^Valid-Until: .*\n", "", txt, flags=re.M)
+    if valid_until:
+        txt = txt.replace("\nArchitectures:", "\nValid-Until: " + format_datetime(valid_until, usegmt=True)
+                          + "\nArchitectures:", 1)
+    rel.write_text(txt)
+    for a in (["--armor", "--detach-sign", "--output", str(repo / "Release.gpg")],
+              ["--clearsign", "--output", str(repo / "InRelease")]):
+        subprocess.run(["gpg", "--batch", "--yes", "--local-user", fpr, "--digest-algo", "SHA512"] + a + [str(rel)],
+                       check=True, capture_output=True)
+
+
+@unittest.skipUnless(HAVE, "gpg, gpgv and apt-get are needed")
+class ReplayProtectionTests(_ClientBase):
+    """Valid-Until and freshness with real APT (docs/SIGNING.md §6). Observed with apt 2.8: an expired Valid-Until and
+    a Date in the future are refused; an older Release that is still within its validity is accepted (APT does not
+    detect a replay inside the window), so Valid-Until only bounds the replay window."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import datetime, timezone
+        self.now = datetime.now(timezone.utc).replace(microsecond=0)
+        self.configure(self.fa, self.pub_a)
+
+    def signed(self, name, date, vu=None):
+        site = self.site(name, self.fa)
+        resign(site / "repo", self.fa, date, vu)
+        return site
+
+    def test_build_writes_valid_until_only_when_signed(self):
+        from datetime import timedelta
+        from hcgrepo.site import BuildError
+        p = self.root / "config" / "repo.toml"
+        p.write_text(p.read_text().replace("[signing]\n", "[signing]\nvalid_days = 7\n", 1))
+        self.reload()
+        site = self.site("vu", self.fa)
+        rel = (site / "repo" / "Release").read_text()
+        self.assertIn("Valid-Until: ", rel)
+        self.assertIn("Valid-Until: ", (site / "repo" / "candidate" / "Release").read_text())
+        self.assertAccepted(self.apt(site, [self.pub_a]))
+        from email.utils import parsedate_to_datetime
+        import re
+        date = parsedate_to_datetime(re.search(r"^Date: (.*)$", rel, re.M).group(1))
+        self.assertLessEqual(date, self.now + timedelta(seconds=5) - timedelta(minutes=50))   # backdated for slow clocks
+        # Without a configured fingerprint and without a key, valid_days alone must not produce unsigned output.
+        import re as _re
+        p.write_text(_re.sub(r'fingerprint = "[0-9A-F]*"', 'fingerprint = ""', p.read_text()))
+        self.reload()
+        with self.assertRaisesRegex(BuildError, "valid_days needs a signed build"):
+            build(self.cfg, PAGES, self.tmp / "unsigned-vu")
+
+    def test_expired_metadata_is_refused(self):
+        from datetime import timedelta
+        site = self.signed("expired", self.now - timedelta(days=10), self.now - timedelta(days=1))
+        self.assertRefused(self.apt(site, [self.pub_a]), "is expired")
+
+    def test_clock_differences(self):
+        from datetime import timedelta
+        self.assertAccepted(self.apt(self.signed("skew-10s", self.now + timedelta(seconds=10)), [self.pub_a]))
+        self.assertRefused(self.apt(self.signed("skew-5min", self.now + timedelta(minutes=5)), [self.pub_a]),
+                           "not valid yet")
+        self.assertAccepted(self.apt(self.signed("backdated", self.now - timedelta(hours=1),
+                                                 self.now + timedelta(days=7)), [self.pub_a]))
+
+    def test_replay_within_the_window_is_not_detected_by_apt(self):
+        from datetime import timedelta
+        newer = self.signed("newer", self.now - timedelta(hours=1), self.now + timedelta(days=7))
+        older = self.signed("older", self.now - timedelta(days=3), self.now + timedelta(days=4))
+        d = None
+        results = []
+        for site in (newer, older):
+            rc, out = self.apt_state(site, d)
+            d = d or self._last_state
+            results.append(rc)
+        self.assertEqual(results, [0, 0])      # documented limitation: Valid-Until bounds, but does not stop, replay
+
+    def apt_state(self, site, state_dir):
+        """apt-get update reusing one client state across calls (to model a device that saw a newer Release)."""
+        d = state_dir or Path(tempfile.mkdtemp(prefix="apt-", dir=self.tmp))
+        if state_dir is None:
+            for x in ("state/lists/partial", "cache/archives/partial", "etc/sources.list.d", "etc/preferences.d",
+                      "etc/apt.conf.d", "etc/trusted.gpg.d"):
+                (d / x).mkdir(parents=True)
+            subprocess.run(["gpg", "--batch", "--yes", "--output", str(d / "etc/trusted.gpg.d/k.gpg"), "--dearmor",
+                            str(self.pub_a)], check=True, capture_output=True)
+        self._last_state = d
+        with BackgroundServer(site, "/HCG-repo/") as srv:
+            (d / "etc/sources.list").write_text(f"deb {srv.url}repo/ ./\n")
+            p = subprocess.run(["apt-get", "-o", f"Dir::Etc={d}/etc", "-o", f"Dir::State={d}/state", "-o",
+                                f"Dir::Cache={d}/cache", "-o", f"Dir::Etc::trusted={d}/etc/trusted.gpg", "-o",
+                                f"Dir::Etc::trustedparts={d}/etc/trusted.gpg.d", "-o", "APT::Architecture=iphoneos-arm64",
+                                "-o", "APT::Architectures::=iphoneos-arm64", "-o", "Debug::NoLocking=1",
+                                "-o", "APT::Sandbox::User=" + os.environ.get("USER", "root"),
+                                "-o", "Acquire::http::Proxy=false", "update"], capture_output=True, text=True, timeout=120)
+        return p.returncode, p.stdout + p.stderr
+
+
+@unittest.skipUnless(HAVE and shutil.which("dpkg"), "gpg, gpgv, apt-get and dpkg are needed")
+class KeyringBootstrapTests(_ClientBase):
+    """HCG Repo Keyring (test keys): installed with real dpkg into an isolated root, APT then trusts exactly what the
+    package installed. Covers install, verification, a key update (rotation transition), removal and refusal."""
+
+    def dpkg(self, root: Path, *args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["dpkg", "--root=/", f"--instdir={root}/fs", f"--admindir={root}/admin",
+                               f"--log={root}/dpkg.log", "--force-architecture", "--force-not-root",
+                               "--force-unsafe-io", *args], capture_output=True, text=True)
+
+    def device(self) -> Path:
+        root = Path(tempfile.mkdtemp(prefix="dev-", dir=self.tmp))
+        for d in ("fs", "admin/info", "admin/updates"):
+            (root / d).mkdir(parents=True)
+        (root / "admin/status").write_text("")
+        return root
+
+    def test_keyring_lifecycle_with_apt(self):
+        from hcgrepo.keyring import build_keyring_deb
+        from hcgrepo.debinspect import inspect_deb
+        from hcgrepo.deepcheck import deep_validate
+        self.configure(self.fa, self.pub_a)
+        site = self.site("signed", self.fa)
+        out = self.tmp / "kr"
+        deb1 = build_keyring_deb(self.cfg, "rootless", "1.0", out, test_key=self.pub_a)
+        info = inspect_deb(deb1)
+        self.assertEqual(info.scripts, {})                                     # no maintainer scripts
+        self.assertEqual(info.conffiles, [])                                   # updates replace the key, removal deletes it
+        self.assertEqual(info.version, "1.0~test")
+        rep, ev = deep_validate(info)
+        self.assertTrue(rep.ok and ev["lifecycle"]["passed"], rep.render())
+        dev = self.device()
+        parts = dev / "fs/var/jb/etc/apt/trusted.gpg.d"
+        self.assertRefused(self.apt(site, [], trustedparts=parts if parts.exists() else self.tmp / "none"), "NO_PUBKEY")
+        r = self.dpkg(dev, "-i", str(deb1))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertAccepted(self.apt(site, [], trustedparts=parts))            # bootstrap: the keyring alone suffices
+        fp = (dev / "fs/var/jb/usr/share/hcg-repo-keyring/FINGERPRINTS").read_text()
+        self.assertIn(self.fa, fp)                                             # inspectable on the device
+        # Rotation: a transition keyring (A + B) keeps verifying while the repository switches to B.
+        pub_b = export(self.home, self.fb, self.tmp / "b.asc")
+        deb2 = build_keyring_deb(self.cfg, "rootless", "2.0", out, test_key=self.pub_a, extra_keys=[pub_b])
+        self.assertEqual(self.dpkg(dev, "-i", str(deb2)).returncode, 0)
+        self.configure(self.fb, pub_b)
+        site_b = self.site("signed-b", self.fb)
+        self.assertAccepted(self.apt(site_b, [], trustedparts=parts))
+        self.assertIn(self.fb, (dev / "fs/var/jb/usr/share/hcg-repo-keyring/FINGERPRINTS").read_text())
+        # Removal deletes the key: verification is no longer possible.
+        self.assertEqual(self.dpkg(dev, "-r", "com.hakmicapitalgroup.repo-keyring").returncode, 0)
+        self.assertFalse((parts / "hcg-repo.gpg").exists())
+        self.assertRefused(self.apt(site_b, [], trustedparts=parts), "NO_PUBKEY")
+
+    def test_test_keyring_is_never_importable(self):
+        from hcgrepo.keyring import build_keyring_deb
+        from hcgrepo.importer import import_deb as imp
+        deb = build_keyring_deb(self.cfg, "rootful", "1.0", self.tmp / "kr", test_key=self.pub_a)
+        status, rep = imp(self.cfg, deb, {"source": "test"})
+        self.assertEqual(status, "rejected")
+        self.assertIn("test-keyring", rep.codes())
+
+    def test_expired_or_revoked_keys_are_not_packaged(self):
+        from hcgrepo.keyring import build_keyring_deb
+        from hcgrepo.sign import SignError
+        env = {**os.environ, "GNUPGHOME": self.home}
+        subprocess.run(["gpg", "--batch", "--yes", "--pinentry-mode", "loopback", "--passphrase", "",
+                        "--quick-set-expire", self.fb, "seconds=1"], check=True, capture_output=True, env=env)
+        import time
+        time.sleep(2)
+        pub_b = export(self.home, self.fb, self.tmp / "b-expired.asc")
+        with self.assertRaises(SignError):
+            build_keyring_deb(self.cfg, "rootless", "1.0", self.tmp / "kr", test_key=pub_b)
+
+
+@unittest.skipUnless(HAVE, "gpg, gpgv and apt-get are needed")
+class TrustCenterTests(_ClientBase):
+    """hcg.repo.artifact-verification: one downloaded file against the live index, never overstating trust."""
+
+    def deb(self):
+        return next((self.root / "pool").rglob("*1.0.0_iphoneos-arm64.deb"))
+
+    def test_signed_index_verifies_the_file(self):
+        from hcgrepo.trust import trust_document, verify_artifact
+        self.configure(self.fa, self.pub_a)
+        site = self.site("signed", self.fa)
+        with BackgroundServer(site, "/HCG-repo/") as srv:
+            res = verify_artifact(self.cfg, self.deb(), PAGES, srv.url, "stable")
+            self.assertEqual((res["verdict"], res["metadata_authenticated"]), ("verified", True), res["steps"])
+            other = verify_artifact(self.cfg, self.deb(), PAGES, srv.url, "candidate")
+            self.assertEqual(other["verdict"], "failed")                  # not in that channel's index
+            pk = site / "repo" / "Packages"
+            pk.write_text(pk.read_text().replace("Maintainer: Hakmi", "Maintainer: Hakmx", 1))
+            self.assertEqual(verify_artifact(self.cfg, self.deb(), PAGES, srv.url, "stable")["verdict"], "failed")
+        self.assertIn("does not show", res["scope_note"])
+        doc = trust_document(self.cfg, PAGES)
+        self.assertEqual((doc["signing"]["status"], doc["signing"]["trusted_fingerprints"]), ("signed", [self.fa]))
+
+    def test_unsigned_index_is_never_called_authenticated(self):
+        from hcgrepo.trust import trust_document, verify_artifact
+        site = self.site("unsigned", None)
+        with BackgroundServer(site, "/HCG-repo/") as srv:
+            res = verify_artifact(self.cfg, self.deb(), PAGES, srv.url, "stable")
+        self.assertEqual((res["verdict"], res["metadata_authenticated"]), ("matches-unauthenticated-index", False))
+        doc = trust_document(self.cfg, PAGES)
+        self.assertEqual((doc["signing"]["status"], doc["signing"]["metadata_authenticated"]), ("unsigned", False))
+        self.assertEqual(doc["signing"]["trusted_fingerprints"], [])
+
+    def test_modified_file_fails(self):
+        from hcgrepo.trust import verify_artifact
+        self.configure(self.fa, self.pub_a)
+        site = self.site("signed", self.fa)
+        (self.work / "x").mkdir()
+        bad = tool_deb(self.work / "x", version="1.0.0", Description="other bytes\n same identity")
+        with BackgroundServer(site, "/HCG-repo/") as srv:
+            self.assertEqual(verify_artifact(self.cfg, bad, PAGES, srv.url, "stable")["verdict"], "failed")
 
 
 @unittest.skipUnless(HAVE, "gpg, gpgv and apt-get are needed")

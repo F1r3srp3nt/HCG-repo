@@ -320,6 +320,12 @@ def prepare(cfg: RepoConfig, store: Path, sid: str, free_demo_approval: str | No
                                "owner's free-demo approval for this version (--free-demo-approval \"<owner's words>\")")
         add_free_demo_exception(meta_dir / "package.toml", ver, free_demo_approval)
 
+    if cfg.approvals_required_for_import:
+        from .approvals import check_artifact
+        ar = check_artifact(cfg, pkg, ver, arch, "candidate", review["approval"]["sha256"], m["source"]["commit"],
+                            m["source"]["repository"])
+        if not ar.ok:
+            raise ReleaseError("a signed artifact approval is required ([approvals] required_for_import):\n" + ar.render())
     if via == "local-file":
         return _stage_local_file(cfg, m, review, d, sid)
     prov = provenance(m, sid, review["approval"], review["levels"])

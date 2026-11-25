@@ -84,82 +84,168 @@ Nobody needs to remove or re-add the source, or change its URL.
 
 ## 5. Founder procedure (production key; owner only)
 
-The owner runs it on a trusted **offline** machine. It is not run in CI and not in an assistant session; no private
-key is ever pasted into a chat, an issue or a log.
+The owner runs it. It is not run in CI and not in an assistant session; no private key is ever pasted into a chat, an
+issue or a log. Nothing below has been done for production: no key exists until the owner creates it.
 
-1. **Generate** (prompts for a strong passphrase):
-   ```bash
-   tools/signing/founder-keygen.sh ~/hcg-repo-key \
-     --uid "HCG Repo Archive Key <repo@hakmicapitalgroup.com>" --primary-expire 5y --subkey-expire 2y
-   ```
-   This creates a certify-only RSA 4096 primary key and a dedicated RSA 4096 signing subkey (RSA for the widest
-   client compatibility). It also writes:
-   - the public key and its fingerprint;
-   - the subkey-only CI secret, with the primary key absent (`sec#`);
-   - a passphrase-protected full backup;
-   - the revocation certificate.
+### 5.1 Prepare a protected workspace (macOS / APFS)
 
-   It ends with a self-test: the subkey signs, `gpgv` verifies against the public key only, and the signer is the
-   primary. It refuses to write inside a Git checkout and prints no secret material. (Tested with `--test` keys in
-   `tests/test_signing_clients.py`.)
-2. **Verify the fingerprint:** read `public/FINGERPRINT` aloud against the output and against what will be published.
-3. **Back up** `offline/` to two encrypted offline media (e.g. two encrypted USB drives in different places). Keep
-   `revocation-certificate.rev` separately, and optionally on paper. Record the passphrase in a password manager or
-   sealed paper, not with the backups.
-4. **GitHub:** Settings → Environments → `repo-signing`:
-   - add yourself as a **required reviewer**, so every publication waits for your approval;
-   - add the secret `HCG_REPO_GPG_PRIVATE_KEY` with the content of `ci/hcg-repo-signing-subkey.asc`;
-   - then shred that file (`shred -u`).
-5. **Repository PR:**
-   - commit `public/hcg-repo-archive-key.asc` as `keys/hcg-repo-archive-key.asc`;
-   - set `config/repo.toml` `[signing] fingerprint = "<40 hex>"`;
-   - run `bin/hcgrepo signing-status`, which must show the fingerprint, the subkey and its expiry, and no errors;
-   - merge after review.
-6. **Publish** with `require_signature` on, after the explicit publication approval. Confirm that `verify-deployed`
-   reports both channels signed and verified, and that `bin/hcgrepo monitor` shows `signature.*: ok`.
-7. **Keyring package and announcement** (section 4, steps 3 and 4).
+Applies to the founder's Mac. These commands were reviewed, not executed in this session (Linux container).
 
-### Expiry, rotation, revocation, recovery
+- **Offline while generating:** turn off Wi-Fi and Bluetooth, or use a machine that is never online.
+- **Encrypted container for all key files:** an encrypted APFS disk image, not a plain folder:
+  ```bash
+  mkdir -p ~/HCGKeys   # NOT in Desktop/Documents if "Desktop & Documents" syncs to iCloud Drive
+  hdiutil create -size 200m -fs APFS -encryption AES-256 -volname HCGRepoKey ~/HCGKeys/hcg-repo-key.dmg
+  hdiutil attach ~/HCGKeys/hcg-repo-key.dmg            # mounts /Volumes/HCGRepoKey (asks for its passphrase)
+  sudo mdutil -i off /Volumes/HCGRepoKey               # no Spotlight index of key files
+  tmutil addexclusion ~/HCGKeys/hcg-repo-key.dmg       # keep it out of Time Machine; backups are made on purpose
+  ```
+  Keep FileVault on for the internal disk. Do not let the disk-image passphrase be saved in the Keychain.
+- **GnuPG on macOS** (Homebrew `gnupg` or GPG Suite): when pinentry offers "Save in Keychain", leave it off. Run the
+  procedure with `GNUPGHOME` inside the mounted volume, which the script does by writing everything under its output
+  directory.
+- **No clipboard:** never copy key material. Universal Clipboard can send it to other Apple devices, and clipboard
+  managers keep history. Do not open key files in editors: autosave and Versions keep copies.
+- **Deletion on SSD/APFS is not secure overwriting.** `shred`, `rm -P` and similar tools cannot guarantee that the old
+  blocks are gone on an SSD: wear levelling and APFS copy-on-write keep old data elsewhere, and snapshots can keep
+  whole copies. The protection is **encryption**. Secret files only ever exist inside an encrypted container, and a
+  container whose passphrase is not kept is unreadable after it is deleted. Detach (`hdiutil detach
+  /Volumes/HCGRepoKey`) when finished.
 
-- **Expiry:** the signing subkey lasts 2 years and the primary 5. `signing-status` warns from 60 days and the build
-  refuses to sign within 14 days. To extend, without changing the fingerprint users trust:
+### 5.2 Generate the key
+
+```bash
+tools/signing/founder-keygen.sh /Volumes/HCGRepoKey/hcg-repo-key \
+  --uid "HCG Repo Archive Key <repo@hakmicapitalgroup.com>" --primary-expire 5y --subkey-expire 2y
+```
+
+This creates a certify-only RSA 4096 primary key and a dedicated RSA 4096 signing subkey (RSA for the widest client
+compatibility). It also writes:
+- the public key and its fingerprint;
+- the subkey-only CI secret, with the primary key absent (`sec#`);
+- a passphrase-protected full backup;
+- the revocation certificate.
+
+It ends with a self-test: the subkey signs, `gpgv` verifies against the public key only, and the signer is the
+primary. It refuses to write inside a Git checkout and prints no secret material. (Tested with `--test` keys in
+`tests/test_signing_clients.py`.)
+
+### 5.3 Verify, back up, protect
+
+1. **Fingerprint:** read `public/FINGERPRINT` against the script's output, then against what will be published
+   (section 5.5).
+2. **Backups:**
+   - copy the whole `offline/` folder into two further encrypted containers on two external drives, kept in
+     different places;
+   - keep `revocation-certificate.rev` separately, and optionally printed and sealed;
+   - keep the passphrases in a password manager or on sealed paper, never next to the backups.
+3. **Check the backups:** on another day, attach each backup and run
+   `gpg --show-keys offline/primary-secret-backup.asc`. The fingerprint must match.
+
+### 5.4 GitHub environment protection (checked for this repository)
+
+`F1r3srp3nt/HCG-repo` is a **public** repository owned by a personal account. GitHub's own documentation (source
+`github/docs` at `9207aae`, `deployments-and-environments.md`) states:
+- environments, environment secrets and deployment protection rules are available in public repositories on all
+  current plans;
+- required reviewers: up to six; one approval lets the job proceed;
+- a job cannot read environment secrets until a reviewer approves it;
+- "prevent self-reviews": the person who starts a deployment cannot approve it;
+- deployment branch rules exist;
+- administrators can bypass protection rules unless that is disabled.
+
+**Today `repo-signing` has no required reviewer:** the 25 Nov Publish run started its build job 3 seconds after
+creation, with no waiting state. Recommended settings (Settings → Environments → `repo-signing`):
+
+| Setting | Value | Why |
+|---|---|---|
+| Required reviewers | the founder (and a trusted second person if one exists) | the signing secret is released only after an explicit approval |
+| Prevent self-review | **off** while the founder is the only reviewer; on once there are two | with it on, a sole reviewer could never approve their own Publish run |
+| Allow administrators to bypass | **off** | the founder's own account cannot skip the approval by mistake |
+| Deployment branches and tags | **Selected: `main` only** | the secret can only reach runs from `main` (the workflow also refuses other refs) |
+| Wait timer | optional, e.g. 5 minutes | a last chance to cancel |
+| Secret | `HCG_REPO_GPG_PRIVATE_KEY` | the subkey only |
+
+**Entering the secret without the clipboard.** On the online Mac, copy only `ci/hcg-repo-signing-subkey.asc` into a
+new encrypted disk image, never the `offline/` folder. Then:
+```bash
+gh secret set HCG_REPO_GPG_PRIVATE_KEY --env repo-signing --repo F1r3srp3nt/HCG-repo < /Volumes/HCGCI/hcg-repo-signing-subkey.asc
+hdiutil detach /Volumes/HCGCI && rm ~/HCGKeys/hcg-ci.dmg      # see 5.1: deletion relies on the encryption
+```
+Then settings → Environments → `repo-signing` shows the secret (never its value).
+
+### 5.5 Activate (one PR, then one approved publication)
+
+1. Commit `public/hcg-repo-archive-key.asc` as `keys/hcg-repo-archive-key.asc` and set `config/repo.toml`
+   `[signing] fingerprint = "<40 hex>"`. `bin/hcgrepo signing-status` must show the fingerprint, the subkey, its
+   expiry and no errors. Merge after review. From this commit on, every build is fail-closed.
+2. Build the keyring package from the committed key (`bin/hcgrepo keyring-deb --layout rootless --layout rootful
+   --version 1.0`), and import it through the normal reviewed flow ([KEYRING.md](KEYRING.md)).
+3. Publish with `require_signature` on, after the explicit publication approval; approve the environment.
+   `verify-deployed` must report both channels signed and verified, and `bin/hcgrepo monitor` must show
+   `signature.*: ok`.
+4. Announce the fingerprint in at least two independent places: GitHub `docs/KEYRING.md` and the HCG Repo website.
+
+### Expiry, rotation, revocation
+
+- **Expiry:** the signing subkey lasts 2 years and the primary 5. `signing-status` and the monitor warn from 60 days,
+  and the build refuses to sign within 14 days. To extend without changing the fingerprint users trust:
   1. offline, run `gpg --quick-set-expire <FPR> 2y <SUBKEY-FPR>`;
-  2. re-export the public key and commit it;
-  3. re-export the subkey-only secret into the environment.
-- **Subkey rotation** (scheduled, or after suspected CI exposure):
+  2. commit the re-exported public key;
+  3. replace the secret.
+- **Subkey rotation** (scheduled, or after any suspected exposure):
   1. offline, add a new signing subkey and revoke the old one (`gpg --edit-key <FPR>` → `revkey`);
-  2. commit the new public key and replace the secret;
+  2. commit the public key and replace the secret;
   3. publish with `allow_key_change`.
 
-  The primary fingerprint, the keyring package and users' trust stay the same.
-- **Primary key rotation** (compromise or algorithm change):
-  1. publish a keyring package version holding **both** keys and wait for adoption, since Sileo stops updating a
-     verified source whose signature fails;
+  The primary fingerprint, the keyring and users' trust stay the same.
+- **Primary key rotation:**
+  1. publish a keyring version holding **both** keys, and wait for adoption (Sileo stops updating a verified
+     source whose signature fails);
   2. switch the fingerprint, public key and secret, and publish with `allow_key_change`;
   3. remove the old key in a later keyring version;
-  4. publish the old key's revocation certificate.
+  4. publish the old key's revocation.
 
-  Tested: a client holding only the old key refuses the new signature, and the transition keyring accepts it.
+  Tested end to end with APT and the keyring package.
 - **Revocation:** import `revocation-certificate.rev` into the offline keyring, then publish the updated public key
-  (commit plus keyring package).
-- **Recovery:**
-  1. restore `offline/` from a backup (`gpg --import primary-secret-backup.asc`);
-  2. verify the fingerprint;
-  3. re-export the CI subkey with `tools/signing/founder-keygen.sh`'s step 5 commands, or create a new subkey.
+  (commit plus keyring version).
 
-  Losing both backups means a primary key rotation.
+### Emergency recovery
+
+| Event | Immediate action | Then |
+|---|---|---|
+| CI secret exposed or suspected (log, fork, GitHub account) | delete the environment secret; do not publish | offline: revoke the subkey and add a new one; commit the public key; new secret; publish with `allow_key_change`. Users keep trusting the same primary key |
+| Primary key or its passphrase compromised | stop publishing; revoke the primary with `revocation-certificate.rev` | new key (section 5.2); keyring version with the new key only; publish; announce on independent channels. Users must update the keyring: until then a verified Sileo source stops updating, which is the safe failure |
+| Signing ability expired (monitor alert, refused builds) | none needed: nothing unsigned is published | extend the expiry offline (above) |
+| Backups or passphrase lost | the current subkey keeps working until it expires | plan a primary key rotation before that date |
+| Unknown or unauthorized publication (monitor `publication-origin`, `unknown-packages`) | do not deploy over it blindly | investigate; publish a known `main` state with the approval process; rotate the subkey if the secret could be involved |
 
 ### Never
 
-- never commit or paste a private key (`.gitignore` excludes `*.key`, `*secret*.asc` and `*private*.asc`; the
-  validator rejects packages containing private keys);
+- never commit or paste a private key (`.gitignore` excludes the procedure's secret files, and `validate` refuses
+  private key material under `keys/`);
 - never store the primary key in CI;
+- never use the repository signing key to approve releases ([RELEASE_APPROVALS.md](RELEASE_APPROVALS.md));
 - never give a user instructions to disable signature checks;
 - never publish unsigned once a fingerprint is configured.
 
-## 6. Future hardening (not enabled)
+## 6. Replay protection (`Valid-Until`): investigated, not enabled
 
-- `Valid-Until` in `Release` limits replay of old metadata, but forces regular republication. It is enabled only
-  after testing Sileo's behaviour with an expired `Valid-Until`.
-- Authenticated approvals: approval records are protected today by Git review. HCG Connect identities or signed
-  commits would make them cryptographic ([SUPPLY_CHAIN_ASSESSMENT.md](SUPPLY_CHAIN_ASSESSMENT.md)).
+Implemented, off: `[signing] valid_days = N` adds `Valid-Until` (build time + N days) to both channels' `Release`.
+It needs a signed build. `Date` is set one hour back, because APT refuses dates in the future. Tested with real
+APT 2.8 (`tests/test_signing_clients.py`, `ReplayProtectionTests`):
+
+| Case | APT |
+|---|---|
+| expired `Valid-Until` | **refused** ("expired… updates will not be applied") |
+| `Date` 10 seconds ahead of the client clock | accepted |
+| `Date` 5 minutes or 2 hours ahead | **refused** ("not valid yet") |
+| an older `Release`, still within its validity, served after a newer one | **accepted**: APT does not detect a replay inside the window |
+
+Sileo checks only the signature (`apt-key verify`) and installs with `apt-get --allow-unauthenticated`. It has no
+`Valid-Until` handling, so it is neither protected nor broken by it. Zebra checks no signatures.
+
+**Decision: not enabled.** `Valid-Until` would protect only command-line APT users, and only by bounding the replay
+window. It also requires re-signing more often than N days. That means scheduled publication, which is automatic
+publication and needs the owner's separate approval. If it is enabled later, use `valid_days = 14` with a weekly
+re-sign. The monitor already reports metadata freshness (`freshness.*`).

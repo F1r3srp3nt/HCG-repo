@@ -76,6 +76,26 @@ def derive_status(entry: dict, prov: dict, tests: list[dict]) -> str:
     return UNTESTED
 
 
+def runtime_compatibility(tests: list[dict]) -> str:
+    """Overall runtime compatibility, separate from installation:
+    passed          a full runtime verification passed (device_tests stage "verification")
+    launch-only     the app started, but no full verification is recorded
+    partial         a partial launch/runtime result
+    failed          a launch or runtime failure with no success at that stage (installation may still have passed)
+    not-established no launch or runtime evidence"""
+    stage = lambda t: t.get("stage", "runtime")  # noqa: E731
+    run = [t for t in tests if stage(t) in ("runtime", "verification")]
+    if any(t.get("result") == "pass" and stage(t) == "verification" for t in run):
+        return "passed"
+    if any(t.get("result") == "pass" for t in run):
+        return "launch-only"
+    if any(t.get("result") == "partial" for t in run):
+        return "partial"
+    if run and all(t.get("result") == "fail" for t in run):
+        return "failed"
+    return "not-established"
+
+
 def known_failures(tests: list[dict]) -> list[dict]:
     return [{k: t.get(k) for k in ("stage", "result", "device", "ios", "jailbreak", "date", "evidence")}
             for t in tests if t.get("result") in ("fail", "partial")]
@@ -109,6 +129,7 @@ def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
             "label": meta.label(e["version"]),
             "levels": all_levels(from_legacy(prov.get("validation_levels")) or _imported_levels(prov), tests),
             "known_failures": known_failures(tests),
+            "runtime_compatibility": runtime_compatibility(tests),
             "last_physical_pass": max((t.get("date", "") for t in last_pass), default=None),
         }
         out.setdefault(e["package"], {"package": e["package"], "versions": [], "known_issues": meta.known_issues.strip()})
@@ -157,6 +178,9 @@ def public_registry(cfg: RepoConfig, channel: str | None = None) -> dict:
                                  "depends": v["depends"], "jailbreak": f"a {v['layout']} jailbreak (layout requirement, not a compatibility claim)"},
                 "tested_jailbreaks": tested_jb,
                 "levels": {k: lv["state"] for k, lv in v["levels"].items()},
+                "installation": v["levels"]["device_installation"]["state"],
+                "launch": v["levels"]["application_launch"]["state"],
+                "runtime_compatibility": v["runtime_compatibility"],
                 "known_failures": [{k: f.get(k) for k in ("stage", "result", "device", "ios", "jailbreak", "date")}
                                    for f in v["known_failures"]],
                 "label": v["label"] or None,

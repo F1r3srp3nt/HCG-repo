@@ -184,6 +184,32 @@ def check_deployed(cfg: RepoConfig, man: dict, public_base: str, fetch_base: str
 MONITOR_FORMAT = "hcg.repo.monitor"
 
 
+def freshness(release_fields: list[tuple[str, str]], now: datetime | None = None) -> tuple[str, str]:
+    """(status, detail) for a Release's Date and Valid-Until (docs/SIGNING.md §6)."""
+    from email.utils import parsedate_to_datetime
+    now = now or datetime.now(timezone.utc)
+    try:
+        date = parsedate_to_datetime(debian.field(release_fields, "Date") or "")
+    except (TypeError, ValueError):
+        return "alert", "Release has no readable Date"
+    vu_raw = debian.field(release_fields, "Valid-Until")
+    if (date - now).total_seconds() > 60:
+        return "alert", f"Release Date {date.isoformat()} is in the future (clock problem or tampering)"
+    age = (now - date).days
+    if not vu_raw:
+        return "ok", f"Release dated {date.date().isoformat()} ({age} days old); no Valid-Until (replay protection off)"
+    try:
+        vu = parsedate_to_datetime(vu_raw)
+    except (TypeError, ValueError):
+        return "alert", "Valid-Until is unreadable"
+    left = (vu - now).total_seconds() / 86400
+    if left <= 0:
+        return "alert", f"Release expired at {vu.isoformat()}: APT refuses updates until it is re-signed"
+    if left < 2:
+        return "warning", f"Release expires in {left:.1f} days ({vu.isoformat()}): re-sign before then"
+    return "ok", f"Release valid until {vu.isoformat()} ({left:.1f} days)"
+
+
 def monitor(cfg: RepoConfig, public_base: str, fetch_base: str | None = None, pubkey: Path | None = None,
             git_ref: str = "origin/main") -> dict:
     """One read-only check of the live repository, in the contract HCG Sentinel consumes
@@ -205,7 +231,9 @@ def monitor(cfg: RepoConfig, public_base: str, fetch_base: str | None = None, pu
             f"Release HTTP {code}, Packages HTTP {pcode}")
         if code != 200 or pcode != 200:
             continue
-        hashes = parse_release_hashes(debian.parse_control(rel.decode("utf-8", "replace")))
+        relf = debian.parse_control(rel.decode("utf-8", "replace"))
+        add(f"freshness.{channel}", *freshness(relf))
+        hashes = parse_release_hashes(relf)
         want = (hashes.get("sha256") or {}).get("Packages")
         add(f"index.{channel}", "ok" if want and want[0] == _sha(pk) else "alert",
             "Release lists the served Packages" if want and want[0] == _sha(pk) else

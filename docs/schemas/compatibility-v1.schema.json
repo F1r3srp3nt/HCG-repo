@@ -86,7 +86,10 @@
                 "access",
                 "requirements",
                 "levels",
-                "known_failures"
+                "known_failures",
+                "installation",
+                "launch",
+                "runtime_compatibility"
               ],
               "properties": {
                 "version": {
@@ -269,6 +272,38 @@
                     "string",
                     "null"
                   ]
+                },
+                "installation": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                },
+                "launch": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                },
+                "runtime_compatibility": {
+                  "enum": [
+                    "passed",
+                    "launch-only",
+                    "partial",
+                    "failed",
+                    "not-established"
+                  ],
+                  "description": "overall runtime compatibility, separate from installation: failed = a recorded launch/runtime failure with no success"
                 }
               }
             }

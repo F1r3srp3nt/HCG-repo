@@ -1153,8 +1153,19 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         indexes = compress_indexes(packages_text)
         for name, data in indexes.items():
             (repo_dir / name).write_bytes(data)
-        date = build_info_date()
-        (repo_dir / "Release").write_text(render_release(cfg, indexes, date), encoding="utf-8")
+        date, valid_until = build_info_date(), None
+        if cfg.signing_valid_days > 0:
+            # Replay protection: freshness is measured from the moment of this build, not the commit time
+            # (SOURCE_DATE_EPOCH), otherwise an older commit would be published already close to expiry.
+            from datetime import datetime, timedelta, timezone
+            now = datetime.now(tz=timezone.utc).replace(microsecond=0)
+            # APT refuses a Release whose Date is in the future (tested: 5 minutes ahead is refused), so Date is set
+            # one hour back to tolerate devices whose clocks run slow.
+            date = now - timedelta(hours=1)
+            valid_until = now + timedelta(days=cfg.signing_valid_days)
+            if not (sign_key or os.environ.get("HCG_REPO_SIGNING_KEY")):
+                raise BuildError("[signing] valid_days needs a signed build: an unsigned Valid-Until protects nothing")
+        (repo_dir / "Release").write_text(render_release(cfg, indexes, date, valid_until), encoding="utf-8")
         for p in pkgs:
             if not p.protected:
                 shutil.copyfile(cfg.root / p.rel, repo_dir / "debs" / p.info.canonical_filename())
@@ -1171,6 +1182,10 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
                     "banners": [{"url": f"{repo_url}assets/{REPO_BANNER}", "title": "HCG Repo",
                                  "displayText": False, "hideShadow": True}]}
         (repo_dir / "sileo-featured.json").write_text(json.dumps(featured, indent=2) + "\n", encoding="utf-8")
+        if cfg.publish_trust and cfg.channel == "stable":
+            from . import trust
+            (repo_dir / "trust.json").write_text(json.dumps(trust.trust_document(cfg, base_url), indent=2) + "\n",
+                                                 encoding="utf-8")
         if cfg.publish_compatibility:
             # Off by default ([compatibility] publish in config/repo.toml): the owner decides when it goes public.
             from . import compat

@@ -224,8 +224,11 @@ def cmd_keyring_deb(a, cfg) -> int:
     from .sign import SignError
     try:
         for layout in a.layout:
-            deb = build_keyring_deb(cfg, layout, a.version, Path(a.out))
-            print(f"built {deb} (import it with: bin/hcgrepo import-deb {deb})")
+            deb = build_keyring_deb(cfg, layout, a.version, Path(a.out),
+                                    extra_keys=[Path(k) for k in a.transition_key or []],
+                                    test_key=Path(a.test_key) if a.test_key else None)
+            print(f"built {deb}" + (" (TEST KEY: the importer refuses it)" if a.test_key else
+                                    f" (import it with: bin/hcgrepo import-deb {deb})"))
     except SignError as exc:
         print(f"REFUSED: {exc}")
         return 1
@@ -493,6 +496,8 @@ def cmd_compat(a, cfg) -> int:
             print(f"  {v['version']:<16} {v['channel']:<9} {v['layout']:<9} {ios:<10} {v['status']}")
             if v["label"]:
                 print(f"      label: {v['label']}")
+            if v["runtime_compatibility"] != "not-established" or v["levels"]["device_installation"]["state"] != "not-recorded":
+                print(f"      overall runtime compatibility: {v['runtime_compatibility']}")
             for k in ("device_installation", "application_launch", "runtime_verification"):
                 st = v["levels"][k]["state"]
                 if st != "not-recorded":
@@ -621,6 +626,73 @@ def cmd_signing_status(a, cfg) -> int:
     for lvl, code, msg in probs:
         print(f"  {'ERROR' if lvl == 'error' else 'warn '} [{code}] {msg}")
     return 1 if any(l == "error" for l, _, _ in probs) else 0
+
+
+def cmd_approval(a, cfg) -> int:
+    from . import approvals as ap
+    try:
+        if a.action in ("draft-artifact", "draft-publication"):
+            if a.action == "draft-artifact":
+                stmt = ap.draft_artifact(cfg, a.package, a.version, a.architecture, a.channel, a.approver,
+                                         sha256=a.sha256, repository=a.repository, commit=a.commit, note=a.note or "")
+            else:
+                stmt = ap.draft_publication(cfg, a.commit, a.target or "production", a.approver, note=a.note or "")
+            path = ap.write_draft(cfg, stmt)
+            rel = path.relative_to(cfg.root)
+            print(path.read_text(), end="")
+            print(f"\nDRAFT written to {rel}. Check every field, then sign it OFFLINE with the founder approval key:")
+            print(f"  gpg --local-user {stmt['approver']} --armor --detach-sign {rel}")
+            print(f"and commit {rel} with {rel}.asc. Never sign with the repository signing key.")
+            return 0
+        if a.action == "verify":
+            rc = 0
+            files = [Path(f) for f in a.files] or sorted((cfg.root / "approvals").rglob("*.json"))
+            for f in files:
+                stmt, r = ap.verify_statement(cfg, f)
+                print(r.render() if r.items else "", end="\n" if r.items else "")
+                print(f"{'VERIFIED' if r.ok else 'INVALID'}: {f} ({stmt.get('kind')}, approver {stmt.get('approver')})")
+                rc |= 0 if r.ok else 1
+            return rc
+        if a.action == "check-publication":
+            if not cfg.approvals_required_for_publish and not a.force:
+                print("publication approvals are not required ([approvals] required_for_publish = false)")
+                return 0
+            r = ap.check_publication(cfg, a.commit, a.target or "production")
+            return _print_report(r, f"publication of {a.commit[:12]} to {a.target or 'production'} is approved")
+    except ap.ApprovalError as exc:
+        print(f"REFUSED: {exc}")
+        return 1
+    return 2
+
+
+def cmd_trust(a, cfg) -> int:
+    from . import trust
+    doc = trust.trust_document(cfg, _base(a, cfg))
+    text = json.dumps(doc, indent=2) + "\n"
+    if a.out:
+        Path(a.out).write_text(text)
+        print(f"wrote {a.out} (preview: publication needs [trust] publish = true)")
+    else:
+        print(text, end="")
+    return 0
+
+
+def cmd_verify_artifact(a, cfg) -> int:
+    from . import trust
+    res = trust.verify_artifact(cfg, Path(a.deb), _base(a, cfg), a.fetch_base, a.channel,
+                                Path(a.pubkey) if a.pubkey else None)
+    if a.json:
+        print(json.dumps(res, indent=2))
+    else:
+        for st in res["steps"]:
+            print(f"{'ok  ' if st['ok'] else 'FAIL'} {st['step']:<18} {st['detail']}")
+        art = res.get("artifact", {})
+        print(f"file      {res['file']}  sha256 {art.get('sha256')}")
+        for b in res.get("contents", {}).get("binaries", []):
+            print(f"code      {b['path']}  signed={b['signed']}  entitlements={', '.join(b['entitlements']) or 'none'}")
+        print(f"VERDICT   {res['verdict']}  (metadata authenticated: {res.get('metadata_authenticated')})")
+        print(f"note      {res['scope_note']}")
+    return 0 if res["verdict"] in ("verified", "matches-unauthenticated-index") else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -763,6 +835,42 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--warn-days", type=int, default=60)
     p.set_defaults(fn=cmd_signing_status)
 
+    p = sp.add_parser("approval", help="founder-signed release approvals (artifact / publication), docs/RELEASE_APPROVALS.md")
+    rs = p.add_subparsers(dest="action", required=True)
+    q = rs.add_parser("draft-artifact", help="write an artifact approval statement to sign offline")
+    for k in ("--package", "--version", "--architecture", "--channel", "--approver"):
+        q.add_argument(k, required=True)
+    q.add_argument("--sha256")
+    q.add_argument("--repository")
+    q.add_argument("--commit")
+    q.add_argument("--note")
+    q = rs.add_parser("draft-publication", help="write a publication approval statement to sign offline")
+    q.add_argument("--commit", required=True)
+    q.add_argument("--target", default="production")
+    q.add_argument("--approver", required=True)
+    q.add_argument("--note")
+    q = rs.add_parser("verify", help="verify approval statements (default: all under approvals/)")
+    q.add_argument("files", nargs="*")
+    q = rs.add_parser("check-publication", help="require a verified publication approval for a commit (when configured)")
+    q.add_argument("--commit", required=True)
+    q.add_argument("--target", default="production")
+    q.add_argument("--force", action="store_true", help="check even when not required")
+    p.set_defaults(fn=cmd_approval)
+
+    p = sp.add_parser("trust-document", help="hcg.repo.trust v1: sources, signing status, fingerprints, contracts (preview)")
+    target_args(p)
+    p.add_argument("--out")
+    p.set_defaults(fn=cmd_trust)
+
+    p = sp.add_parser("verify-artifact", help="independently verify ONE downloaded .deb against the live index")
+    target_args(p)
+    p.add_argument("deb")
+    p.add_argument("--channel", choices=["stable", "candidate"], default="stable")
+    p.add_argument("--fetch-base")
+    p.add_argument("--pubkey", help="trusted public key to verify a signed index (default: the committed key)")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_verify_artifact)
+
     p = sp.add_parser("admin", help="local administration dashboard over the Release Manager (127.0.0.1 only)")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--incoming", help="private incoming store (default $HCG_REPO_INCOMING)")
@@ -778,6 +886,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--layout", action="append", choices=["rootless", "rootful"], required=True)
     p.add_argument("--version", required=True)
     p.add_argument("--out", default="keyring-out")
+    p.add_argument("--transition-key", action="append", help="also trust this public key (rotation transition)")
+    p.add_argument("--test-key", help="development only: build with this public key; marked as a test, never importable")
     p.set_defaults(fn=cmd_keyring_deb)
 
     p = sp.add_parser("protect", help="move a connect/paid package out of the public pool (metadata stays)")

@@ -340,6 +340,12 @@ class RepoConfig:
     payment_endpoint: str = ""
     channel: str = "stable"      # which channel this configuration builds: "stable" (/repo/) or "candidate"
     preview_listings: bool = False   # build --preview-listings: also render prepared commercial listings (never deployed)
+    approver_keys: list = field(default_factory=list)   # [approvals] approver_keys: founder approval public keys
+    approvals_required_for_import: bool = False          # [approvals] required_for_import (docs/RELEASE_APPROVALS.md)
+    approvals_required_for_publish: bool = False         # [approvals] required_for_publish
+    approvals_since: str = ""                            # [approvals] since: enforcement applies to imports from then
+    signing_valid_days: int = 0         # [signing] valid_days: Valid-Until = build time + N days (0 = off; docs/SIGNING.md §6)
+    publish_trust: bool = False          # [trust] publish: write <repo>/trust.json (docs/NEXUS_TRUST_CENTER.md)
     publish_compatibility: bool = False   # [compatibility] publish: write <repo>/compatibility.json (owner decision)
 
     @property
@@ -458,6 +464,12 @@ def load_config(root: Path | None = None) -> RepoConfig:
         external_deps=ext, products=parse_products(products), store_base_url=store_base,
         access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint,
         publish_compatibility=bool(cfg.get("compatibility", {}).get("publish", False)),
+        publish_trust=bool(cfg.get("trust", {}).get("publish", False)),
+        signing_valid_days=int(s.get("valid_days", 0) or 0),
+        approver_keys=[str(k) for k in cfg.get("approvals", {}).get("approver_keys", [])],
+        approvals_required_for_import=bool(cfg.get("approvals", {}).get("required_for_import", False)),
+        approvals_required_for_publish=bool(cfg.get("approvals", {}).get("required_for_publish", False)),
+        approvals_since=str(cfg.get("approvals", {}).get("since", "")),
     )
 
 

@@ -66,6 +66,11 @@ jobs:
           bin/hcgrepo validate
           bin/hcgrepo smoke
 
+      - name: Publication approval (required only when [approvals] required_for_publish = true)
+        env:
+          TARGET: ${{ inputs.target }}
+        run: bin/hcgrepo approval check-publication --commit "$GITHUB_SHA" --target "$TARGET"
+
       - name: Import signing key (fail-closed once a fingerprint is configured)
         id: key
         env:

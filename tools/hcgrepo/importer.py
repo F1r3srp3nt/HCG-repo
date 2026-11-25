@@ -50,6 +50,11 @@ def import_deb(cfg: RepoConfig, path: Path, provenance: dict, dry_run: bool = Fa
     except InspectError as exc:
         report.error("deb-unreadable", str(exc))
         return "rejected", report
+    from .keyring import is_test_keyring
+    if is_test_keyring(info.control):
+        report.error("test-keyring", "this keyring package carries a development key (X-HCG-Test-Key: yes); only a "
+                                     "keyring built from the approved production key can be imported")
+        return "rejected", report
     actual = {"package": info.package, "version": info.version, "architecture": info.architecture, "sha256": info.sha256}
     for k, want in (expect or {}).items():
         if want and actual.get(k) != (want.lower() if k == "sha256" else want):
@@ -620,6 +625,12 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
                 "commit": src["commit"].lower(), "layout": src["layout"], "entitlements_file": src["entitlements"]}
         prov.update(builder or {})
     prov["request"] = r["id"]
+    if cfg.approvals_required_for_import:
+        from .approvals import check_artifact
+        ar = check_artifact(cfg, req["package"], req["version"], req["architecture"], req.get("channel", "stable"),
+                            hash_sha256(path), prov.get("commit"), prov.get("repository"))
+        if not ar.ok:
+            return "rejected", ar
     # Distribution v2: secrets, maintainer-script behaviour, privileged helpers and a simulated dpkg lifecycle
     # (scripts never executed) for every request-driven import.
     from .deepcheck import deep_validate

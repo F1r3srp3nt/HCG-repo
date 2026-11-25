@@ -26,6 +26,7 @@ public files.
 | Check id | Watches | `alert` when |
 |---|---|---|
 | `availability.stable`, `availability.candidate` | repository availability | `Release` or `Packages` is not HTTP 200 |
+| `freshness.<channel>` | metadata freshness | `Release` `Date` in the future, or `Valid-Until` passed (`warning` within 2 days). Without `Valid-Until`, it reports the age of the metadata (replay protection is off: [SIGNING.md](SIGNING.md) §6) |
 | `index.<channel>` | index consistency | `Release` does not list the served `Packages`' SHA-256 |
 | `checksums.<channel>` | unexpected checksum changes | a live package's SHA-256 differs from `repo-lock.json` (published bytes never change) |
 | `unknown-packages.<channel>` | unauthorized publication | a live package has no lock record |
@@ -39,8 +40,8 @@ must not retry publications or "fix" anything.
 
 ## Today (25 Nov 2026)
 
-Production result: overall `warning`. Every availability, index, checksum, unknown-package, missing-package and
-origin check is `ok`. `signature.*` and `signing-key` are `warning` because production signing is not configured yet.
+Production result: overall `warning`. Every availability, freshness, index, checksum, unknown-package,
+missing-package and origin check is `ok`. `signature.*` and `signing-key` are `warning` because production signing is not configured yet.
 
 ## What Sentinel must not receive
 

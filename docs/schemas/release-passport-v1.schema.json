@@ -144,6 +144,9 @@
       "type": "object",
       "required": [
         "filename",
+        "package",
+        "version",
+        "architecture",
         "sha256",
         "size"
       ],
@@ -157,6 +160,22 @@
         },
         "size": {
           "type": "integer"
+        },
+        "package": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string"
+        },
+        "sha512": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{128}$"
         }
       }
     },
@@ -338,7 +357,33 @@
         "type": "object",
         "required": [
           "kind"
-        ]
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "examples": [
+              "checksum-approval",
+              "free-demo-approval",
+              "signed-artifact-approval",
+              "release-manager:approved"
+            ]
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "approver": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approved_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       }
     },
     "distribution": {
@@ -393,8 +438,18 @@
         },
         "status": {
           "type": "string"
+        },
+        "authenticated": {
+          "type": "boolean",
+          "description": "true only when repository metadata is signed with a configured key; never true for unsigned metadata"
         }
-      }
+      },
+      "required": [
+        "scope",
+        "configured",
+        "authenticated",
+        "status"
+      ]
     },
     "code_signing": {
       "type": "object",
@@ -422,6 +477,16 @@
           "type": "object"
         }
       }
+    },
+    "runtime_compatibility": {
+      "enum": [
+        "passed",
+        "launch-only",
+        "partial",
+        "failed",
+        "not-established"
+      ]
     }
-  }
+  },
+  "$comment": "Final for format version 1 (frozen 2026-11-25). New fields require formatVersion 2."
 }
