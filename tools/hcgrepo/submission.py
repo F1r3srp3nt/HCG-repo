@@ -315,3 +315,21 @@ def verify_against_deb(m: dict, info) -> Report:
         r.error("submission-scripts", f"the manifest declares scripts {sorted(declared)}, the package has {actual_scripts}")
     return r
 
+
+
+def provenance(m: dict, sid: str, approval: dict | None, levels: dict | None = None) -> dict:
+    """Provenance recorded in pool/<file>.provenance.json for a submitted artifact. One builder for every route
+    (local-submission, local-file, https-artifact, Release Manager), so the records are identical in shape."""
+    b, src = m["build"], m["source"]
+    prov = {"source": "artifact-submission", "provider": b["provider"], "provider_label": PROVIDERS[b["provider"]],
+            "repository": src["repository"], "commit": src["commit"], "branch": src.get("branch"),
+            "built_at": b["builtAt"], "toolchain": b["toolchain"], "submission": sid, "approval": approval}
+    if b["provider"] in GITHUB_PROVIDERS:
+        prov.update({"run_id": b["runId"], "run_url": b.get("runUrl"), "artifact": b.get("artifactName"),
+                     "run_repository": b.get("runRepository")})
+    signing = (m.get("signing") or {})
+    if signing:
+        prov["signing_claimed"] = signing
+    if levels is not None:
+        prov["validation_levels"] = levels
+    return {k: v for k, v in prov.items() if v is not None}

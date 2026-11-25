@@ -403,7 +403,7 @@ def temp_workdir() -> tempfile.TemporaryDirectory:
 RECIPES = {"hcg-terminal-unleashed"}
 LAYOUTS = {"rootless", "rootful"}
 SAFE_PATH = re.compile(r"^[A-Za-z0-9._/-]+$")
-REQUEST_KINDS = {"github-artifact", "github-release", "build", "local-submission", "https-artifact"}
+REQUEST_KINDS = {"github-artifact", "github-release", "build", "local-submission", "https-artifact", "local-file"}
 HTTPS_PROVIDERS = {"hcg-server-build-host", "developer-upload"}
 LOCAL_PROVIDERS = {"executable-maker-local", "hcg-server-build-host", "developer-upload"}
 AUTH_ENV_RE = re.compile(r"^HCG_[A-Z0-9_]{2,60}$")
@@ -412,6 +412,15 @@ SUBMISSION_PATH_RE = re.compile(r"^submissions/[A-Za-z0-9._-]+/submission\.json$
 
 class AwaitingLocalImport(Exception):
     """A local-submission request whose approved bytes are only on the owner's machine (not an error)."""
+
+
+# A local-file request imports a .deb that was built outside GitHub Actions (e.g. by HCG Executable Maker's Unleashify
+# on the owner's Mac) and committed next to the request under imports/local/. The source repository may be private:
+# only its name and commit are recorded, never its contents, and no token is needed to import.
+LOCAL_DIR = "imports/local/"
+# Debian file names carry the version, so a committed .deb's path may also hold "~" and "+" (e.g. 0.1.0~beta1).
+LOCAL_PATH = re.compile(r"^[A-Za-z0-9._/~+-]+$")
+LOCAL_PROVENANCE = ("built_by", "toolchain", "built_at", "host", "source_visibility", "validation")
 
 
 def load_request(path: Path) -> dict:
@@ -439,6 +448,22 @@ def load_request(path: Path) -> dict:
     elif kind == "github-release":
         if not src.get("tag") or src.get("tag", "").lower() == "latest" or not src.get("asset"):
             problems.append("github-release needs an exact tag (not 'latest') and asset")
+    elif kind == "local-file":
+        rel = src.get("path", "")
+        if not rel.startswith(LOCAL_DIR) or not rel.endswith(".deb") or not LOCAL_PATH.match(rel) or ".." in rel.split("/"):
+            problems.append(f"local-file path must be a .deb under {LOCAL_DIR} (plain relative path)")
+        if not src.get("sha256"):
+            problems.append("local-file needs the exact sha256 of the committed .deb")
+        if not src.get("built_by"):
+            problems.append("local-file needs built_by (the tool and version that produced the package)")
+        # Same approval and provenance as every other submitted artifact (Release Manager review.json).
+        if not SUBMISSION_PATH_RE.match(str(src.get("submission", ""))):
+            problems.append("local-file needs submission = \"submissions/<id>/submission.json\" (bin/hcgrepo release "
+                            "prepare <id> --via local-file writes it)")
+        if src.get("run_id") is not None:
+            problems.append("local-file has no CI run: run_id is only for github-artifact")
+        if req.get("channel", "stable") != "candidate":
+            problems.append("local-file imports go to the candidate channel only")
     elif kind == "build":
         if src.get("recipe") not in RECIPES:
             problems.append(f"build recipe must be one of {sorted(RECIPES)}")
@@ -495,6 +520,19 @@ def _submission_approval(cfg: RepoConfig, src: dict) -> dict:
     if a.get("sha256") != src["sha256"].lower() or not a.get("by") or not a.get("record"):
         raise ImportError_(f"{review_path.relative_to(cfg.root)} records no owner approval of sha256 {src['sha256']}")
     return a
+
+
+def _submission_provenance(cfg: RepoConfig, src: dict, approval: dict) -> dict:
+    from .submission import provenance
+    sub = cfg.root / src["submission"]
+    try:
+        m = json.loads(sub.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        m = None
+    if m and m.get("artifact", {}).get("sha256") == src["sha256"].lower():
+        return provenance(m, sub.parent.name, approval)
+    return {"source": "artifact-submission", "provider": src.get("provider"), "repository": src["repository"],
+            "commit": src["commit"].lower(), "submission": sub.parent.name, "approval": approval}
 
 
 def _incoming_artifact(src: dict, incoming: Path | None) -> Path:
@@ -562,10 +600,18 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
             path = _incoming_artifact(src, incoming)
         else:
             path = fetch_https_artifact(src["url"], workdir, src["sha256"], src["size"], src.get("auth_env"))
-        prov = {"source": "artifact-submission", "provider": src["provider"], "repository": src["repository"],
-                "commit": src["commit"].lower(), "submission": src["submission"], "approval": approval}
+        prov = _submission_provenance(cfg, src, approval)
+        prov["route"] = src["kind"]
         if src["kind"] == "https-artifact":
             prov["url"] = src["url"]
+    elif src["kind"] == "local-file":
+        approval = _submission_approval(cfg, src)
+        path = cfg.root / src["path"]
+        if not path.is_file():
+            raise ImportError_(f"{r['id']}: {src['path']} is not in the repository; commit the .deb next to the request")
+        prov = _submission_provenance(cfg, src, approval)
+        prov.update({"route": "local-file", "original_filename": path.name})
+        prov.update({k: src[k] for k in LOCAL_PROVENANCE if src.get(k)})
     else:
         if built_deb is None:
             raise ImportError_(f"{r['id']}: build requests need the built .deb (--deb)")

@@ -288,6 +288,30 @@ class ReleaseManagerTests(RepoTestCase):
         self.assertEqual(load_package_meta(self.reload(), PKG).access_for("0.1.0~beta1"), "public")
         self.assertEqual(load_package_meta(self.cfg, PKG).access_for("0.1.0~beta2"), "connect")
 
+    def test_local_file_route_reaches_prepare_packages(self):
+        review = self.submit(lifecycle=False)
+        sid, sha = review["submission"], review["sha256"]
+        rm.approve(self.store, sid, sha, "Owner", "Approved: Candidate import of this exact build.")
+        status, rep, review = rm.prepare(self.cfg, self.store, sid, create_package_metadata=True, via="local-file",
+                                         free_demo_approval=f"Owner approved 2026-11-25: 0.1.0~beta1 (SHA-256 {sha}).")
+        self.assertEqual(status, "staged", rep.render())
+        self.assertEqual(load_lock(self.cfg)["packages"], [])               # nothing imported yet
+        staged = self.root / "imports" / "local" / self.deb.name
+        self.assertTrue(staged.is_file())
+        pool_report = Report("repository")
+        check_repository(self.reload(), load_pool(self.cfg, pool_report), pool_report)
+        self.assertTrue(pool_report.ok, pool_report.render())              # approved staged file is allowed
+        # What Prepare packages does in CI: the same request, the same validation engine.
+        r = load_request(self.root / "imports" / f"{sid}.toml")
+        self.assertEqual(r["source"]["kind"], "local-file")
+        status, rep = run_request(self.cfg, r, GitHub(token=""), self.work)
+        self.assertEqual(status, "imported", rep.render())
+        e = load_lock(self.cfg)["packages"][0]
+        self.assertEqual((e["sha256"], e["channel"]), (sha, "candidate"))
+        prov = json.loads((self.root / (e["filename"] + ".provenance.json")).read_text())
+        self.assertEqual((prov["provider"], prov["route"], prov["approval"]["sha256"]), ("executable-maker-local", "local-file", sha))
+        self.assertTrue(prov["validation_levels"]["simulated_lifecycle"]["passed"])
+
     def test_validation_is_independent_of_the_providers_claims(self):
         prov = json.loads((self.handoff / "provenance.json").read_text())
         prov["app"]["minimum_os"] = "14.0"  # the package's Info.plist says 15.0
