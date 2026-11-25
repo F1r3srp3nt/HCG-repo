@@ -47,3 +47,33 @@ only, need the owner's approval of the exact `sha256` in `submissions/<id>/revie
 Private GitHub repositories use `kind = "github-artifact"` unchanged; the workflow reads them with the
 `HCG_IMPORT_TOKEN` secret. Every request-driven import also runs the v2 validation engine (secrets, maintainer
 scripts, privileged helpers, simulated dpkg lifecycle with scripts never executed).
+### Locally built packages (`kind = "local-file"`)
+
+For a package built outside GitHub Actions — for example by HCG Executable Maker's Unleashify on the owner's Mac,
+when the app's source repository is private — commit the `.deb` under `imports/local/` next to its request. Only the
+binary package and the source's name and commit enter HCG Repo; the source stays private and no token is needed.
+
+```toml
+[request]
+package = "com.hakmicapitalgroup.example"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "local-file"
+path = "imports/local/com.hakmicapitalgroup.example_0.1.0~beta1_iphoneos-arm64.deb"
+sha256 = "<exact .deb sha256 — required>"
+repository = "OWNER/NAME"            # the app's source (may be private: recorded, never fetched)
+commit = "<40-char sha the package was built from>"
+built_by = "HCG Executable Maker 0.5.0 (Unleashify, local)"   # required
+toolchain = "Xcode 27.2 (27C…)"      # optional provenance:
+built_at = "2026-11-25T10:00:00Z"    #   toolchain, built_at, host, source_visibility, validation
+host = "Owner's MacBook Pro (M4 Max)"
+source_visibility = "private"
+validation = "HCG Executable Maker rootless validator: passed (iOS 17.4)"
+```
+
+Prepare packages checks the committed file's SHA-256, package, version and architecture, runs every repository
+validation, records the provenance, and removes the `imports/local/` copy once it is in `pool/`. A Candidate build
+still needs the owner's approval in `packages/<id>/package.toml` ([ACCESS.md](../docs/ACCESS.md)).
