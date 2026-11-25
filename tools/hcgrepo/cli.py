@@ -473,6 +473,14 @@ def cmd_release(a, cfg) -> int:
 
 def cmd_compat(a, cfg) -> int:
     from . import compat
+    if a.public:
+        text = json.dumps(compat.public_registry(cfg, a.channel), indent=2, sort_keys=True) + "\n"
+        if a.out:
+            Path(a.out).write_text(text)
+            print(f"wrote {a.out} (preview only: publication needs [compatibility] publish = true)")
+        else:
+            print(text, end="")
+        return 0
     reg = compat.registry(cfg, a.channel)
     if a.json:
         print(json.dumps(reg, indent=2, sort_keys=True))
@@ -525,6 +533,23 @@ def cmd_inspect_artifact(a, cfg) -> int:
     for f in review.get("findings", []):
         print(f"  {'ERROR' if f['level'] == 'error' else 'warn '} [{f['code']}] {f['message']}")
     return 0 if review["state"] == "validated" else 1
+
+
+def cmd_passport(a, cfg) -> int:
+    from .passport import all_passports
+    ps = all_passports(cfg, a.package, a.version)
+    if not ps:
+        print("no matching release in repo-lock.json")
+        return 1
+    if a.out:
+        out = Path(a.out)
+        out.mkdir(parents=True, exist_ok=True)
+        for p in ps:
+            (out / f"{p['package']}_{p['version']}_{p['architecture']}.json").write_text(json.dumps(p, indent=2) + "\n")
+        print(f"wrote {len(ps)} passports to {out}")
+        return 0
+    print(json.dumps(ps if len(ps) > 1 else ps[0], indent=2))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -641,8 +666,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sp.add_parser("compat", help="compatibility registry: evidence-based status of every released version")
     p.add_argument("--channel", choices=["stable", "candidate"])
-    p.add_argument("--json", action="store_true")
+    p.add_argument("--json", action="store_true", help="full internal registry (includes evidence paths)")
+    p.add_argument("--public", action="store_true", help="the sanitized public compatibility.json (for review)")
+    p.add_argument("--out", help="with --public: write to this file")
     p.set_defaults(fn=cmd_compat)
+
+    p = sp.add_parser("passport", help="HCG Release Passport records (hcg.release-passport v1) from the repository's records")
+    p.add_argument("package", nargs="?")
+    p.add_argument("version", nargs="?")
+    p.add_argument("--out", help="write one JSON file per release into this directory")
+    p.set_defaults(fn=cmd_passport)
 
     p = sp.add_parser("keyring-deb", help="build the package that installs the public archive key on devices")
     p.add_argument("--layout", action="append", choices=["rootless", "rootful"], required=True)

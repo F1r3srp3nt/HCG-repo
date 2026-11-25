@@ -124,5 +124,55 @@ def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
             "packages": [out[k] for k in sorted(out)]}
 
 
+PUBLIC_FORMAT = "hcg.repo.compatibility"
+
+
+def public_registry(cfg: RepoConfig, channel: str | None = None) -> dict:
+    """What HCG Nexus, HCG Store, HCG Executable Maker, HCG System Tester and HCG Sentinel may read publicly.
+
+    Only facts a package manager or a depiction already shows publicly, plus the evidence states. Left out on
+    purpose: source repositories and commits (some sources are private), CI run IDs, toolchains and hosts, approval
+    records, evidence file paths and anything identifying a particular device (only model, iOS and jailbreak).
+    """
+    full = registry(cfg, channel)
+    lock = {(e["package"], e["version"], e["architecture"]): e for e in load_lock(cfg)["packages"]}
+    pkgs = []
+    for pkg in full["packages"]:
+        product = cfg.product_for_package(pkg["package"])
+        versions = []
+        for v in pkg["versions"]:
+            e = lock[(pkg["package"], v["version"], v["architecture"])]
+            meta = load_package_meta(cfg, pkg["package"])
+            access = meta.access_for(v["version"])
+            available = e.get("status", "published") == "published" and access == "public"
+            source = "candidate/" if v["channel"] == "candidate" else ""
+            tested_jb = sorted({t["jailbreak"] for t in v["device_evidence"] if t.get("jailbreak")})
+            versions.append({
+                "version": v["version"], "architecture": v["architecture"], "channel": v["channel"],
+                "status": v["status"], "available": available, "access": access,
+                "download": ({"source": f"{cfg.repo_subdir}/{source}",
+                              "filename": f"debs/{pkg['package']}_{v['version']}_{v['architecture']}.deb",
+                              "sha256": v["sha256"], "size": e["size"]} if available else None),
+                "requirements": {"layout": v["layout"], "minimum_ios": v["minimum_ios"], "maximum_ios": v["maximum_ios"],
+                                 "depends": v["depends"], "jailbreak": f"a {v['layout']} jailbreak (layout requirement, not a compatibility claim)"},
+                "tested_jailbreaks": tested_jb,
+                "levels": {k: lv["state"] for k, lv in v["levels"].items()},
+                "known_failures": [{k: f.get(k) for k in ("stage", "result", "device", "ios", "jailbreak", "date")}
+                                   for f in v["known_failures"]],
+                "label": v["label"] or None,
+            })
+        pkgs.append({"package": pkg["package"], "product": product.key if product else None,
+                     "name": product.name if product else None, "versions": versions,
+                     "last_verified_version": pkg["last_verified_version"],
+                     "last_launched_version": pkg["last_launched_version"]})
+    return {"format": PUBLIC_FORMAT, "formatVersion": 1, "statuses": list(STATUSES),
+            "levels": ["static_inspection", "maintainer_script_review", "script_free_lifecycle",
+                       "device_installation", "application_launch", "runtime_verification"],
+            "note": "script_free_lifecycle ran dpkg on a copy without maintainer scripts; it does not prove the scripts "
+                    "or the app work. Device levels come only from recorded device tests.",
+            "packages": pkgs}
+
+
 def write(cfg: RepoConfig, path: Path, channel: str | None = None) -> None:
-    Path(path).write_text(json.dumps(registry(cfg, channel), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    """The public file (<repo>/compatibility.json): written only when [compatibility] publish = true."""
+    Path(path).write_text(json.dumps(public_registry(cfg, channel), indent=2, sort_keys=True) + "\n", encoding="utf-8")

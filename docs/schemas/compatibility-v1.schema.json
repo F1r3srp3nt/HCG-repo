@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo.hakmicapitalgroup.com/schemas/compatibility-v1.schema.json",
+  "title": "HCG Repo public compatibility API, format version 1",
+  "description": "<repo>/compatibility.json (only when [compatibility] publish = true). For HCG Nexus, Store, Executable Maker, System Tester and Sentinel. Holds no source repositories, CI runs, toolchains, approvals, evidence paths or device identifiers.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "statuses",
+    "levels",
+    "packages"
+  ],
+  "properties": {
+    "format": {
+      "const": "hcg.repo.compatibility"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "levels": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "static_inspection",
+          "maintainer_script_review",
+          "script_free_lifecycle",
+          "device_installation",
+          "application_launch",
+          "runtime_verification"
+        ]
+      }
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "package",
+          "versions"
+        ],
+        "properties": {
+          "package": {
+            "type": "string"
+          },
+          "product": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_verified_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_launched_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "version",
+                "architecture",
+                "channel",
+                "status",
+                "available",
+                "access",
+                "requirements",
+                "levels",
+                "known_failures"
+              ],
+              "properties": {
+                "version": {
+                  "type": "string"
+                },
+                "architecture": {
+                  "type": "string"
+                },
+                "channel": {
+                  "enum": [
+                    "stable",
+                    "candidate"
+                  ]
+                },
+                "status": {
+                  "type": "string"
+                },
+                "available": {
+                  "type": "boolean",
+                  "description": "downloadable without sign-in from the given source"
+                },
+                "access": {
+                  "enum": [
+                    "public",
+                    "connect",
+                    "paid"
+                  ]
+                },
+                "download": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "requirements": {
+                  "type": "object",
+                  "properties": {
+                    "layout": {
+                      "type": "string"
+                    },
+                    "minimum_ios": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "maximum_ios": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "depends": {
+                      "type": "string"
+                    },
+                    "jailbreak": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "tested_jailbreaks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "levels": {
+                  "type": "object",
+                  "properties": {
+                    "static_inspection": {
+                      "enum": [
+                        "passed",
+                        "passed-with-warnings",
+                        "failed",
+                        "partial",
+                        "not-run",
+                        "not-recorded",
+                        "not-applicable"
+                      ]
+                    },
+                    "maintainer_script_review": {
+                      "enum": [
+                        "passed",
+                        "passed-with-warnings",
+                        "failed",
+                        "partial",
+                        "not-run",
+                        "not-recorded",
+                        "not-applicable"
+                      ]
+                    },
+                    "script_free_lifecycle": {
+                      "enum": [
+                        "passed",
+                        "passed-with-warnings",
+                        "failed",
+                        "partial",
+                        "not-run",
+                        "not-recorded",
+                        "not-applicable"
+                      ]
+                    },
+                    "device_installation": {
+                      "enum": [
+                        "passed",
+                        "passed-with-warnings",
+                        "failed",
+                        "partial",
+                        "not-run",
+                        "not-recorded",
+                        "not-applicable"
+                      ]
+                    },
+                    "application_launch": {
+                      "enum": [
+                        "passed",
+                        "passed-with-warnings",
+                        "failed",
+                        "partial",
+                        "not-run",
+                        "not-recorded",
+                        "not-applicable"
+                      ]
+                    },
+                    "runtime_verification": {
+                      "enum": [
+                        "passed",
+                        "passed-with-warnings",
+                        "failed",
+                        "partial",
+                        "not-run",
+                        "not-recorded",
+                        "not-applicable"
+                      ]
+                    }
+                  }
+                },
+                "known_failures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "stage": {
+                        "type": "string"
+                      },
+                      "result": {
+                        "type": "string"
+                      },
+                      "device": {
+                        "type": "string"
+                      },
+                      "ios": {
+                        "type": "string"
+                      },
+                      "jailbreak": {
+                        "type": "string"
+                      },
+                      "date": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "label": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -485,6 +485,48 @@ class CompatibilityTests(RepoTestCase):
         self.assertEqual(reg["packages"][0]["versions"][0]["status"], "Static validation passed")
 
 
+class PassportAndPublicCompatTests(RepoTestCase):
+    def setUp(self):
+        super().setUp()
+        self.write_meta(PKG, '[display]\nsummary = "x"\nknown_issues = "- Fails on iPhone 11 Pro Max."\n[release]\nchannel = "beta"\n'
+                             '[access]\nlevel = "connect"\nexception = "Owner approved 2026-11-25: free demo."\n'
+                             'exception_versions = ["1.0.0~b1"]\n'
+                             '[[versions."1.0.0~b1".device_tests]]\ndevice = "iPhone 11 Pro Max"\nios = "17.4"\n'
+                             'jailbreak = "Dopamine (rootless)"\ndate = "2026-11-25"\nstage = "runtime"\nresult = "fail"\n'
+                             'evidence = "docs/device-tests/private-audit.md"\n')
+        self.reload()
+        from hcgrepo.importer import import_deb
+        deb = app_deb(self.work, version="1.0.0~b1")
+        prov = {"source": "artifact-submission", "provider": "executable-maker-local",
+                "repository": "F1r3srp3nt/Private-Source", "commit": COMMIT, "toolchain": "Xcode 27.2 on owner-mac",
+                "approval": {"sha256": inspect_deb(deb).sha256, "by": "Owner", "record": "Approved.", "at": "2026-11-25T10:00:00Z"}}
+        self.assertEqual(import_deb(self.cfg, deb, prov, channel="candidate")[0], "imported")
+
+    def test_passport_holds_every_release_field(self):
+        from hcgrepo.passport import all_passports
+        p = all_passports(self.cfg, PKG, "1.0.0~b1")[0]
+        self.assertEqual((p["format"], p["formatVersion"]), ("hcg.release-passport", 1))
+        for k in ("product", "edition", "platform", "architecture", "version", "source", "build", "artifact",
+                  "validation", "device_evidence", "approvals", "distribution", "publication"):
+            self.assertIn(k, p)
+        self.assertEqual(p["build"]["provider"], "executable-maker-local")
+        self.assertIsNone(p["build"]["run_id"])
+        self.assertEqual(p["validation"]["levels"]["application_launch"]["state"], "failed")
+        self.assertEqual(p["compatibility_status"], "Known incompatible")
+        self.assertEqual({a["kind"] for a in p["approvals"]}, {"checksum-approval", "free-demo-approval"})
+        self.assertEqual(p["distribution"], {"channel": "candidate", "access": "public"})
+
+    def test_public_compatibility_hides_private_records(self):
+        from hcgrepo import compat
+        text = json.dumps(compat.public_registry(self.cfg))
+        for secret in ("Private-Source", COMMIT, "owner-mac", "private-audit", "Approved."):
+            self.assertNotIn(secret, text)
+        v = compat.public_registry(self.cfg)["packages"][0]["versions"][0]
+        self.assertTrue(v["available"])
+        self.assertEqual(v["known_failures"][0]["stage"], "runtime")
+        self.assertEqual(v["levels"]["application_launch"], "failed")
+
+
 class RequestKindTests(RepoTestCase):
     def write(self, body: str) -> Path:
         p = self.root / "imports"

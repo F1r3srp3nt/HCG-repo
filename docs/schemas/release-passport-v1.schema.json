@@ -1,0 +1,376 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo.hakmicapitalgroup.com/schemas/release-passport-v1.schema.json",
+  "title": "HCG Release Passport, format version 1",
+  "description": "One record per released build, interchangeable across HCG products (tools/hcgrepo/passport.py; docs/RELEASE_PASSPORT.md). Builds on hcg.repo.artifact-submission v1.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "product",
+    "edition",
+    "platform",
+    "architecture",
+    "package",
+    "version",
+    "source",
+    "build",
+    "artifact",
+    "validation",
+    "device_evidence",
+    "approvals",
+    "distribution",
+    "publication"
+  ],
+  "properties": {
+    "format": {
+      "const": "hcg.release-passport"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "product": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "store_slug": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "central_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "edition": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "examples": [
+        "ios-jailbreak-rootless",
+        "ios-jailbreak-rootful",
+        "ios-app-store",
+        "windows",
+        "macos"
+      ]
+    },
+    "architecture": {
+      "type": "string"
+    },
+    "package": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "toolchain": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "built_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "artifact": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": [
+        "filename",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "type": "integer"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "levels": {
+          "type": "object",
+          "required": [
+            "static_inspection",
+            "maintainer_script_review",
+            "script_free_lifecycle",
+            "device_installation",
+            "application_launch",
+            "runtime_verification"
+          ],
+          "properties": {
+            "static_inspection": {
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                }
+              }
+            },
+            "maintainer_script_review": {
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                }
+              }
+            },
+            "script_free_lifecycle": {
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                }
+              }
+            },
+            "device_installation": {
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                }
+              }
+            },
+            "application_launch": {
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                }
+              }
+            },
+            "runtime_verification": {
+              "type": "object",
+              "required": [
+                "state"
+              ],
+              "properties": {
+                "state": {
+                  "enum": [
+                    "passed",
+                    "passed-with-warnings",
+                    "failed",
+                    "partial",
+                    "not-run",
+                    "not-recorded",
+                    "not-applicable"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "device_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "ios": {
+            "type": "string"
+          },
+          "jailbreak": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "install",
+              "runtime",
+              "verification"
+            ]
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "partial"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "compatibility_status": {
+      "type": "string"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "enum": [
+            "stable",
+            "candidate"
+          ]
+        },
+        "access": {
+          "enum": [
+            "public",
+            "connect",
+            "paid"
+          ]
+        }
+      }
+    },
+    "publication": {
+      "type": "object",
+      "properties": {
+        "record_status": {
+          "enum": [
+            "published",
+            "protected",
+            "withdrawn"
+          ]
+        },
+        "in_index_builds": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
