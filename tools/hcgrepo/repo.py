@@ -90,6 +90,13 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
             if f.is_file() and f.suffix in (".deb", ".ipa", ".partial"):
                 report.error("artifact-outside-pool", f"{f.relative_to(cfg.root)}: package files never belong in submissions/")
     _check_staged_local_files(cfg, report)
+    # The public archive key directory must never hold secret key material (docs/SIGNING.md).
+    kd = cfg.root / "keys"
+    if kd.is_dir():
+        for f in sorted(kd.rglob("*")):
+            if f.is_file() and b"PRIVATE KEY" in f.read_bytes():
+                report.error("secret-key-committed", f"{f.relative_to(cfg.root)} contains private key material; "
+                                                     "remove it from Git history and rotate the key")
     lock = lock if lock is not None else load_lock(cfg)
     # Channels: stable (/repo/) or candidate (/repo/candidate/, testing). The candidate source is public and has no
     # payment provider, so it may only carry public packages; protected entries stay stable-only (and unindexed).

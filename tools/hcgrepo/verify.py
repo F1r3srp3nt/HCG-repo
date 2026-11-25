@@ -290,14 +290,16 @@ def _walk(f: "Fetcher", r: Report, res: "VerifyResult", public_base: str, repo_p
                 Path(tmp, "Release").write_bytes(release_raw)
                 Path(tmp, "Release.gpg").write_bytes(gpg_data)
                 Path(tmp, "InRelease").write_bytes(inrel if code_in == 200 else b"")
-                ok, detail = verify_signatures(Path(tmp), pubkey)
+                ok, detail = verify_signatures(Path(tmp), pubkey, cfg.signing_fingerprint if cfg else "")
             res.signature_verified = ok
             if not ok:
                 r.error("signature-invalid", f"signature check failed: {detail}")
         else:
             r.warn("signature-unverified", "Release.gpg is present but no public key was given; signature NOT verified")
-    elif require_signature:
-        r.error("signature-missing", "Release.gpg is missing but a signature is required")
+    elif require_signature or (cfg is not None and cfg.signing_fingerprint):
+        # Fail closed: once production signing is configured, an unsigned source is never accepted.
+        r.error("signature-missing", "Release.gpg is missing but a signature is required"
+                + (" (config/repo.toml [signing] fingerprint is set)" if cfg is not None and cfg.signing_fingerprint else ""))
     if code_in == 200 and not res.signed:
         r.error("signature-inrelease-only", "InRelease without Release.gpg: Sileo only reads Release.gpg")
 

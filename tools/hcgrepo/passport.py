@@ -54,6 +54,16 @@ def _approvals(cfg: RepoConfig, entry: dict, meta, prov: dict) -> list[dict]:
     return out
 
 
+def _code_signing(prov: dict) -> dict:
+    """Signatures of the Mach-O code inside the package (ldid or Apple), as HCG Repo's inspection read them."""
+    bins = (prov.get("inspection") or {}).get("binaries") or []
+    claimed = prov.get("signing_claimed") or {}
+    return {"scope": "application code inside the package (Mach-O); independent of repository signing",
+            "method_claimed": claimed.get("method"),
+            "binaries": len(bins), "all_signed": all(b.get("signed") for b in bins) if bins else None,
+            "entitlements": {b["path"]: sorted((b.get("entitlements") or {}).keys()) for b in bins if b.get("entitlements")}}
+
+
 def passport(cfg: RepoConfig, entry: dict) -> dict:
     prov_path = cfg.root / (entry["filename"] + ".provenance.json")
     prov = json.loads(prov_path.read_text(encoding="utf-8")) if prov_path.is_file() else {}
@@ -86,6 +96,16 @@ def passport(cfg: RepoConfig, entry: dict) -> dict:
         "compatibility_status": derive_status(entry, prov, tests),
         "approvals": _approvals(cfg, entry, meta, prov),
         "distribution": {"channel": channel, "access": meta.access_for(entry["version"])},
+        # Two different signatures, never to be confused (docs/SIGNING.md):
+        "repository_signing": {
+            "scope": "repository metadata (Release, InRelease, Release.gpg) of the channel that serves this package; "
+                     "not the application",
+            "configured": bool(cfg.signing_fingerprint),
+            "fingerprint": cfg.signing_fingerprint or None,
+            "status": ("signed at every publication; verified per deploy by verify-deployed and bin/hcgrepo monitor"
+                       if cfg.signing_fingerprint else "unsigned: no production repository signing key configured yet"),
+        },
+        "code_signing": _code_signing(prov),
         "publication": {"record_status": status, "in_index_builds": status == "published",
                         "deployed": "not checked here: the Publish workflow deploys; bin/hcgrepo verify checks the live source",
                         "imported_at": entry.get("imported_at"), "withdrawn_at": entry.get("withdrawn_at"),

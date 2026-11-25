@@ -24,6 +24,8 @@ bin/hcgrepo passport --out passports/                  # one JSON file per relea
 | `compatibility_status` | the registry status | `compat.py` |
 | `approvals[]` | checksum approval, free-demo approval, Release Manager history | provenance, `[access]`, `submissions/<id>/review.json` |
 | `distribution` {channel, access} | Candidate or Stable; public, connect or paid | the lock, `[access]` |
+| `repository_signing` {scope, configured, fingerprint, status} | **repository metadata** signing (OpenPGP over `Release`) of the channel serving this release; the fingerprint users compare | `config/repo.toml [signing]`; verified per deploy ([SIGNING.md](SIGNING.md)) |
+| `code_signing` {scope, method_claimed, binaries, all_signed, entitlements} | **application code** signing of the Mach-O inside the package (ldid or Apple); unrelated to the repository key | import inspection; the manifest's `signing` claim |
 | `publication` {record_status, in_index_builds, deployed} | published, protected or withdrawn. `deployed` is checked with `bin/hcgrepo verify`, never assumed | the lock |
 
 Passports are derived and are not stored: regenerating one from the same records gives the same result. Other

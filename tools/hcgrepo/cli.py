@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import sys
 import tempfile
@@ -567,6 +568,61 @@ def cmd_admin(a, cfg) -> int:
     return 0
 
 
+def cmd_guard(a, cfg) -> int:
+    """Publication safeguards around a deploy (docs/SIGNING.md, Publication safeguards)."""
+    from . import guard
+    r = Report("publication guard")
+    if a.deployed:
+        man = json.loads(Path(a.deployed).read_text())
+        r.extend(guard.check_deployed(cfg, man, _base(a, cfg), a.fetch_base))
+        return _print_report(r, f"{len(man['files'])} live metadata files are byte-identical to the build")
+    site = Path(a.site)
+    r.extend(guard.check_site(cfg, site))
+    if a.against_live:
+        r.extend(guard.compare_live(cfg, site, _base(a, cfg), a.fetch_base, allow_key_change=a.allow_key_change))
+    if a.manifest_out:
+        Path(a.manifest_out).write_text(json.dumps(guard.manifest(cfg, site), indent=2) + "\n")
+    return _print_report(r, "exact checksums, completeness" + (" and live comparison" if a.against_live else "") + " passed")
+
+
+def cmd_monitor(a, cfg) -> int:
+    from . import guard
+    out = guard.monitor(cfg, _base(a, cfg), a.fetch_base)
+    if a.json:
+        print(json.dumps(out, indent=2))
+    else:
+        for c in out["checks"]:
+            print(f"{c['status'].upper():<8} {c['id']:<28} {c['detail']}")
+        print(f"overall: {out['status']} (read-only; nothing was changed)")
+    return {"ok": 0, "warning": 0}.get(out["status"], 1) if not a.strict else (0 if out["status"] == "ok" else 1)
+
+
+def cmd_signing_status(a, cfg) -> int:
+    from .sign import SignError, check_key, key_status
+    pub = cfg.root / cfg.public_key_file
+    print(f"Configured fingerprint : {cfg.signing_fingerprint or '(none: production signing not configured)'}")
+    print(f"Signing required       : {cfg.signing_required or bool(cfg.signing_fingerprint)}"
+          + ("  (fail-closed: a fingerprint is configured)" if cfg.signing_fingerprint else ""))
+    if not pub.is_file():
+        print(f"Public key             : {cfg.public_key_file} is not committed")
+        return 0 if not cfg.signing_fingerprint else 1
+    try:
+        st = key_status(pub)
+    except SignError as exc:
+        print(f"Public key             : unreadable: {exc}")
+        return 1
+    print(f"Public key primary     : {st['primary_fpr']}  {', '.join(st['uids'])}")
+    for k in st["keys"]:
+        exp = datetime.fromtimestamp(k["expires"], tz=timezone.utc).date().isoformat() if k["expires"] else "never"
+        print(f"  {k['kind']:<8} {k['fpr']}  caps={k['capabilities']} expires={exp}"
+              + ("  REVOKED" if k["revoked"] else "") + ("  EXPIRED" if k["expired"] else ""))
+    print(f"Days until signing ends: {st['days_until_signing_expiry'] if st['days_until_signing_expiry'] is not None else 'no expiry'}")
+    probs = check_key(pub, cfg.signing_fingerprint, warn_days=a.warn_days)
+    for lvl, code, msg in probs:
+        print(f"  {'ERROR' if lvl == 'error' else 'warn '} [{code}] {msg}")
+    return 1 if any(l == "error" for l, _, _ in probs) else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="hcgrepo", description=__doc__)
     ap.add_argument("--version", action="version", version=f"hcgrepo {__version__}")
@@ -685,6 +741,27 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--public", action="store_true", help="the sanitized public compatibility.json (for review)")
     p.add_argument("--out", help="with --public: write to this file")
     p.set_defaults(fn=cmd_compat)
+
+    p = sp.add_parser("guard", help="publication safeguards: exact checksums, completeness, live comparison, deployed bytes")
+    target_args(p)
+    p.add_argument("--site", default="_site", help="the built site to check")
+    p.add_argument("--against-live", action="store_true", help="also compare with the live repository at the target")
+    p.add_argument("--fetch-base", help="fetch from here instead of the public base (local testing)")
+    p.add_argument("--allow-key-change", action="store_true", help="acknowledge a planned signing-key rotation")
+    p.add_argument("--manifest-out", help="write the SHA-256 manifest of the built metadata files")
+    p.add_argument("--deployed", help="check that the live metadata matches this manifest (after deploy)")
+    p.set_defaults(fn=cmd_guard)
+
+    p = sp.add_parser("monitor", help="read-only health check of the live repository (HCG Sentinel contract)")
+    target_args(p)
+    p.add_argument("--fetch-base")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
+    p.set_defaults(fn=cmd_monitor)
+
+    p = sp.add_parser("signing-status", help="configured fingerprint, committed public key, subkeys, expiry")
+    p.add_argument("--warn-days", type=int, default=60)
+    p.set_defaults(fn=cmd_signing_status)
 
     p = sp.add_parser("admin", help="local administration dashboard over the Release Manager (127.0.0.1 only)")
     p.add_argument("--port", type=int, default=8765)

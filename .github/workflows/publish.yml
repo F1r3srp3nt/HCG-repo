@@ -1,7 +1,9 @@
 # Manual publication to GitHub Pages. Runs only when started by hand from the main branch.
 #
 # One-time setup (repository Settings → Pages): Source = "GitHub Actions".
-# Optional signing: see docs/SIGNING.md (environment "repo-signing", secret HCG_REPO_GPG_PRIVATE_KEY).
+# Signing: docs/SIGNING.md (environment "repo-signing", secret HCG_REPO_GPG_PRIVATE_KEY). Fail-closed: once
+# config/repo.toml [signing] fingerprint is set, a run without the key, with another key, or with a signature that
+# does not verify stops before deploy. There is no unsigned fallback.
 name: Publish repository
 
 on:
@@ -14,6 +16,10 @@ on:
         default: production
       require_signature:
         description: "Fail unless Release is signed and the signature verifies"
+        type: boolean
+        default: false
+      allow_key_change:
+        description: "Acknowledge a planned signing-key rotation (docs/SIGNING.md, Rotation). Leave off otherwise."
         type: boolean
         default: false
       diagnostics:
@@ -41,6 +47,7 @@ jobs:
       contents: read
     outputs:
       signed: ${{ steps.build.outputs.signed }}
+      manifest: ${{ steps.guard.outputs.manifest }}
     steps:
       - name: Confirm
         env:
@@ -59,17 +66,20 @@ jobs:
           bin/hcgrepo validate
           bin/hcgrepo smoke
 
-      - name: Import signing key (only if the secret exists)
+      - name: Import signing key (fail-closed once a fingerprint is configured)
         id: key
         env:
           KEY: ${{ secrets.HCG_REPO_GPG_PRIVATE_KEY }}
         run: |
-          if [ -z "$KEY" ]; then echo "No signing key configured; building unsigned."; exit 0; fi
+          fpr=$(python3 -c 'import tomllib;print(tomllib.load(open("config/repo.toml","rb"))["signing"]["fingerprint"].replace(" ",""))')
+          if [ -z "$KEY" ] && [ -n "$fpr" ]; then
+            echo "::error::config/repo.toml sets signing fingerprint $fpr but the HCG_REPO_GPG_PRIVATE_KEY secret is missing; refusing to publish unsigned"; exit 1
+          fi
+          if [ -z "$KEY" ]; then echo "No production signing key configured (empty fingerprint): this publication is unsigned, as before."; exit 0; fi
+          [ -n "$fpr" ] || { echo "::error::a signing key secret exists but config/repo.toml [signing] fingerprint is empty; refusing to sign with an unidentified key"; exit 1; }
           export GNUPGHOME="$RUNNER_TEMP/gnupg"
           install -d -m 700 "$GNUPGHOME"
           printf '%s\n' "$KEY" | gpg --batch --quiet --import >/dev/null 2>&1
-          fpr=$(python3 -c 'import tomllib;print(tomllib.load(open("config/repo.toml","rb"))["signing"]["fingerprint"].replace(" ",""))')
-          [ -n "$fpr" ] || { echo "::error::config/repo.toml [signing] fingerprint is empty"; exit 1; }
           gpg --batch --list-secret-keys "$fpr" >/dev/null 2>&1 || { echo "::error::secret key for $fpr was not imported"; exit 1; }
           echo "gnupghome=$GNUPGHOME" >> "$GITHUB_OUTPUT"
           echo "fpr=$fpr" >> "$GITHUB_OUTPUT"
@@ -90,6 +100,17 @@ jobs:
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build "${args[@]}"
           python3 -c 'import json;d=json.load(open("_site/build-info.json"));print("signed=" + str(d["signature_verified"]).lower())' >> "$GITHUB_OUTPUT"
           find _site -type f | sort
+
+      - name: Publication guard (exact checksums, completeness, no silent change against the live repository)
+        id: guard
+        env:
+          TARGET: ${{ inputs.target }}
+          ALLOW_KEY_CHANGE: ${{ inputs.allow_key_change }}
+        run: |
+          args=(--site _site --target "$TARGET" --against-live --manifest-out "$RUNNER_TEMP/manifest.json")
+          [ "$ALLOW_KEY_CHANGE" = "true" ] && args+=(--allow-key-change)
+          bin/hcgrepo guard "${args[@]}"
+          echo "manifest=$(base64 -w0 "$RUNNER_TEMP/manifest.json")" >> "$GITHUB_OUTPUT"
 
       - name: Remove key material
         if: always()
@@ -128,6 +149,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           SIGNED: ${{ needs.build.outputs.signed }}
+          MANIFEST: ${{ needs.build.outputs.manifest }}
         run: |
           base=$(python3 -c "import sys;sys.path.insert(0,'tools');from hcgrepo.config import load_config;print(load_config().base_url('$TARGET'))")
           for i in $(seq 1 30); do
@@ -141,3 +163,6 @@ jobs:
           bin/hcgrepo verify "${args[@]}"
           # The candidate (testing) source at <source>/candidate/ is part of every publication.
           bin/hcgrepo verify "${args[@]}" --channel candidate --source-only
+          # The live metadata (both channels, including signatures) must be byte-identical to what this run built.
+          printf '%s' "$MANIFEST" | base64 -d > manifest.json
+          bin/hcgrepo guard --deployed manifest.json --target "$TARGET"

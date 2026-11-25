@@ -72,7 +72,18 @@ class SigningTests(RepoTestCase):
         with self.assertRaises(BuildError):
             build(self.cfg, PAGES, self.tmp / "site", require_signature=True)
 
+    def test_configured_fingerprint_never_builds_unsigned(self):
+        # Fail closed: a configured production fingerprint without a key refuses to build; no unsigned fallback.
+        with self.assertRaisesRegex(BuildError, "refusing to build unsigned"):
+            build(self.cfg, PAGES, self.tmp / "site")
+        with self.assertRaisesRegex(BuildError, "refusing to build unsigned"):
+            build(self.cfg, PAGES, self.tmp / "site", require_signature=False)
+
     def test_unsigned_build_reports_unsigned(self):
+        # Today's production configuration: no fingerprint, so the build is unsigned and says so.
+        p = self.root / "config" / "repo.toml"
+        p.write_text(p.read_text().replace(f'fingerprint = "{self.fpr}"', 'fingerprint = ""'))
+        self.reload()
         res = build(self.cfg, PAGES, self.tmp / "site")
         self.assertFalse(res.signed)
         self.assertFalse((res.out_dir / "repo" / "Release.gpg").exists())

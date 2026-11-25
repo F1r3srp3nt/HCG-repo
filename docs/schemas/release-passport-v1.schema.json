@@ -20,7 +20,9 @@
     "device_evidence",
     "approvals",
     "distribution",
-    "publication"
+    "publication",
+    "repository_signing",
+    "code_signing"
   ],
   "properties": {
     "format": {
@@ -369,6 +371,55 @@
         },
         "in_index_builds": {
           "type": "boolean"
+        }
+      }
+    },
+    "repository_signing": {
+      "type": "object",
+      "description": "OpenPGP signing of the repository metadata (Release/InRelease/Release.gpg) that serves this package. Not application code signing.",
+      "properties": {
+        "scope": {
+          "type": "string"
+        },
+        "configured": {
+          "type": "boolean"
+        },
+        "fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9A-F]{40}$"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "code_signing": {
+      "type": "object",
+      "description": "Signatures of the Mach-O code inside the package (ldid or Apple). Not repository signing.",
+      "properties": {
+        "scope": {
+          "type": "string"
+        },
+        "method_claimed": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "binaries": {
+          "type": "integer"
+        },
+        "all_signed": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "entitlements": {
+          "type": "object"
         }
       }
     }

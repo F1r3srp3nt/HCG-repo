@@ -12,3 +12,8 @@ gnupg/
 
 # Submitted packages stay in the private incoming store (docs/DISTRIBUTION_V2.md).
 submissions/**/*.deb
+# Signing material from tools/signing/founder-keygen.sh must never be committed (docs/SIGNING.md).
+*signing-subkey*.asc
+*secret-backup*
+*.rev
+openpgp-revocs.d/

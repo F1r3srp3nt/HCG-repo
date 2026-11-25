@@ -1197,13 +1197,17 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
         res = BuildResult(out_dir=out_dir, base_url=base_url, repo_url=repo_url, packages=pkgs, report=report)
         key = sign_key or os.environ.get("HCG_REPO_SIGNING_KEY") or ""
         must_sign = cfg.signing_required if require_signature is None else require_signature
+        # Fail closed: once a production fingerprint is configured, unsigned output is never produced, whatever
+        # the workflow input says. There is no silent fallback to unsigned publication.
+        must_sign = must_sign or bool(cfg.signing_fingerprint)
         if key:
             sr = signmod.sign_release(repo_dir, key, cfg.root / cfg.public_key_file, cfg.signing_fingerprint)
             res.signed, res.signature_verified, res.signature_detail = sr.signed, sr.verified, sr.detail
             if not sr.verified:
                 raise BuildError(f"signature verification failed: {sr.detail}")
         elif must_sign:
-            raise BuildError("signing is required (config/repo.toml [signing] required = true) but no key was given")
+            raise BuildError("signing is required (config/repo.toml [signing] required = true, a configured fingerprint, "
+                             "or --require-signature) but no signing key was given; refusing to build unsigned output")
 
         res.groups = groups
         # The candidate (testing) channel: an independent source built into <source>/candidate/ by every

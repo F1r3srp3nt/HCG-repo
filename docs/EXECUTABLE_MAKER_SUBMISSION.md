@@ -39,7 +39,7 @@ Schema: [schemas/artifact-submission-v1.schema.json](schemas/artifact-submission
 | Build provider | `build.provider` | `executable-maker-local` for a build on the developer's machine; `github-actions` / `github-actions-private` only with `build.runId`, `runRepository`, `artifactName` (refused for every other provider) |
 | Toolchain | `build.toolchain`, `build.builtAt` | e.g. `"Xcode 27.2 (27C5000), HCG Executable Maker 0.5.0"`; ISO 8601 time |
 | Validation evidence | `validation.tool`, `validation.checks[] {check, status, detail}` | kept verbatim as a claim; HCG Repo validates independently |
-| Signing and entitlements | `signing.method` (`ldid`, `apple-development`, `apple-distribution`, `unsigned`), `signing.signedFiles[]`, `signing.entitlements{ "<path in package>": {…} }` | every listed file must be a signed Mach-O; every entitlements dictionary must equal what the binary carries |
+| Code signing and entitlements (application code, **not** HCG Repo's repository signing) | `signing.method` (`ldid`, `apple-development`, `apple-distribution`, `unsigned`), `signing.signedFiles[]`, `signing.entitlements{ "<path in package>": {…} }` | every listed file must be a signed Mach-O; every entitlements dictionary must equal what the binary carries |
 | Maintainer scripts | `maintainerScripts.declared[]` | exactly the scripts in the package |
 | Intended channel | `channel` = `"candidate"` | the only accepted value |
 
