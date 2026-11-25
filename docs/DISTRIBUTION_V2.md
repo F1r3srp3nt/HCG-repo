@@ -77,8 +77,11 @@ dependencies and maintainer scripts. A mismatch refuses the submission whatever 
 `provenance.json`, `SHA256SUMS` and `control.txt` into a v1 manifest. It copies only facts the handoff records:
 a handoff with no `ci_run_id` becomes `executable-maker-local` with no run ID. The handoff does not record
 maintainer scripts or named jailbreaks, so those stay undeclared (a warning) and HCG Repo reads them from the package.
-Coordination for Executable Maker: emitting a native `submission.json` (this format) next to `provenance.json`, with
-`maintainerScripts.declared` and tested jailbreaks, removes those warnings. No Maker change is required to use v2.
+Executable Maker now writes a native `submission.json` (this format) next to `provenance.json`, declaring the
+maintainer scripts it packaged; it names no jailbreaks until a device test records one. When a handoff has one,
+`release submit --handoff` uses it, after checking that it agrees with the handoff's `provenance.json` on package,
+version, architecture, file, SHA-256, size, source repository and commit, provider and run ID; any disagreement
+refuses the handoff. Without one, the adapter above is used as before.
 
 ## 3. Candidate Release Manager
 

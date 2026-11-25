@@ -268,6 +268,32 @@ def from_unleashify_handoff(folder: Path) -> tuple[dict, Path]:
     return m, deb
 
 
+NATIVE_MANIFEST = "submission.json"
+# Facts a native manifest must state exactly as the handoff's own provenance.json does.
+CROSS_CHECKED = ("package.identifier", "package.version", "package.architecture", "artifact.filename", "artifact.sha256",
+                 "artifact.size", "source.repository", "source.commit", "build.provider", "build.runId")
+
+
+def from_handoff(folder: Path) -> tuple[dict, Path, str]:
+    """The submission manifest for an Unleashify handoff folder: its native `submission.json` when it has one, else the adapter.
+
+    A native manifest (HCG Executable Maker writes one, with the maintainer scripts it packaged) must agree with the
+    adapter's reading of the same handoff's provenance.json on every identity fact, or the handoff is refused. Either
+    way every claim is still checked against the package itself. Returns (manifest, deb_path, via).
+    """
+    folder = Path(folder)
+    adapted, deb = from_unleashify_handoff(folder)
+    native = folder / NATIVE_MANIFEST
+    if not native.is_file():
+        return adapted, deb, "unleashify-handoff"
+    m = load_manifest(native)
+    diffs = [f"{k}: submission.json says {_get(m, k)!r}, provenance.json {_get(adapted, k)!r}"
+             for k in CROSS_CHECKED if _get(m, k) != _get(adapted, k)]
+    if diffs:
+        raise SubmissionError(f"{folder.name}: {NATIVE_MANIFEST} disagrees with the handoff: " + "; ".join(diffs))
+    return m, folder / m["artifact"]["filename"], "unleashify-handoff (native submission.json)"
+
+
 # ---------------------------------------------------------------------------- independent checks
 
 

@@ -288,6 +288,35 @@ class ReleaseManagerTests(RepoTestCase):
         self.assertEqual(load_package_meta(self.reload(), PKG).access_for("0.1.0~beta1"), "public")
         self.assertEqual(load_package_meta(self.cfg, PKG).access_for("0.1.0~beta2"), "connect")
 
+    def native_manifest(self, **over) -> Path:
+        m, _ = from_unleashify_handoff(self.handoff)
+        m["maintainerScripts"] = {"declared": sorted(inspect_deb(self.deb).scripts)}
+        for k, v in over.items():
+            m[k] = v
+        (self.handoff / "submission.json").write_text(json.dumps(m))
+        return self.handoff / "submission.json"
+
+    def test_a_native_manifest_in_the_handoff_is_used_and_declares_the_scripts(self):
+        self.native_manifest()
+        review = self.submit(lifecycle=False)
+        self.assertEqual(review["state"], "validated", json.dumps(review["findings"], indent=1))
+        self.assertNotIn("submission-scripts-undeclared", [f["code"] for f in review["findings"]])
+        self.assertEqual(review["history"][-1]["via"], "unleashify-handoff (native submission.json)")
+
+    def test_a_native_manifest_that_disagrees_with_the_handoff_is_refused(self):
+        m, _ = from_unleashify_handoff(self.handoff)
+        self.native_manifest(artifact={**m["artifact"], "sha256": "0" * 64})
+        with self.assertRaisesRegex(SubmissionError, "disagrees with the handoff"):
+            self.submit(lifecycle=False)
+        self.native_manifest(source={**m["source"], "commit": "c" * 40})
+        with self.assertRaisesRegex(SubmissionError, "source.commit"):
+            self.submit(lifecycle=False)
+
+    def test_without_a_native_manifest_the_adapter_is_used(self):
+        review = self.submit(lifecycle=False)
+        self.assertIn("submission-scripts-undeclared", [f["code"] for f in review["findings"]])
+        self.assertEqual(review["history"][-1]["via"], "unleashify-handoff")
+
     def test_validation_is_independent_of_the_providers_claims(self):
         prov = json.loads((self.handoff / "provenance.json").read_text())
         prov["app"]["minimum_os"] = "14.0"  # the package's Info.plist says 15.0

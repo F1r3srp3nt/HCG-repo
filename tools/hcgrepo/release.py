@@ -27,7 +27,7 @@ from .config import Report, RepoConfig, load_lock, load_package_meta
 from .debinspect import InspectError, hash_file, inspect_deb, validate_deb
 from .deepcheck import deep_validate
 from .importer import _now, import_deb, set_channel
-from .submission import (GITHUB_PROVIDERS, PROVIDERS, from_unleashify_handoff, load_manifest,
+from .submission import (GITHUB_PROVIDERS, PROVIDERS, from_handoff, load_manifest,
                          submission_id, verify_against_deb)
 
 INCOMING_ENV = "HCG_REPO_INCOMING"
@@ -180,8 +180,9 @@ def review_artifact(cfg: RepoConfig, m: dict, deb: Path, lifecycle: bool = True)
 def submit(cfg: RepoConfig, store: Path, handoff: Path | None = None, deb: Path | None = None,
            manifest: Path | None = None, lifecycle: bool = True) -> dict:
     _check_store_location(cfg, store)
+    via = "manifest"
     if handoff:
-        m, deb_path = from_unleashify_handoff(handoff)
+        m, deb_path, via = from_handoff(handoff)
     elif deb and manifest:
         m, deb_path = load_manifest(manifest), Path(deb)
     else:
@@ -212,7 +213,7 @@ def submit(cfg: RepoConfig, store: Path, handoff: Path | None = None, deb: Path 
             if (Path(handoff) / name).is_file():
                 shutil.copyfile(Path(handoff) / name, d / "handoff" / name)
     review = review_artifact(cfg, m, d / "artifact.deb", lifecycle=lifecycle)
-    _event(review, "submitted", via="unleashify-handoff" if handoff else "manifest")
+    _event(review, "submitted", via=via)
     _write_json(d / "submission.json", m)
     _write_json(d / "review.json", review)
     return review
