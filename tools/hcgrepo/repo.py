@@ -5,6 +5,7 @@ from __future__ import annotations
 import bz2
 import gzip
 import hashlib
+import json
 import io
 import lzma
 import os
@@ -88,6 +89,7 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
         for f in sorted(d.rglob("*")):
             if f.is_file() and f.suffix in (".deb", ".ipa", ".partial"):
                 report.error("artifact-outside-pool", f"{f.relative_to(cfg.root)}: package files never belong in submissions/")
+    _check_staged_local_files(cfg, report)
     lock = lock if lock is not None else load_lock(cfg)
     # Channels: stable (/repo/) or candidate (/repo/candidate/, testing). The candidate source is public and has no
     # payment provider, so it may only carry public packages; protected entries stay stable-only (and unindexed).
@@ -436,3 +438,40 @@ def lock_at_ref(root: Path, ref: str) -> dict:
         raise RuntimeError(f"git show {ref}:repo-lock.json failed: {p.stderr.strip()}")
     import json
     return json.loads(p.stdout)
+
+
+def _check_staged_local_files(cfg: RepoConfig, report: Report) -> None:
+    """A package file in imports/ must be an owner-approved local-file: under imports/local/, named by a local-file
+    request with its exact SHA-256, and approved in that request's submissions/<id>/review.json. Nothing unapproved
+    is ever committed."""
+    import hashlib
+    import tomllib
+    d = cfg.root / "imports"
+    if not d.is_dir():
+        return
+    wanted: dict[str, tuple[str, str]] = {}
+    for req in sorted(d.glob("*.toml")):
+        try:
+            src = tomllib.loads(req.read_text(encoding="utf-8")).get("source", {})
+        except (OSError, tomllib.TOMLDecodeError):
+            continue
+        if src.get("kind") == "local-file" and src.get("path"):
+            wanted[src["path"]] = (str(src.get("sha256", "")).lower(), str(src.get("submission", "")))
+    for f in sorted(d.rglob("*")):
+        if not f.is_file() or f.suffix not in (".deb", ".ipa", ".partial"):
+            continue
+        rel = f.relative_to(cfg.root).as_posix()
+        if rel not in wanted:
+            report.error("artifact-unapproved", f"{rel}: a package file in imports/ must be named by a local-file request")
+            continue
+        sha, sub = wanted[rel]
+        actual = hashlib.sha256(f.read_bytes()).hexdigest()
+        if actual != sha:
+            report.error("artifact-unapproved", f"{rel}: sha256 {actual} is not the request's {sha}")
+            continue
+        try:
+            approval = json.loads((cfg.root / sub).parent.joinpath("review.json").read_text(encoding="utf-8")).get("approval") or {}
+        except (OSError, ValueError):
+            approval = {}
+        if approval.get("sha256") != sha or not approval.get("record"):
+            report.error("artifact-unapproved", f"{rel}: no owner approval of sha256 {sha} in {Path(sub).parent}/review.json")
