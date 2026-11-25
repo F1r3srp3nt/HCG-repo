@@ -1,0 +1,20 @@
+# HCG Mail Unleashed 0.1.0~beta1, rootless (bundle ID com.hakmicapitalgroup.hcgmail.unleashed, iOS 16.0+): HCG Mail's iOS
+# app built from source (Release, ios-arm64, Mono AOT, Xcode 27.2) as its own edition, with its own data and Keychain.
+# App source: F1r3srp3nt/HCG-Mail commit b0c6fee17c756a1dffff62e77574ad60b22415be. Built, packaged with HCG Executable Maker's
+# rootless packager (pinned 595e989, twice, byte-identical) and validated by HCG-Mail's Unleashed workflow in the run below.
+# NOT YET IMPORTABLE: no owner approval of this version as a free public Candidate demo is recorded
+# (packages/com.hakmicapitalgroup.hcgmail.unleashed/package.toml [access] exception is commented out).
+
+[request]
+package = "com.hakmicapitalgroup.hcgmail.unleashed"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Mail"
+run_id = 45580748239
+commit = "b0c6fee17c756a1dffff62e77574ad60b22415be"
+artifact = "hcg-mail-unleashed-deb"
+sha256 = "ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a"
