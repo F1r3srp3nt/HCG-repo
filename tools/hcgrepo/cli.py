@@ -415,8 +415,14 @@ def cmd_release(a, cfg) -> int:
                                deb=Path(a.deb) if a.deb else None, manifest=Path(a.manifest) if a.manifest else None,
                                lifecycle=not a.no_lifecycle)
             m, review, _ = rm.load_review(store, review["submission"])
+            if a.result_json:
+                Path(a.result_json).write_text(json.dumps(rm.submission_result(cfg, m, review), indent=2) + "\n")
             print(rm.render_review(m, review))
             return 0 if review["state"] == "validated" else 1
+        if a.action == "status":
+            m, review, _ = rm.load_review(store, a.id)
+            print(json.dumps(rm.submission_result(cfg, m, review), indent=2))
+            return 0
         if a.action == "incoming":
             out = rm.list_incoming(cfg, store)
             if a.json:
@@ -476,6 +482,39 @@ def cmd_compat(a, cfg) -> int:
                 print(f"      {t['stage'] or 'runtime'} {t['result']}: {t['device']}, iOS {t['ios']}, {t['jailbreak']} "
                       f"({t['date']}; {t['evidence']})")
     return 0
+
+
+def cmd_inspect_artifact(a, cfg) -> int:
+    """Download one pinned GitHub Actions artifact and review it: exact SHA-256, size and every machine evidence level,
+    for the owner's decision before an import request is written. Stores and commits nothing."""
+    from . import levels as lv
+    from . import release as rm
+    from .importer import GitHub, ImportError_, fetch_workflow_artifact, temp_workdir
+    with temp_workdir() as tmp:
+        try:
+            path, prov = fetch_workflow_artifact(GitHub(), a.repo, a.run_id, a.commit, a.artifact, a.member, Path(tmp), a.sha256)
+        except ImportError_ as exc:
+            print(f"REFUSED: {exc}")
+            return 1
+        review = rm.inspect_artifact(cfg, path, lifecycle=not a.no_lifecycle)
+    result = rm.submission_result(cfg, None, review)
+    result.update({"submission": None, "source": {"repository": a.repo, "run_id": a.run_id, "commit": a.commit.lower(),
+                                                  "artifact": a.artifact, "artifact_digest": prov.get("artifact_digest")}})
+    result["requirements"] = [r for r in result["requirements"] if r["kind"] != "checksum-approval"]
+    result["requirements"].insert(0, {"kind": "checksum-approval", "satisfied": False,
+                                      "detail": "the owner approves exactly this SHA-256 before an import request pins it"})
+    if a.result_json:
+        Path(a.result_json).write_text(json.dumps(result, indent=2) + "\n")
+    pkg = review.get("package", {})
+    print(f"Artifact     {a.repo} run {a.run_id} @ {a.commit} / {a.artifact}")
+    print(f"Package      {pkg.get('identifier')} {pkg.get('version')} {pkg.get('architecture')}")
+    print(f"Size         {review.get('size')} bytes")
+    print(f"SHA-256      {review.get('sha256')}")
+    print(f"State        {review['state'].upper()}")
+    print("\n".join(lv.render(review.get("levels", {}))))
+    for f in review.get("findings", []):
+        print(f"  {'ERROR' if f['level'] == 'error' else 'warn '} [{f['code']}] {f['message']}")
+    return 0 if review["state"] == "validated" else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -554,6 +593,9 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--deb", help="the .deb, with --manifest")
     q.add_argument("--manifest", help="hcg.repo.artifact-submission v1 manifest (docs/DISTRIBUTION_V2.md)")
     q.add_argument("--no-lifecycle", action="store_true", help="skip the simulated dpkg lifecycle")
+    q.add_argument("--result-json", help="also write the machine-readable submission result (hcg.repo.submission-result v1)")
+    q = rs.add_parser("status", help="machine-readable submission result (JSON) for HCG Executable Maker")
+    q.add_argument("id")
     q = rs.add_parser("incoming", help="list submissions and superseded Candidate versions")
     q.add_argument("--json", action="store_true")
     q = rs.add_parser("show", help="show one submission's review and exact checksum")
@@ -575,6 +617,17 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("id")
     q.add_argument("--reason", required=True)
     p.set_defaults(fn=cmd_release)
+
+    p = sp.add_parser("inspect-artifact", help="review a pinned GitHub Actions artifact (exact SHA-256, levels); commits nothing")
+    p.add_argument("--repo", required=True)
+    p.add_argument("--run-id", required=True, type=int)
+    p.add_argument("--commit", required=True)
+    p.add_argument("--artifact", required=True)
+    p.add_argument("--member", help="the .deb inside the artifact, when it holds several files")
+    p.add_argument("--sha256", help="optional: refuse unless the .deb has this SHA-256")
+    p.add_argument("--no-lifecycle", action="store_true")
+    p.add_argument("--result-json", help="write the machine-readable result here")
+    p.set_defaults(fn=cmd_inspect_artifact)
 
     p = sp.add_parser("compat", help="compatibility registry: evidence-based status of every released version")
     p.add_argument("--channel", choices=["stable", "candidate"])

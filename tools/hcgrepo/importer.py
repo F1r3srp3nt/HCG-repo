@@ -630,9 +630,11 @@ def run_request(cfg: RepoConfig, r: dict, gh: GitHub, workdir: Path, built_deb: 
         deep.error("deb-unreadable", str(exc))
     if not deep.ok:
         return "rejected", deep
-    prov["validation_levels"] = {"static": {"passed": True},
-                                 "simulated_lifecycle": {k: evidence["lifecycle"][k] for k in ("passed", "scripts_executed", "steps")},
-                                 "physical_device": {"recorded": False}}
+    from . import levels as lv
+    from .deepcheck import stage_of
+    findings = [{"stage": stage_of(c), "level": l, "code": c, "message": m} for l, c, m in deep.items]
+    info_scripts = sorted(evidence["static"]["maintainer_scripts"])
+    prov["validation_levels"] = lv.machine_levels(findings, evidence["lifecycle"], info_scripts)
     ch = req.get("channel", "stable")
     status, rep = import_deb(cfg, path, prov, dry_run=dry_run, expect=expect, channel=ch)
     for level, code, msg in deep.items:

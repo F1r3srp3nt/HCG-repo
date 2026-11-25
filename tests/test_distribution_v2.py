@@ -251,8 +251,14 @@ class ReleaseManagerTests(RepoTestCase):
         review = self.submit()
         self.assertEqual(review["state"], "validated", json.dumps(review["findings"], indent=1))
         sid, sha = review["submission"], review["sha256"]
-        self.assertTrue(review["levels"]["simulated_lifecycle"]["passed"])
-        self.assertFalse(review["levels"]["physical_device"]["recorded"])
+        L = review["levels"]
+        self.assertEqual([L[k]["state"] for k in ("static_inspection", "maintainer_script_review", "script_free_lifecycle",
+                                                  "device_installation", "application_launch", "runtime_verification")],
+                         ["passed-with-warnings", "passed", "passed", "not-recorded", "not-recorded", "not-recorded"])
+        self.assertIn("submission-scripts-undeclared", {f["code"] for f in review["findings"]})
+        self.assertFalse(L["maintainer_script_review"]["executed"])
+        self.assertFalse(L["script_free_lifecycle"]["scripts_executed"])
+        self.assertIn("does not prove the original maintainer scripts work", L["script_free_lifecycle"]["note"])
         # Nothing reaches the repository before approval.
         self.assertFalse((self.root / "submissions").exists())
         self.assertEqual(load_lock(self.cfg)["packages"], [])
@@ -310,7 +316,7 @@ class ReleaseManagerTests(RepoTestCase):
         self.assertEqual((e["sha256"], e["channel"]), (sha, "candidate"))
         prov = json.loads((self.root / (e["filename"] + ".provenance.json")).read_text())
         self.assertEqual((prov["provider"], prov["route"], prov["approval"]["sha256"]), ("executable-maker-local", "local-file", sha))
-        self.assertTrue(prov["validation_levels"]["simulated_lifecycle"]["passed"])
+        self.assertEqual(prov["validation_levels"]["script_free_lifecycle"]["state"], "passed")
 
     def test_validation_is_independent_of_the_providers_claims(self):
         prov = json.loads((self.handoff / "provenance.json").read_text())
@@ -367,6 +373,86 @@ class ReleaseManagerTests(RepoTestCase):
             self.assertEqual(import_deb(self.cfg, app_deb(d, version=v), {"source": "t"}, channel="candidate")[0], "imported")
         self.assertEqual(rm.superseded_candidates(self.cfg),
                          [{"package": PKG, "architecture": "iphoneos-arm64", "version": "1.0.0~b1", "superseded_by": "1.0.0~b2"}])
+
+
+class ExecutableMakerContractTests(RepoTestCase):
+    """The native submission folder, signing/entitlement claims and the machine-readable result."""
+
+    def setUp(self):
+        super().setUp()
+        self._store = tempfile.TemporaryDirectory(prefix="hcg-incoming-")
+        self.store = Path(self._store.name)
+        self.ents = {"keychain-access-groups": ["com.hakmicapitalgroup.testapp"]}
+        self.deb = app_deb(self.work, version="0.1.0~beta1", entitlements=self.ents)
+        self.info = inspect_deb(self.deb)
+
+    def tearDown(self):
+        self._store.cleanup()
+        super().tearDown()
+
+    def folder(self, **over) -> Path:
+        m = manifest_for(self.info)
+        app_bin = next(b.path for b in self.info.binaries)
+        m["signing"] = {"method": "ldid", "signedFiles": [app_bin], "entitlements": {app_bin: self.ents}}
+        for k, v in over.items():
+            m[k] = v
+        f = self.work / f"{PKG}_0.1.0~beta1-hcg-repo-submission"
+        f.mkdir(exist_ok=True)
+        shutil.copyfile(self.deb, f / self.deb.name)
+        (f / "SHA256SUMS").write_text(f"{self.info.sha256}  {self.deb.name}\n")
+        (f / "submission.json").write_text(json.dumps(m))
+        (f / "package.toml").write_text('[display]\nsummary = "x"\nknown_issues = "- n"\n[release]\nchannel = "beta"\n'
+                                        '[access]\nlevel = "connect"\n'
+                                        '[review.entitlements."var/jb/Applications/TestApp.app/TestApp"]\n'
+                                        '"keychain-access-groups" = ["com.hakmicapitalgroup.testapp"]\n')
+        return f
+
+    def test_native_folder_with_matching_entitlements(self):
+        review = rm.submit(self.cfg, self.store, handoff=self.folder(), lifecycle=False)
+        self.assertEqual(review["state"], "validated", json.dumps(review["findings"], indent=1))
+        self.assertEqual(review["claimed"]["signing"]["method"], "ldid")
+        self.assertEqual(review["history"][-1]["via"], "submission-folder")
+
+    def test_entitlement_claims_are_checked(self):
+        f = self.folder()
+        m = json.loads((f / "submission.json").read_text())
+        app_bin = next(iter(m["signing"]["entitlements"]))
+        m["signing"]["entitlements"][app_bin] = {"keychain-access-groups": ["other"]}
+        (f / "submission.json").write_text(json.dumps(m))
+        review = rm.submit(self.cfg, self.store, handoff=f, lifecycle=False)
+        self.assertEqual(review["state"], "refused")
+        self.assertIn("submission-entitlements", {x["code"] for x in review["findings"]})
+
+    def test_checksum_file_is_required_and_must_agree(self):
+        f = self.folder()
+        (f / "SHA256SUMS").write_text(f"{'0' * 64}  {self.deb.name}\n")
+        with self.assertRaises(SubmissionError):
+            rm.submit(self.cfg, self.store, handoff=f)
+        (f / "SHA256SUMS").unlink()
+        with self.assertRaises(SubmissionError):
+            rm.submit(self.cfg, self.store, handoff=f)
+
+    def test_machine_readable_result(self):
+        review = rm.submit(self.cfg, self.store, handoff=self.folder(), lifecycle=True)
+        m, review, _ = rm.load_review(self.store, review["submission"])
+        res = rm.submission_result(self.cfg, m, review)
+        self.assertEqual((res["format"], res["formatVersion"], res["state"]), ("hcg.repo.submission-result", 1, "validated"))
+        self.assertEqual(res["artifact"]["sha256"], self.info.sha256)
+        kinds = [r["kind"] for r in res["requirements"]]
+        self.assertEqual(kinds, ["checksum-approval", "package-metadata", "publication-approval"])
+        self.assertIn(self.info.sha256, res["requirements"][0]["command"])
+        self.assertEqual(set(res["levels"]), {"static_inspection", "maintainer_script_review", "script_free_lifecycle",
+                                              "device_installation", "application_launch", "runtime_verification"})
+        self.assertNotIn(str(self.store), json.dumps(res))       # no private paths
+        rm.approve(self.store, review["submission"], self.info.sha256, "Owner", "ok")
+        m, review, _ = rm.load_review(self.store, review["submission"])
+        self.assertTrue(rm.submission_result(self.cfg, m, review)["requirements"][0]["satisfied"])
+
+    def test_inspect_artifact_without_manifest(self):
+        review = rm.inspect_artifact(self.cfg, self.deb, lifecycle=False)
+        self.assertEqual((review["sha256"], review["size"]), (self.info.sha256, self.info.size))
+        self.assertNotIn("submission", review)
+        self.assertEqual(review["levels"]["script_free_lifecycle"]["state"], "not-run")
 
 
 class CompatibilityTests(RepoTestCase):

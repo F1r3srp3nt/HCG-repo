@@ -36,6 +36,8 @@ PROVIDERS = {
 GITHUB_PROVIDERS = {"github-actions", "github-actions-private"}
 LAYOUTS = {"rootless": "iphoneos-arm64", "rootful": "iphoneos-arm", "roothide": "iphoneos-arm64e"}
 SCRIPT_NAMES = ("preinst", "postinst", "prerm", "postrm", "config")
+SIGNING_METHODS = {"ldid", "apple-development", "apple-distribution", "unsigned"}
+NATIVE_FOLDER_SUFFIX = "-hcg-repo-submission"
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SHA40_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -149,6 +151,17 @@ def validate_manifest(m: dict) -> list[str]:
     elif ms["declared"] is not None and (not isinstance(ms["declared"], list) or
                                          any(s not in SCRIPT_NAMES for s in ms["declared"])):
         p.append(f"maintainerScripts.declared must list only {', '.join(SCRIPT_NAMES)}")
+
+    sig = m.get("signing")
+    if sig is not None:
+        if not isinstance(sig, dict) or sig.get("method") not in SIGNING_METHODS:
+            p.append(f"signing.method must be one of {sorted(SIGNING_METHODS)}")
+        else:
+            if not isinstance(sig.get("signedFiles", []), list):
+                p.append("signing.signedFiles must be a list of paths inside the package")
+            ents = sig.get("entitlements", {})
+            if not isinstance(ents, dict) or not all(isinstance(v, dict) for v in ents.values()):
+                p.append("signing.entitlements must map a path inside the package to its entitlements dictionary")
 
     val = m.get("validation")
     if not isinstance(val, dict) or not isinstance(val.get("checks", []), list):
@@ -307,6 +320,27 @@ def verify_against_deb(m: dict, info) -> Report:
         r.error("submission-dependencies", f"the manifest lists dependencies {sorted(m['dependencies'])}, "
                                            f"the package depends on {actual_deps}")
 
+    sig = m.get("signing")
+    if sig:
+        bins = {b.path: b for b in info.binaries}
+        for path in sig.get("signedFiles", []):
+            b = bins.get(str(path).lstrip("/"))
+            if b is None or not b.info:
+                r.error("submission-signing", f"signing.signedFiles lists {path}, which is not a Mach-O in the package")
+            elif not all(sl.signed for sl in b.info.slices) and sig["method"] != "unsigned":
+                r.error("submission-signing", f"{path} is not signed, the manifest says {sig['method']}")
+        for path, claimed in (sig.get("entitlements") or {}).items():
+            b = bins.get(str(path).lstrip("/"))
+            actual = {}
+            if b and b.info:
+                for sl in b.info.slices:
+                    actual.update(sl.entitlements or {})
+            if b is None:
+                r.error("submission-entitlements", f"signing.entitlements names {path}, which is not a Mach-O in the package")
+            elif actual != claimed:
+                r.error("submission-entitlements", f"{path}: the manifest declares entitlements {sorted(claimed)}, "
+                                                   f"the binary carries {sorted(actual)}")
+
     declared = m["maintainerScripts"]["declared"]
     actual_scripts = sorted(info.scripts)
     if declared is None:
@@ -333,3 +367,29 @@ def provenance(m: dict, sid: str, approval: dict | None, levels: dict | None = N
     if levels is not None:
         prov["validation_levels"] = levels
     return {k: v for k, v in prov.items() if v is not None}
+
+
+def from_submission_folder(folder: Path) -> tuple[dict, Path]:
+    """A native HCG Repo submission folder (docs/EXECUTABLE_MAKER_SUBMISSION.md): submission.json, the .deb it
+    names and SHA256SUMS. Returns (manifest, deb_path)."""
+    folder = Path(folder)
+    m = load_manifest(folder / "submission.json")
+    deb = folder / m["artifact"]["filename"]
+    if not deb.is_file():
+        raise SubmissionError(f"{folder.name}: {m['artifact']['filename']} (named in submission.json) is not in the folder")
+    sums = folder / "SHA256SUMS"
+    if not sums.is_file():
+        raise SubmissionError(f"{folder.name}: SHA256SUMS is required")
+    listed = {ln.split()[-1].lstrip("*"): ln.split()[0] for ln in sums.read_text().splitlines() if ln.strip()}
+    if listed.get(deb.name) != m["artifact"]["sha256"]:
+        raise SubmissionError(f"{folder.name}: SHA256SUMS and submission.json disagree about {deb.name}")
+    return m, deb
+
+
+def load_folder(folder: Path) -> tuple[dict, Path]:
+    """A native submission folder (submission.json) or, for older Executable Maker versions, an Unleashify
+    candidate handoff (provenance.json)."""
+    folder = Path(folder)
+    if (folder / "submission.json").is_file():
+        return from_submission_folder(folder)
+    return from_unleashify_handoff(folder)

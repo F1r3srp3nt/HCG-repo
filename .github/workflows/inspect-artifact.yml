@@ -1,0 +1,64 @@
+# Inspect artifact: review one pinned GitHub Actions artifact before any import request is written.
+#
+# Downloads the .deb from the given run (public repositories with the workflow token; private ones with the
+# HCG_IMPORT_TOKEN secret), checks the run's commit and success, and runs the full HCG Repo review: static inspection,
+# maintainer-script review, the script-free dpkg lifecycle and the repository dry run. It reports the exact SHA-256
+# and size for the owner's approval. It never commits, imports, publishes or uploads the package: the only output is
+# the job summary and a small result JSON (hcg.repo.submission-result v1).
+name: Inspect artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "OWNER/NAME of the repository whose run built the package"
+        required: true
+      run_id:
+        description: "Workflow run ID (from its URL)"
+        required: true
+      commit:
+        description: "Full 40-character commit SHA the run built"
+        required: true
+      artifact:
+        description: "Artifact name"
+        required: true
+      member:
+        description: "The .deb inside the artifact, when it holds several files (optional)"
+        required: false
+        default: ""
+
+permissions: {}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Review the pinned artifact (nothing is committed or imported)
+        env:
+          GITHUB_TOKEN: ${{ secrets.HCG_IMPORT_TOKEN || github.token }}
+          IN_REPO: ${{ inputs.repository }}
+          IN_RUN: ${{ inputs.run_id }}
+          IN_COMMIT: ${{ inputs.commit }}
+          IN_ARTIFACT: ${{ inputs.artifact }}
+          IN_MEMBER: ${{ inputs.member }}
+        run: |
+          set +e
+          args=(--repo "$IN_REPO" --run-id "$IN_RUN" --commit "$IN_COMMIT" --artifact "$IN_ARTIFACT" --result-json result.json)
+          [ -n "$IN_MEMBER" ] && args+=(--member "$IN_MEMBER")
+          bin/hcgrepo inspect-artifact "${args[@]}" > inspect.log 2>&1
+          rc=$?
+          set -e
+          cat inspect.log
+          { echo "## Artifact review (no import, nothing committed)"; echo '```'; cat inspect.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: inspect-result
+          path: result.json
+          if-no-files-found: ignore
+          retention-days: 30

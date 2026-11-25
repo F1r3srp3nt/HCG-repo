@@ -25,10 +25,10 @@ from pathlib import Path
 from . import debian
 from .config import Report, RepoConfig, load_lock, load_package_meta
 from .debinspect import InspectError, hash_file, inspect_deb, validate_deb
-from .deepcheck import deep_validate
+from . import levels as lv
+from .deepcheck import deep_validate, stage_of
 from .importer import _now, import_deb, set_channel
-from .submission import (PROVIDERS, from_unleashify_handoff, load_manifest, provenance, submission_id,
-                         verify_against_deb)
+from .submission import PROVIDERS, load_folder, load_manifest, provenance, submission_id, verify_against_deb
 
 INCOMING_ENV = "HCG_REPO_INCOMING"
 REVIEW_FORMAT = "hcg.repo.submission-review"
@@ -98,39 +98,59 @@ def _previous_in_pool(cfg: RepoConfig, package: str, arch: str, version: str) ->
     return cfg.root / best["filename"]
 
 
-def review_artifact(cfg: RepoConfig, m: dict, deb: Path, lifecycle: bool = True) -> dict:
-    """Independently validate one submitted .deb. Never trusts the manifest's own validation report."""
+def _draft_meta(package: str, draft_dir: Path | None):
+    """For a package HCG Repo does not know yet: its metadata as the submission's package.toml draft declares it."""
+    if draft_dir is None or not (Path(draft_dir) / "package.toml").is_file():
+        return None
+    import tempfile
+    from types import SimpleNamespace
+    with tempfile.TemporaryDirectory(prefix="hcg-draft-") as tmp:
+        (Path(tmp) / package).mkdir()
+        shutil.copyfile(Path(draft_dir) / "package.toml", Path(tmp) / package / "package.toml")
+        return load_package_meta(SimpleNamespace(packages_meta_dir=Path(tmp)), package)  # type: ignore[arg-type]
+
+
+def review_artifact(cfg: RepoConfig, m: dict | None, deb: Path, lifecycle: bool = True,
+                    draft_dir: Path | None = None) -> dict:
+    """Independently validate one submitted .deb. Never trusts the manifest's own validation report.
+
+    With m=None (inspect-artifact) the package is reviewed on its own: no claims to compare, no submission."""
     findings: list[dict] = []
 
     def take(rep: Report, stage: str) -> None:
         for level, code, msg in rep.items:
             findings.append({"stage": stage, "level": level, "code": code, "message": msg})
 
-    review: dict = {"format": REVIEW_FORMAT, "formatVersion": 1, "submission": submission_id(m),
-                    "received_at": _now(), "provider": m["build"]["provider"],
-                    "provider_label": PROVIDERS[m["build"]["provider"]],
-                    "claimed": {"package": m["package"], "artifact": m["artifact"], "source": m["source"],
-                                "build": m["build"], "compatibility": m["compatibility"],
-                                "provider_validation": m.get("validation")},
-                    "approval": None, "history": []}
+    review: dict = {"format": REVIEW_FORMAT, "formatVersion": 1, "received_at": _now(), "approval": None, "history": []}
+    if m is not None:
+        review.update({"submission": submission_id(m), "provider": m["build"]["provider"],
+                       "provider_label": PROVIDERS[m["build"]["provider"]],
+                       "claimed": {"package": m["package"], "artifact": m["artifact"], "source": m["source"],
+                                   "build": m["build"], "compatibility": m["compatibility"],
+                                   "signing": m.get("signing"), "provider_validation": m.get("validation")}})
     try:
         info = inspect_deb(deb)
     except InspectError as exc:
         findings.append({"stage": "structure", "level": "error", "code": "deb-unreadable", "message": str(exc)})
-        review.update(state="refused", findings=findings, levels={})
+        review.update(state="refused", findings=findings, levels=lv.all_levels(None, []))
         return review
     review["package"] = {"identifier": info.package, "version": info.version, "architecture": info.architecture}
     review["sha256"], review["size"], review["sha512"] = info.sha256, info.size, info.sha512
     review["inspection"] = info.summary()
 
-    take(verify_against_deb(m, info), "manifest")
+    if m is not None:
+        take(verify_against_deb(m, info), "manifest")
     meta = load_package_meta(cfg, info.package)
-    take(validate_deb(info, cfg, meta), "static")
+    draft = _draft_meta(info.package, draft_dir) if meta.directory is None else None
+    take(validate_deb(info, cfg, draft or meta), "static")
+    if draft is not None:
+        findings.append({"stage": "repository", "level": "warning", "code": "reviewed-against-draft",
+                         "message": f"{info.package} is new: entitlements and setuid entries were checked against the "
+                                    "submission's package.toml draft; the owner confirms that draft at prepare"})
     upgrade_from = _previous_in_pool(cfg, info.package, info.architecture, info.version)
     deep, evidence = deep_validate(info, lifecycle=lifecycle, upgrade_from=upgrade_from)
     for level, code, msg in deep.items:
-        stage = "lifecycle" if code.startswith("lifecycle-") else "static"
-        findings.append({"stage": stage, "level": level, "code": code, "message": msg})
+        findings.append({"stage": stage_of(code), "level": level, "code": code, "message": msg})
     if evidence.get("lifecycle"):
         evidence["lifecycle"]["upgrade_from"] = upgrade_from.name if upgrade_from else None
 
@@ -158,15 +178,7 @@ def review_artifact(cfg: RepoConfig, m: dict, deb: Path, lifecycle: bool = True)
     take(repo, "repository")
 
     errors = [f for f in findings if f["level"] == "error"]
-    lc = evidence.get("lifecycle")
-    review["levels"] = {
-        "static": {"passed": not any(f["stage"] in ("static", "manifest") for f in errors),
-                   "detail": "package read and checked on this machine"},
-        "simulated_lifecycle": ({"passed": bool(lc["passed"]), "scripts_executed": False, "steps": lc["steps"],
-                                 "upgrade_from": lc.get("upgrade_from"), "note": lc["note"]}
-                                if lc else {"passed": None, "note": "not run"}),
-        "physical_device": {"recorded": False, "note": "no device evidence; HCG Repo never infers a device result"},
-    }
+    review["levels"] = lv.all_levels(lv.machine_levels(findings, evidence.get("lifecycle"), sorted(info.scripts)), [])
     review["evidence"] = evidence["static"]
     review["findings"] = findings
     review["state"] = "refused" if errors else "validated"
@@ -181,7 +193,7 @@ def submit(cfg: RepoConfig, store: Path, handoff: Path | None = None, deb: Path 
            manifest: Path | None = None, lifecycle: bool = True) -> dict:
     _check_store_location(cfg, store)
     if handoff:
-        m, deb_path = from_unleashify_handoff(handoff)
+        m, deb_path = load_folder(handoff)
     elif deb and manifest:
         m, deb_path = load_manifest(manifest), Path(deb)
     else:
@@ -211,8 +223,10 @@ def submit(cfg: RepoConfig, store: Path, handoff: Path | None = None, deb: Path 
         for name in HANDOFF_EXTRAS:
             if (Path(handoff) / name).is_file():
                 shutil.copyfile(Path(handoff) / name, d / "handoff" / name)
-    review = review_artifact(cfg, m, d / "artifact.deb", lifecycle=lifecycle)
-    _event(review, "submitted", via="unleashify-handoff" if handoff else "manifest")
+    review = review_artifact(cfg, m, d / "artifact.deb", lifecycle=lifecycle,
+                             draft_dir=d / "handoff" if (d / "handoff" / "package.toml").is_file() else None)
+    _event(review, "submitted", via=("submission-folder" if handoff and (Path(handoff) / "submission.json").is_file()
+                                     else "unleashify-handoff" if handoff else "manifest"))
     _write_json(d / "submission.json", m)
     _write_json(d / "review.json", review)
     return review
@@ -427,7 +441,6 @@ def superseded_candidates(cfg: RepoConfig) -> list[dict]:
 
 def render_review(m: dict, review: dict) -> str:
     """Human summary for the approval decision."""
-    lv = review.get("levels", {})
     b = m["build"]
     lines = [
         f"Submission   {review['submission']}",
@@ -443,15 +456,8 @@ def render_review(m: dict, review: dict) -> str:
         + (f"; CI run {b['runId']}" if b.get("runId") else "; no CI run (local or hosted build)"),
         f"Minimum iOS  {m['compatibility']['minimumOS']} ({m['compatibility']['environment']})",
         "",
-        f"Static validation         {'PASSED' if lv.get('static', {}).get('passed') else 'FAILED'}",
     ]
-    sl = lv.get("simulated_lifecycle", {})
-    if sl.get("passed") is None:
-        lines.append("Simulated lifecycle       NOT RUN")
-    else:
-        steps = ", ".join(f"{s['step']} {'ok' if s['ok'] else 'FAILED'}" for s in sl.get("steps", []))
-        lines.append(f"Simulated lifecycle       {'PASSED' if sl['passed'] else 'FAILED'} ({steps}; maintainer scripts not executed)")
-    lines.append("Physical-device testing   NOT RECORDED")
+    lines += lv.render(review.get("levels", {}))
     errs = [f for f in review.get("findings", []) if f["level"] == "error"]
     warns = [f for f in review.get("findings", []) if f["level"] == "warning"]
     if errs or warns:
@@ -466,3 +472,57 @@ def render_review(m: dict, review: dict) -> str:
                   f"  bin/hcgrepo release approve {review['submission']} --sha256 {review['sha256']} "
                   "--by \"<name>\" --record \"<approval, verbatim>\""]
     return "\n".join(lines)
+
+
+RESULT_FORMAT = "hcg.repo.submission-result"
+
+
+def submission_result(cfg: RepoConfig, m: dict | None, review: dict) -> dict:
+    """Machine-readable status for Executable Maker's GUI (docs/EXECUTABLE_MAKER_SUBMISSION.md, schema in
+    docs/schemas/submission-result-v1.schema.json). It holds no credential and no private path."""
+    pkg = review.get("package") or (m or {}).get("package") or {}
+    ident = pkg.get("identifier")
+    meta = load_package_meta(cfg, ident) if ident else None
+    state = review.get("state")
+    findings = review.get("findings", [])
+    reqs = []
+    if state == "validated":
+        reqs.append({"kind": "checksum-approval", "satisfied": False,
+                     "detail": "the owner approves exactly this SHA-256 for a Candidate import",
+                     "command": f"bin/hcgrepo release approve {review.get('submission')} --sha256 {review.get('sha256')} "
+                                "--by \"<owner>\" --record \"<approval, verbatim>\""})
+    elif state in ("approved", "prepared"):
+        reqs.append({"kind": "checksum-approval", "satisfied": True, "by": review["approval"]["by"],
+                     "at": review["approval"]["at"]})
+    if meta is not None and meta.directory is None:
+        reqs.append({"kind": "package-metadata", "satisfied": False,
+                     "detail": f"packages/{ident}/package.toml does not exist; prepare --create-package-metadata uses the "
+                               "submission's package.toml draft"})
+    if meta is not None and meta.directory is not None and pkg.get("version") and meta.access_for(pkg["version"]) != "public":
+        reqs.append({"kind": "free-demo-approval", "satisfied": False,
+                     "detail": f"{ident} is '{meta.access}': Candidate serves only free public builds, so {pkg['version']} "
+                               "needs the owner's version-specific free-demo approval"})
+    reqs.append({"kind": "publication-approval", "satisfied": False,
+                 "detail": "publishing is the manual Publish repository workflow, run only with the owner's explicit approval"})
+    nxt = {"refused": "fix the errors and submit a new build (a new version if the bytes change)",
+           "validated": "wait for the owner's checksum approval", "approved": "bin/hcgrepo release prepare",
+           "prepared": "review and merge the Candidate change; the owner approves publication",
+           "withdrawn": "nothing: withdrawn"}.get(state, "")
+    return {
+        "format": RESULT_FORMAT, "formatVersion": 1, "submission": review.get("submission"), "state": state,
+        "package": pkg, "artifact": {"sha256": review.get("sha256"), "size": review.get("size")},
+        "provider": review.get("provider"),
+        "levels": review.get("levels", {}),
+        "counts": {"errors": sum(1 for f in findings if f["level"] == "error"),
+                   "warnings": sum(1 for f in findings if f["level"] == "warning")},
+        "findings": [{k: f[k] for k in ("level", "stage", "code", "message")} for f in findings],
+        "requirements": reqs, "next_step": nxt, "channel": "candidate",
+    }
+
+
+def inspect_artifact(cfg: RepoConfig, deb: Path, lifecycle: bool = True) -> dict:
+    """Review a CI artifact with no manifest (inspect-artifact): the exact SHA-256 and every machine level, for the
+    owner's decision before any import request is written. Nothing is stored or committed."""
+    review = review_artifact(cfg, None, deb, lifecycle=lifecycle)
+    review.pop("history", None)
+    return review

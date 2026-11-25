@@ -20,6 +20,7 @@ from pathlib import Path
 
 from . import debian
 from .config import RepoConfig, entry_channel, load_lock, load_package_meta
+from .levels import NOT_RECORDED, PASSED, all_levels, from_legacy
 
 UNTESTED = "Untested"
 STATIC = "Static validation passed"
@@ -39,6 +40,14 @@ def _provenance(cfg: RepoConfig, entry: dict) -> dict:
         return {}
 
 
+def _imported_levels(prov: dict) -> dict | None:
+    """Packages imported before Distribution v2 passed the import's static inspection; nothing more is known."""
+    if not prov.get("inspection"):
+        return None
+    return {"static_inspection": {"state": PASSED, "note": "passed HCG Repo's import validation (before v2)"},
+            "maintainer_script_review": {"state": NOT_RECORDED}, "script_free_lifecycle": {"state": NOT_RECORDED}}
+
+
 def derive_status(entry: dict, prov: dict, tests: list[dict]) -> str:
     if entry.get("status") == "withdrawn":
         return WITHDRAWN
@@ -50,8 +59,9 @@ def derive_status(entry: dict, prov: dict, tests: list[dict]) -> str:
         return PHYS_INSTALL
     if tests and all(t.get("result") == "fail" for t in tests):
         return INCOMPATIBLE
-    lc = (prov.get("validation_levels") or {}).get("simulated_lifecycle") or {}
-    if lc.get("passed") is True:
+    from .levels import from_legacy
+    machine = from_legacy(prov.get("validation_levels")) or {}
+    if (machine.get("script_free_lifecycle") or {}).get("state") == "passed":
         return LIFECYCLE
     if prov.get("inspection"):
         return STATIC
@@ -84,6 +94,7 @@ def registry(cfg: RepoConfig, channel: str | None = None) -> dict:
             "device_evidence": [{k: t.get(k) for k in ("device", "ios", "jailbreak", "date", "stage", "result", "evidence")}
                                 for t in tests],
             "label": meta.label(e["version"]),
+            "levels": all_levels(from_legacy(prov.get("validation_levels")) or _imported_levels(prov), tests),
             "last_physical_pass": max((t.get("date", "") for t in last_pass), default=None),
         }
         out.setdefault(e["package"], {"package": e["package"], "versions": [], "known_issues": meta.known_issues.strip()})

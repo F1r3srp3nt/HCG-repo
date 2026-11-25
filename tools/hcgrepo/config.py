@@ -474,7 +474,7 @@ TEST_RESULTS = ("pass", "fail", "partial")
 CHANNELS = ("", "beta")
 LOCK_CHANNELS = ("stable", "candidate")
 CANDIDATE_DIR = "candidate"
-TEST_STAGES = ("install", "runtime")
+TEST_STAGES = ("install", "runtime", "verification")   # verification: the product's documented checklist passed
 
 
 def entry_channel(e: dict) -> str:

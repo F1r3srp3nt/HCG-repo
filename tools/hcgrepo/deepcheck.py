@@ -344,6 +344,15 @@ def simulate_lifecycle(info: DebInfo, r: Report, upgrade_from: Path | None = Non
 # ---------------------------------------------------------------------------- one call
 
 
+def stage_of(code: str) -> str:
+    """Which evidence level a v2 finding belongs to (hcgrepo.levels)."""
+    if code.startswith("lifecycle-"):
+        return "lifecycle"
+    if code.startswith("script-"):
+        return "scripts"
+    return "static"
+
+
 def deep_validate(info: DebInfo, lifecycle: bool = True, upgrade_from: Path | None = None) -> tuple[Report, dict]:
     """Run every v2 check on an inspected package. Returns (report, evidence record)."""
     r = Report(f"{info.package} {info.version} {info.architecture}")

@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo.hakmicapitalgroup.com/schemas/submission-result-v1.schema.json",
+  "title": "HCG Repo submission result, format version 1",
+  "description": "Machine-readable review status for HCG Executable Maker (docs/EXECUTABLE_MAKER_SUBMISSION.md). Never holds credentials or private paths.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "state",
+    "package",
+    "artifact",
+    "levels",
+    "counts",
+    "findings",
+    "requirements",
+    "next_step",
+    "channel"
+  ],
+  "properties": {
+    "format": {
+      "const": "hcg.repo.submission-result"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "submission": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state": {
+      "enum": [
+        "refused",
+        "validated",
+        "approved",
+        "prepared",
+        "withdrawn"
+      ]
+    },
+    "package": {
+      "type": "object"
+    },
+    "artifact": {
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "provider": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "levels": {
+      "type": "object",
+      "required": [
+        "static_inspection",
+        "maintainer_script_review",
+        "script_free_lifecycle",
+        "device_installation",
+        "application_launch",
+        "runtime_verification"
+      ],
+      "properties": {
+        "static_inspection": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "partial",
+                "not-run",
+                "not-recorded",
+                "not-applicable"
+              ]
+            }
+          }
+        },
+        "maintainer_script_review": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "partial",
+                "not-run",
+                "not-recorded",
+                "not-applicable"
+              ]
+            }
+          }
+        },
+        "script_free_lifecycle": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "partial",
+                "not-run",
+                "not-recorded",
+                "not-applicable"
+              ]
+            }
+          }
+        },
+        "device_installation": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "partial",
+                "not-run",
+                "not-recorded",
+                "not-applicable"
+              ]
+            }
+          }
+        },
+        "application_launch": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "partial",
+                "not-run",
+                "not-recorded",
+                "not-applicable"
+              ]
+            }
+          }
+        },
+        "runtime_verification": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "partial",
+                "not-run",
+                "not-recorded",
+                "not-applicable"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "integer"
+        },
+        "warnings": {
+          "type": "integer"
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "level",
+          "stage",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "level": {
+            "enum": [
+              "error",
+              "warning"
+            ]
+          },
+          "stage": {
+            "enum": [
+              "manifest",
+              "static",
+              "scripts",
+              "lifecycle",
+              "repository",
+              "structure"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "satisfied"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "checksum-approval",
+              "package-metadata",
+              "free-demo-approval",
+              "publication-approval"
+            ]
+          },
+          "satisfied": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "next_step": {
+      "type": "string"
+    },
+    "channel": {
+      "const": "candidate"
+    },
+    "source": {
+      "type": "object"
+    }
+  }
+}
