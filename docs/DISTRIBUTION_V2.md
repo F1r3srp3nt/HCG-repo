@@ -30,6 +30,8 @@ are obtained. Provenance records the provider; a run ID exists **only** for GitH
 | `hcg-server-build-host` | authorized HTTPS download; the token comes from a CI secret named by `auth_env` (`HCG_…`), never stored in Git, never sent to a redirect | `https-artifact` |
 | `developer-upload` | as above, from HCG Server's upload storage, after review | `https-artifact` |
 
+A related proposal, draft PR #20 (`kind = "local-file"`, from the Executable Maker work), commits the approved `.deb` under `imports/local/` so that Prepare packages imports it in CI. It is compatible with v2: the v2 validation engine applies to it too, and `submissions/` stays the only place where package files are refused. The owner decides whether to keep both routes.
+
 Rules enforced in code:
 
 - `local-submission` and `https-artifact` need the approved `sha256`, a `submission` path, and the owner's approval of
@@ -92,7 +94,7 @@ bin/hcgrepo release withdraw <id> --reason "…"           # before prepare; aft
 - **Incoming and private storage.** `submit` copies the `.deb`, manifest and review into the private incoming store
   (`$HCG_REPO_INCOMING`, default `~/.local/share/hcg-repo/incoming`, mode 0700). The store is refused if it is inside
   the repository checkout. Until approval, neither the bytes nor the metadata enter Git. `validate` fails if any
-  `.deb`/`.ipa` appears under `submissions/` or `imports/`, and `.gitignore` excludes them.
+  `.deb`/`.ipa` appears under `submissions/`, and `.gitignore` excludes them.
 - **Inspection and validation.** `submit` runs the manifest comparison, the existing package validation, the v2
   engine and a dry-run import against the pool (index consistency, the immutable lock, the access policy). The state
   becomes `validated` or `refused`.

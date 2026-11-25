@@ -82,13 +82,12 @@ def check_repository(cfg: RepoConfig, pkgs: list[PoolPackage], report: Report, l
                         and not meta.access_exception):
                     mr.error("access-public-exception", f"{d.name}: a public HCG package needs [access] exception")
                 report.extend(mr)
-    # Submitted packages stay in the private incoming store until approved; only metadata may be committed.
-    for sub in ("submissions", "imports"):
-        d = cfg.root / sub
-        if d.is_dir():
-            for f in sorted(d.rglob("*")):
-                if f.is_file() and (f.suffix in (".deb", ".ipa", ".partial") or f.name == "artifact.deb"):
-                    report.error("artifact-outside-pool", f"{f.relative_to(cfg.root)}: package files never belong in {sub}/")
+    # Submitted packages stay in the private incoming store until approved; submissions/ holds only their metadata.
+    d = cfg.root / "submissions"
+    if d.is_dir():
+        for f in sorted(d.rglob("*")):
+            if f.is_file() and f.suffix in (".deb", ".ipa", ".partial"):
+                report.error("artifact-outside-pool", f"{f.relative_to(cfg.root)}: package files never belong in submissions/")
     lock = lock if lock is not None else load_lock(cfg)
     # Channels: stable (/repo/) or candidate (/repo/candidate/, testing). The candidate source is public and has no
     # payment provider, so it may only carry public packages; protected entries stay stable-only (and unindexed).
