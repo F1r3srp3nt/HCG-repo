@@ -49,31 +49,41 @@ Private GitHub repositories use `kind = "github-artifact"` unchanged; the workfl
 scripts, privileged helpers, simulated dpkg lifecycle with scripts never executed).
 ### Locally built packages (`kind = "local-file"`)
 
-For a package built outside GitHub Actions — for example by HCG Executable Maker's Unleashify on the owner's Mac,
-when the app's source repository is private — commit the `.deb` under `imports/local/` next to its request. Only the
-binary package and the source's name and commit enter HCG Repo; the source stays private and no token is needed.
+For a package built outside GitHub Actions, for example by HCG Executable Maker's Unleashify on the owner's Mac when
+the app's source repository is private. The approved `.deb` is committed under `imports/local/` next to its request,
+and **Prepare packages** imports it in CI. Only the binary package and the source's name and commit enter HCG Repo:
+the source stays private and no token is needed.
+
+It shares the Release Manager's validation, approval and provenance ([DISTRIBUTION_V2.md](../docs/DISTRIBUTION_V2.md)).
+Do not write this request by hand; the Release Manager writes it after the owner's approval:
+
+```
+bin/hcgrepo release submit --handoff <Unleashify handoff folder>     # private store, independent validation
+bin/hcgrepo release approve <id> --sha256 <exact sha> --by "<owner>" --record "<approval, verbatim>"
+bin/hcgrepo release prepare <id> --via local-file                    # stages imports/local/ + imports/<id>.toml
+```
 
 ```toml
 [request]
 package = "com.hakmicapitalgroup.example"
 version = "0.1.0~beta1"
 architecture = "iphoneos-arm64"
-channel = "candidate"
+channel = "candidate"                # local-file imports are Candidate only
 
 [source]
 kind = "local-file"
-path = "imports/local/com.hakmicapitalgroup.example_0.1.0~beta1_iphoneos-arm64.deb"
-sha256 = "<exact .deb sha256 — required>"
+provider = "executable-maker-local"
 repository = "OWNER/NAME"            # the app's source (may be private: recorded, never fetched)
 commit = "<40-char sha the package was built from>"
-built_by = "HCG Executable Maker 0.5.0 (Unleashify, local)"   # required
-toolchain = "Xcode 27.2 (27C…)"      # optional provenance:
-built_at = "2026-11-25T10:00:00Z"    #   toolchain, built_at, host, source_visibility, validation
-host = "Owner's MacBook Pro (M4 Max)"
-source_visibility = "private"
-validation = "HCG Executable Maker rootless validator: passed (iOS 17.4)"
+submission = "submissions/<id>/submission.json"   # its review.json must approve exactly this sha256
+sha256 = "<exact .deb sha256>"
+path = "imports/local/com.hakmicapitalgroup.example_0.1.0~beta1_iphoneos-arm64.deb"
+built_by = "HCG Executable Maker 0.5.0 (Unleashify, local)"
+built_at = "2026-11-25T10:00:00Z"    # optional extras: toolchain, host, source_visibility, validation
 ```
 
-Prepare packages checks the committed file's SHA-256, package, version and architecture, runs every repository
-validation, records the provenance, and removes the `imports/local/` copy once it is in `pool/`. A Candidate build
-still needs the owner's approval in `packages/<id>/package.toml` ([ACCESS.md](../docs/ACCESS.md)).
+Prepare packages checks the committed file's SHA-256, the owner's approval, package, version and architecture, and
+runs the v2 validation engine and every repository validation. It records the shared provenance and removes the
+`imports/local/` copy once the package is in `pool/`. `validate` refuses any package file in `imports/` that is not
+an approved `local-file`, and it never allows a run ID or the stable channel here. A Candidate build of a sign-in or
+paid package still needs the owner's free-demo approval in `packages/<id>/package.toml` ([ACCESS.md](../docs/ACCESS.md)).
