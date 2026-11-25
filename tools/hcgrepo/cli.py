@@ -442,12 +442,13 @@ def cmd_release(a, cfg) -> int:
             return 0
         if a.action == "prepare":
             status, rep, review = rm.prepare(cfg, store, a.id, free_demo_approval=a.free_demo_approval,
-                                             create_package_metadata=a.create_package_metadata)
+                                             create_package_metadata=a.create_package_metadata, via=a.via)
             if rep.items:
                 print(rep.render())
-            print(f"{status.upper()}: {a.id} -> Candidate (pool/, repo-lock.json, imports/{a.id}.toml, "
-                  f"submissions/{a.id}/). Review and commit on a branch; publishing is the separate Publish workflow.")
-            return 0 if status in ("imported", "already-present") else 1
+            where = ("imports/local/, " if status == "staged" else "pool/, repo-lock.json, ")
+            print(f"{status.upper()}: {a.id} -> Candidate ({where}imports/{a.id}.toml, submissions/{a.id}/). Review and "
+                  "commit on a branch; publishing is the separate Publish workflow.")
+            return 0 if status in ("imported", "already-present", "staged") else 1
         if a.action == "withdraw":
             rm.withdraw_submission(store, a.id, a.reason)
             print(f"WITHDRAWN: {a.id}")
@@ -568,6 +569,8 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--free-demo-approval", help="owner's verbatim approval of this version as a free Candidate demo")
     q.add_argument("--create-package-metadata", action="store_true",
                    help="create packages/<id>/ from the submission's package.toml draft when it does not exist")
+    q.add_argument("--via", choices=["pool", "local-file"], default="pool",
+                   help="pool: import here (default); local-file: stage the approved bytes for Prepare packages in CI")
     q = rs.add_parser("withdraw", help="withdraw a submission that has not been prepared")
     q.add_argument("id")
     q.add_argument("--reason", required=True)

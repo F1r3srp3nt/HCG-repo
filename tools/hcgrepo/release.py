@@ -27,8 +27,8 @@ from .config import Report, RepoConfig, load_lock, load_package_meta
 from .debinspect import InspectError, hash_file, inspect_deb, validate_deb
 from .deepcheck import deep_validate
 from .importer import _now, import_deb, set_channel
-from .submission import (GITHUB_PROVIDERS, PROVIDERS, from_handoff, load_manifest,
-                         submission_id, verify_against_deb)
+from .submission import (PROVIDERS, from_handoff, load_manifest, provenance, submission_id,
+                         verify_against_deb)
 
 INCOMING_ENV = "HCG_REPO_INCOMING"
 REVIEW_FORMAT = "hcg.repo.submission-review"
@@ -267,9 +267,19 @@ def add_free_demo_exception(path: Path, version: str, approval: str) -> None:
     path.write_text(new_text, encoding="utf-8")
 
 
+PREPARE_ROUTES = ("pool", "local-file")
+
+
 def prepare(cfg: RepoConfig, store: Path, sid: str, free_demo_approval: str | None = None,
-            create_package_metadata: bool = False) -> tuple[str, Report, dict]:
-    """Import an approved submission into pool/ for the Candidate channel. Does not publish."""
+            create_package_metadata: bool = False, via: str = "pool") -> tuple[str, Report, dict]:
+    """Prepare an approved submission for the Candidate channel. Does not publish.
+
+    via="pool" (default): import here into pool/ and repo-lock.json, ready to commit.
+    via="local-file": stage the approved bytes under imports/local/ with a local-file request, so the Prepare packages
+    workflow imports them in CI (with the same validation) and removes the staged copy afterwards.
+    """
+    if via not in PREPARE_ROUTES:
+        raise ReleaseError(f"via must be one of {PREPARE_ROUTES}")
     m, review, d = load_review(store, sid)
     if review.get("state") != "approved" or not review.get("approval"):
         raise ReleaseError(f"{sid} is {review.get('state')!r}; the owner must approve its exact SHA-256 first")
@@ -297,32 +307,54 @@ def prepare(cfg: RepoConfig, store: Path, sid: str, free_demo_approval: str | No
                                "owner's free-demo approval for this version (--free-demo-approval \"<owner's words>\")")
         add_free_demo_exception(meta_dir / "package.toml", ver, free_demo_approval)
 
-    b = m["build"]
-    prov = {"source": "artifact-submission", "provider": b["provider"], "repository": m["source"]["repository"],
-            "commit": m["source"]["commit"], "branch": m["source"].get("branch"), "built_at": b["builtAt"],
-            "toolchain": b["toolchain"], "submission": sid, "approval": review["approval"],
-            "validation_levels": review["levels"]}
-    if b["provider"] in GITHUB_PROVIDERS:
-        prov.update({"run_id": b["runId"], "run_url": b.get("runUrl"), "artifact": b.get("artifactName"),
-                     "run_repository": b.get("runRepository")})
+    if via == "local-file":
+        return _stage_local_file(cfg, m, review, d, sid)
+    prov = provenance(m, sid, review["approval"], review["levels"])
+    prov["route"] = "release-manager"
     status, rep = import_deb(cfg, art, prov, expect={"package": pkg, "version": ver, "architecture": arch,
                                                      "sha256": review["approval"]["sha256"]}, channel="candidate")
     if status == "imported":
         set_channel(cfg, pkg, ver, arch, "candidate")
     if status in ("imported", "already-present"):
         review["state"] = "prepared"
-        _event(review, "prepared", channel="candidate", status=status)
+        _event(review, "prepared", channel="candidate", status=status, route="pool")
         _write_json(d / "review.json", review)
-        out = cfg.root / "submissions" / sid
-        out.mkdir(parents=True, exist_ok=True)
-        _write_json(out / "submission.json", m, private=False)
-        public_review = {k: v for k, v in review.items() if k not in ("inspection",)}
-        _write_json(out / "review.json", public_review, private=False)
+        _write_public_records(cfg, m, review, sid)
         write_import_record(cfg, m, review)
     return status, rep, review
 
 
-def write_import_record(cfg: RepoConfig, m: dict, review: dict) -> Path:
+def _write_public_records(cfg: RepoConfig, m: dict, review: dict, sid: str) -> None:
+    """submissions/<id>/: the manifest and the review, only after the owner's approval (never the bytes)."""
+    out = cfg.root / "submissions" / sid
+    out.mkdir(parents=True, exist_ok=True)
+    _write_json(out / "submission.json", m, private=False)
+    _write_json(out / "review.json", {k: v for k, v in review.items() if k != "inspection"}, private=False)
+
+
+def _stage_local_file(cfg: RepoConfig, m: dict, review: dict, d: Path, sid: str) -> tuple[str, Report, dict]:
+    a = review["approval"]
+    pkg = review["package"]
+    name = f"{pkg['identifier']}_{pkg['version']}_{pkg['architecture']}.deb"
+    rel = f"imports/local/{name}"
+    dest = cfg.root / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(d / "artifact.deb", dest)
+    if hash_file(dest)["sha256"] != a["sha256"]:
+        dest.unlink()
+        raise ReleaseError("the staged copy does not match the approved SHA-256")
+    review["state"] = "prepared"
+    _event(review, "prepared", channel="candidate", status="staged", route="local-file")
+    _write_json(d / "review.json", review)
+    _write_public_records(cfg, m, review, sid)
+    write_import_record(cfg, m, review, local_file=rel)
+    rep = Report(sid)
+    rep.warn("staged-for-ci", f"{rel} and imports/{sid}.toml staged; push the branch: Prepare packages imports it into "
+                              "pool/ with the same validation and removes the staged copy")
+    return "staged", rep, review
+
+
+def write_import_record(cfg: RepoConfig, m: dict, review: dict, local_file: str | None = None) -> Path:
     sid = review["submission"]
     p = cfg.root / "imports" / f"{sid}.toml"
     p.parent.mkdir(exist_ok=True)
@@ -341,14 +373,18 @@ def write_import_record(cfg: RepoConfig, m: dict, review: dict) -> Path:
         'channel = "candidate"',
         "",
         "[source]",
-        'kind = "local-submission"',
+        'kind = "local-file"' if local_file else 'kind = "local-submission"',
         f"provider = {_toml_str(m['build']['provider'])}",
         f"repository = {_toml_str(m['source']['repository'])}",
         f"commit = {_toml_str(m['source']['commit'])}",
         f"submission = {_toml_str(f'submissions/{sid}/submission.json')}",
         f"sha256 = {_toml_str(review['sha256'])}",
-        "",
     ]
+    if local_file:
+        lines += [f"path = {_toml_str(local_file)}",
+                  f"built_by = {_toml_str(m['build']['toolchain'])}",
+                  f"built_at = {_toml_str(m['build']['builtAt'])}"]
+    lines.append("")
     p.write_text("\n".join(lines), encoding="utf-8")
     return p
 

@@ -124,6 +124,16 @@ jobs:
           set -e
           cat import.log
           bin/hcgrepo validate          # never commit an invalid pool, even if some requests succeeded
+          # Locally built packages (kind = "local-file") are now in pool/: drop the imports/local/ copy.
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess, tomllib
+          done = {e["sha256"] for e in json.loads(pathlib.Path("repo-lock.json").read_text())["packages"]}
+          for req in pathlib.Path("imports").glob("*.toml"):
+              src = tomllib.loads(req.read_text()).get("source", {})
+              f = pathlib.Path(src.get("path", ""))
+              if src.get("kind") == "local-file" and f.is_file() and hashlib.sha256(f.read_bytes()).hexdigest() in done:
+                  subprocess.run(["git", "rm", "-q", str(f)], check=True)
+          PY
           git add pool repo-lock.json
           if git diff --cached --quiet; then
             echo "nothing new to commit"

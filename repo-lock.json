@@ -57,6 +57,17 @@
     },
     {
       "architecture": "iphoneos-arm64",
+      "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgmail.unleashed_0.1.0~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-25T09:53:55Z",
+      "package": "com.hakmicapitalgroup.hcgmail.unleashed",
+      "sha256": "ac4b31b10dbdf9f060b6e02274c3123c4e95045b8ba3b458f77f99387563099a",
+      "size": 43663718,
+      "status": "published",
+      "version": "0.1.0~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.2.0_iphoneos-arm64.deb",
       "imported_at": "2026-11-15T03:46:01Z",
       "package": "com.hakmicapitalgroup.hcgnexus",
