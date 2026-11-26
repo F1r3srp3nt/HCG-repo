@@ -3,7 +3,7 @@
 # App/Assets.xcassets/AppIcon.appiconset/Icon-180.png at commit 1341669.
 #
 # HCG Nexus is a paid product. Its owner-approved candidate builds (exception_versions in [access] below) are free public
-# demos in the HCG Repo Candidate channel only. The current one is 0.6.0~beta1: the HCG Nexus Command Center. Earlier
+# demos in the HCG Repo Candidate channel only. The current one is 0.7.0~beta1 (central registry, evidence layers). Earlier
 # approved betas, including 0.4.0~beta1 and 0.5.0~beta1, stay published (superseded). 0.3.0~beta1 was approved but
 # never imported.
 # 0.2.0 and every other version, including the 0.2.1 release, stay paid and protected.
@@ -13,7 +13,7 @@ channel = "beta"
 
 [display]
 known_issues = """
-- **0.6.0~beta1 is simulator-tested only; real-device testing is pending.** CI built it with Xcode, ran its tests and launched the standalone app in the iOS Simulator. It has not been installed on a phone.
+- **0.7.0~beta1 and 0.6.0~beta1 are simulator-tested only; neither is physically validated yet.** CI built it with Xcode, ran its tests and launched the standalone app in the iOS Simulator. It has not been installed on a phone.
 - **Connected means proven.** A product shows *Connected* only after a real two-way exchange (for example *Check now* reading HCG News). Installed apps show *Installed*, never *Connected*.
 - **HCG sign-in is not configured:** HCG Nexus has no HCG Connect client yet, so sign-in, central permissions and private products stay off.
 - **HCG Repo is unsigned today,** so the Package Trust Center shows it as *Unsigned*. Nexus never calls a package safe because its checksum matches.
@@ -39,7 +39,7 @@ HCG Nexus is the **HCG ecosystem command center** on your iPhone. A cyan edge ha
 **It is off after installation.** Turn it on in *Settings › HCG Nexus*. The package has no install scripts and never resprings by itself.
 """
 limitations = """
-- **Tested:** 0.6.0~beta1 in CI and the iOS Simulator only. No configuration counts as tested until a device result is recorded under Tested devices.
+- **Tested:** 0.7.0~beta1 and 0.6.0~beta1 in CI and the iOS Simulator only. No configuration counts as tested until a device result is recorded under Tested devices.
 - **Intended test targets:** iPhone 13 Pro, iOS 16.5, and iPhone 11 Pro Max, iOS 17.4, both Dopamine (rootless) with ElleKit and PreferenceLoader. Other rootless setups are untested.
 - Rootless only (`iphoneos-arm64`), iOS 15.0 or later (declared).
 - Needs a tweak injector (ElleKit, Substitute, Substrate or libhooker) and PreferenceLoader.
@@ -47,9 +47,9 @@ limitations = """
 - Connected Devices and HCG sign-in belong to the standalone app; the tweak says so instead of offering them.
 """
 install = """
-1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.6.0~beta1. Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.7.0~beta1 (0.6.0~beta1 and older versions stay available for rollback). Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
 2. Respring once (your package manager's restart button or the Respring action in the jailbreak app). The package never resprings by itself.
-3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.6.0~beta1* and *SpringBoard: Running*.
+3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.7.0~beta1* and *SpringBoard: Running*.
 4. Turn on **Enable HCG Nexus**. The handle appears on the right edge without another respring.
 """
 removal = """
@@ -69,12 +69,16 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'; 21 Nov 2026 for 0.3.3~beta1: 'Approve publishing to repo candidate'; 26 Nov 2026 for 0.6.0~beta1: 'Approve publishing 0.6.0~beta1 to repo candidate'; 26 Nov 2026 for 0.4.0~beta1 and 0.5.0~beta1: 'approve both for candidate free version') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1", "0.4.0~beta1", "0.5.0~beta1", "0.6.0~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'; 21 Nov 2026 for 0.3.3~beta1: 'Approve publishing to repo candidate'; 26 Nov 2026 for 0.6.0~beta1: 'Approve publishing 0.6.0~beta1 to repo candidate'; 26 Nov 2026 for 0.4.0~beta1 and 0.5.0~beta1: 'approve both for candidate free version'; 26 Nov 2026 for 0.7.0~beta1: 'I approve HCG Nexus 0.7.0~beta1 for HCG Repo Candidate as a temporarily free beta testing package') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1", "0.4.0~beta1", "0.5.0~beta1", "0.6.0~beta1", "0.7.0~beta1"]
+
+[versions."0.7.0~beta1"]
+status = "experimental"
+label = "Temporarily free beta — central registry and evidence layers; simulator-tested, not physically validated."
 
 [versions."0.6.0~beta1"]
 status = "experimental"
-label = "Free public demo — HCG Nexus Command Center; simulator-tested, real-device testing pending."
+label = "Free public demo — HCG Nexus Command Center; simulator-tested, physical testing in progress (not yet validated)."
 
 [versions."0.5.0~beta1"]
 status = "experimental"

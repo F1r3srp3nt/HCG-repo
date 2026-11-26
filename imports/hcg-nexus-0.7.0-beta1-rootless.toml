@@ -1,0 +1,30 @@
+# Owner approval, 26 Nov 2026: "I approve HCG Nexus 0.7.0~beta1 for HCG Repo Candidate as a temporarily free beta
+# testing package. Approved SHA-256: 004e6a9ea2db3428e821249546c5baef01e113c2396ab944e232001bbad3e611. Exact size:
+# 2,131,624 bytes. Source commit: 2b521fb. CI run: #36." Publication is HELD: the owner will physically test the
+# published 0.6.0~beta1 first. This branch must not be merged or published until the owner says so.
+# Previous versions stay published for rollback. Stable and the permanent (paid) pricing are unchanged.
+#
+# HCG Nexus 0.7.0~beta1 (temporarily free beta of a paid tweak), rootless. Simulator/CI-tested; NOT physically validated.
+# Everything in 0.6.0~beta1, plus: product identities from the central HCG registry (fetched on tap, validated,
+# current + previous snapshot for rollback, offline built-in), seven separate evidence layers (a public read is never
+# "Connected"), live-verified HCG Store / Store Manager / HCG ONE: UNLEASHED / HCG Trading profiles, host process
+# memory and CPU diagnostics. Depends: mobilesubstrate | ellekit, preferenceloader, firmware (>= 15.0).
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #36, id 45872511908 (route both, rootless), from commit
+# 2b521fb on branch claude/hcg-nexus-tweak-yb1ii2 (HCG-Nexus main 8a328d5 = 2b521fb + validation record). All four
+# jobs passed. Re-checked locally on the downloaded file: zip sha256 a5506681...0991 matches GitHub; inspect-package.py
+# --require-new-arm64e-abi 35/35 OK; .deb 2,131,624 bytes. Artifact hcg-nexus-rootless-deb (ID 15142878876) expires
+# 2026-12-03; preserved copy: HCG-Nexus "Preserve candidate artifact" (90 days).
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.7.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 45872511908
+commit = "2b521fb1e67f2dcc58ced4f525ae5862197df5a7"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "004e6a9ea2db3428e821249546c5baef01e113c2396ab944e232001bbad3e611"

@@ -1,5 +1,14 @@
 # HCG Nexus changelog
 
+## 0.7.0~beta1
+
+Temporarily free beta in HCG Repo Candidate (HCG Nexus stays a paid product). Simulator-tested; not physically validated. Everything in 0.6.0~beta1, plus:
+
+- **Central registry:** product names, central IDs and release status from the main HCG platform's live catalogue, fetched only when you tap *Update from central registry*. The current and previous snapshots are kept (restore either, or use the built-in registry); it works offline. It never adds products, links, connections or permissions, and an imported registry file can no longer change a product's identity or authority.
+- **Evidence you can tell apart:** each product shows its registered product, installed application, available service, authenticated connection, verified capability, current health and historical validation separately. A public read now shows *Public service reachable*, never *Connected*.
+- **Verified profiles:** HCG Store (public health *Check now*), HCG Store Manager (what its read access still needs), HCG ONE: UNLEASHED, and HCG Trading without a link while its website does not answer.
+- **Diagnostics:** SpringBoard's own memory footprint and CPU time (panel › Settings › Diagnostics), for device testing.
+
 ## 0.6.0~beta1
 
 Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.5.0~beta1 (which
