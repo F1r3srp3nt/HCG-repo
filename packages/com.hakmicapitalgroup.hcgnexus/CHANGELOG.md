@@ -1,5 +1,20 @@
 # HCG Nexus changelog
 
+## 0.6.0~beta1
+
+Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.3.3~beta1, plus the
+work from the unreleased 0.4.0 and 0.5.0 betas:
+
+- **Command Center** (HCG Ecosystem › Command Center): every HCG product in 13 categories with search, favorites, expandable categories, a connection dashboard and notices.
+  - Each product has a profile: install status and version, connection status and last successful communication, capabilities, how it connects, permissions, troubleshooting, development requirements and roadmap.
+  - Actions appear only when they really work. Links and endpoints are only official HCG addresses.
+- **Connected only with evidence:** a real two-way exchange (for example *Check now* reading HCG News), HCG Halo answering the border switch, or HCG Server through Device Link. Installed apps show *Installed*.
+- **Roadmap:** 14 development states with the evidence for each and a history; development gaps can be exported as an HCG LifeOS import file (no XP is awarded).
+- **Connected devices:** import HCG System Tester's device inventory; ten device classes with adapters, missing capabilities and the safety rule (never vehicle, robot or machinery control, never firmware changes).
+- **HCG Ecosystem dashboard** (from 0.4.0): installed HCG products and versions, HCG Terminal screens, tweak status, opening Nexus from other HCG apps.
+- **Package Trust Center** (from 0.5.0): repository signatures, checksums, Release Passports and entitlements, read-only. Its cryptography now uses Apple's CommonCrypto and Security framework, and an independent review's findings are fixed (revocations, oversized keys, replayed indexes).
+- Declares iOS 15.0 or later. Works offline; *Check now* is the only network read and happens only when you tap it.
+
 ## 0.3.3~beta1
 
 Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.3.2~beta1, plus:
