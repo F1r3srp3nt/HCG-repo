@@ -135,6 +135,17 @@
     {
       "architecture": "iphoneos-arm64",
       "channel": "candidate",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgnexus_0.6.0~beta1_iphoneos-arm64.deb",
+      "imported_at": "2026-11-26T15:59:20Z",
+      "package": "com.hakmicapitalgroup.hcgnexus",
+      "sha256": "587b2fbd7548b0c9e84d888503ffbfd07ff687d2b679ee241e476b858e33e713",
+      "size": 2076696,
+      "status": "published",
+      "version": "0.6.0~beta1"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "channel": "candidate",
       "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.hcgsentinel_0.1.0~beta1_iphoneos-arm64.deb",
       "imported_at": "2026-11-21T07:57:28Z",
       "package": "com.hakmicapitalgroup.hcgsentinel",
