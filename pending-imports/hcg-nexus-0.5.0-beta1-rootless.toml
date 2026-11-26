@@ -1,4 +1,18 @@
-# HELD: not imported, not published. Move to imports/ (and add 0.5.0~beta1 to exception_versions in
+# HELD: not imported, not published.
+#
+# EXACT BYTES PRESERVED (26 Nov 2026): HCG-Nexus "Preserve candidate artifact" run 45769182876 re-uploaded the run #34
+# artifact unchanged after checking its SHA-256: artifact "preserved-hcg-nexus-rootless-deb-run45685911146"
+# (ID 15093267208), kept until 2027-02-24; the .deb inside is byte-identical (re-checked: 279902e7...ac04, 1,684,900 B).
+# HCG Repo's Release Manager validated these bytes (`release submit`, 26 Nov 2026): VALIDATED; static inspection
+# passed-with-warnings (firmware-undeclared; needs-free-demo-approval), maintainer scripts not-applicable (none),
+# script-free dpkg lifecycle passed, device levels not-recorded.
+# Import paths, both only after the owner approves this exact SHA-256:
+#   until 2026-12-02: move this file to imports/ and add the free-demo exception (github-artifact, run 45685911146);
+#   any time:         download the preserved artifact, check SHA256SUMS, then on the owner's machine
+#                     bin/hcgrepo release submit --deb <file> --manifest <submission.json>   (see HCG-Nexus docs/VALIDATION.md)
+#                     bin/hcgrepo release approve <id> --sha256 279902e7...ac04 --by "<owner>" --record "<approval>"
+#                     bin/hcgrepo release prepare <id> --via local-file --free-demo-approval "<owner's words>"
+# Move to imports/ (and add 0.5.0~beta1 to exception_versions in
 # packages/com.hakmicapitalgroup.hcgnexus/package.toml with the approval quoted) only after the owner approves
 # this exact SHA-256. Pushing a file under pending-imports/ triggers nothing.
 #
