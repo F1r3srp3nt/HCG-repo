@@ -4,8 +4,8 @@
 #
 # HCG Nexus is a paid product. Its owner-approved candidate builds (exception_versions in [access] below) are free public
 # demos in the HCG Repo Candidate channel only. The current one is 0.6.0~beta1: the HCG Nexus Command Center. Earlier
-# approved betas stay published (superseded). 0.3.0~beta1 was approved but never imported; 0.4.0~beta1 and 0.5.0~beta1
-# were built but are not approved for Candidate.
+# approved betas, including 0.4.0~beta1 and 0.5.0~beta1, stay published (superseded). 0.3.0~beta1 was approved but
+# never imported.
 # 0.2.0 and every other version, including the 0.2.1 release, stay paid and protected.
 
 [release]
@@ -69,12 +69,20 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'; 21 Nov 2026 for 0.3.3~beta1: 'Approve publishing to repo candidate'; 26 Nov 2026 for 0.6.0~beta1: 'Approve publishing 0.6.0~beta1 to repo candidate') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1", "0.6.0~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'; 21 Nov 2026 for 0.3.3~beta1: 'Approve publishing to repo candidate'; 26 Nov 2026 for 0.6.0~beta1: 'Approve publishing 0.6.0~beta1 to repo candidate'; 26 Nov 2026 for 0.4.0~beta1 and 0.5.0~beta1: 'approve both for candidate free version') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1", "0.4.0~beta1", "0.5.0~beta1", "0.6.0~beta1"]
 
 [versions."0.6.0~beta1"]
 status = "experimental"
 label = "Free public demo — HCG Nexus Command Center; simulator-tested, real-device testing pending."
+
+[versions."0.5.0~beta1"]
+status = "experimental"
+label = "Superseded by 0.6.0~beta1 — Package Trust Center; simulator-tested, real-device testing pending."
+
+[versions."0.4.0~beta1"]
+status = "experimental"
+label = "Superseded by 0.6.0~beta1 — HCG Ecosystem dashboard and HCG Interchange Protocol; simulator-tested, real-device testing pending."
 
 [versions."0.3.1~beta1"]
 status = "experimental"
