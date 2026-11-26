@@ -1,8 +1,6 @@
-# HELD: not imported, not published.
-#
-# Move to imports/ (and add 0.6.0~beta1 to exception_versions in packages/com.hakmicapitalgroup.hcgnexus/package.toml
-# with the approval quoted) only after the owner approves this exact SHA-256. Pushing a file under pending-imports/
-# triggers nothing. Earlier versions (0.4.0~beta1, 0.5.0~beta1) are held separately and are not replaced.
+# Owner approval, 26 Nov 2026: 'Approve publishing 0.6.0~beta1 to repo candidate' (this exact SHA-256 was presented for
+# approval: 587b2fbd7548b0c9e84d888503ffbfd07ff687d2b679ee241e476b858e33e713). Free public demo in Candidate only.
+# Earlier versions are not replaced. Stable is unchanged.
 #
 # HCG Nexus 0.6.0~beta1 (free candidate beta of a paid tweak), rootless. Simulator/CI-tested; real-device testing pending.
 # Everything in 0.5.0~beta1, plus the HCG Nexus Command Center: a versioned ecosystem registry (41 products, 13

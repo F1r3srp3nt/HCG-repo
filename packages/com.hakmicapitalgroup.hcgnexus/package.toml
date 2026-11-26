@@ -3,8 +3,9 @@
 # App/Assets.xcassets/AppIcon.appiconset/Icon-180.png at commit 1341669.
 #
 # HCG Nexus is a paid product. Its owner-approved candidate builds (exception_versions in [access] below) are free public
-# demos in the HCG Repo Candidate channel only. The current one is 0.3.1~beta1: the redesign + Command Mode + the HCG Halo
-# border interface. 0.2.1~beta1 and 0.2.2~beta1 stay published (superseded). 0.3.0~beta1 was approved but never imported.
+# demos in the HCG Repo Candidate channel only. The current one is 0.6.0~beta1: the HCG Nexus Command Center. Earlier
+# approved betas stay published (superseded). 0.3.0~beta1 was approved but never imported; 0.4.0~beta1 and 0.5.0~beta1
+# were built but are not approved for Candidate.
 # 0.2.0 and every other version, including the 0.2.1 release, stay paid and protected.
 
 [release]
@@ -12,41 +13,43 @@ channel = "beta"
 
 [display]
 known_issues = """
-- **0.3.1~beta1 is simulator-tested only; real-device testing is pending.** It ran in the iOS Simulator with its panel, Command Mode, both Settings entry points and the HCG Halo border. It has not been installed on a phone.
-- **HCG Halo panel border (optional):** with **HCG Halo 0.2.0~beta1** installed and its Border Target set to *HCG Nexus Panel* or *Both*, Halo draws its animated border around the open panel. Nexus never requires Halo. Install them in either order, then respring once.
-- **Upgrading from 0.2.x** keeps every workspace and shortcut. The first launch copies app and link shortcuts into Apps; *Tools › Restore Previous Layout* undoes that. Upgrading from 0.2.2~beta1 keeps the HCG Halo border interface.
-- The HCG logo is the founder's temporary official mark; final logo files are pending. The HCG Nexus banner is the founder-approved artwork.
-- **HCG sign-in is not configured:** HCG has not issued Nexus's HCG Connect client, so Account shows *Not configured*. Connected Devices and sign-in are standalone-app features; the tweak says so instead of offering them.
-- **Owner report, not yet a recorded device test.** On 17 Nov 2026 the owner reported HCG Nexus visibly running on iPhone 13 Pro, iOS 16.5, Dopamine (rootless): the panel opens, workspaces switch and Settings open. The installed version was not stated, so it is not recorded against 0.2.1~beta1 or any other version. The handle, Lock Screen, rotation, disable, kill switch and uninstall were not reported.
-- **Not in this source:** 0.3.0~beta1, which lacks the HCG Halo border interface. 0.3.1~beta1 replaces it.
-- **Why 0.2.1~beta1 instead of 0.2.0:** the 0.2.0 builds use legacy `data.tar.lzma` packaging (64 MiB dictionary), the same format as the HCG Vortex beta whose unpack crashed with `dpkg-deb … Bus error: 10`. This beta has the same code as 0.2.0 (HCG-Nexus run #10) but uses gzip packaging.
+- **0.6.0~beta1 is simulator-tested only; real-device testing is pending.** CI built it with Xcode, ran its tests and launched the standalone app in the iOS Simulator. It has not been installed on a phone.
+- **Connected means proven.** A product shows *Connected* only after a real two-way exchange (for example *Check now* reading HCG News). Installed apps show *Installed*, never *Connected*.
+- **HCG sign-in is not configured:** HCG Nexus has no HCG Connect client yet, so sign-in, central permissions and private products stay off.
+- **HCG Repo is unsigned today,** so the Package Trust Center shows it as *Unsigned*. Nexus never calls a package safe because its checksum matches.
+- The HCG logo is the founder's temporary official mark. Products without official icons use generic system symbols.
 - Connected Devices (HCG Device Link) is a feature of the standalone HCG Nexus app, not of this tweak.
 """
-summary = "Smoked-glass command panel behind a cyan edge handle: Overview, Workspaces, Tools, HCG Products, Apps and Command Mode."
+summary = "The HCG ecosystem command center: every HCG product, evidence-based connections, roadmap and Package Trust Center."
 icon = "icon.png"
 tint = "#2FD3E6"
 notes = """
-HCG Nexus adds a cyan edge handle to SpringBoard. Tap or swipe it to open a smoked-glass command panel with **Overview**, **Workspaces**, **Tools**, **HCG Products**, **Apps** and **Account**. Launch installed apps and links from it.
+HCG Nexus is the **HCG ecosystem command center** on your iPhone. A cyan edge handle opens a smoked-glass panel with **Overview**, **Workspaces**, **Tools**, **HCG Ecosystem**, **Apps** and **Account**.
 
-**Command Mode** (the grid button in the panel header) shows device status, your shortcuts and the state of HCG integrations. It never claims a connection it cannot prove.
+**Command Center** (HCG Ecosystem › Command Center): every HCG product by category with search, favorites and a profile for each — install status, version, connection status with the last successful communication, capabilities, how it connects, development requirements and roadmap. Opening it starts no connection.
 
-**Optional HCG Halo border:** with HCG Halo 0.2.0~beta1 installed, Halo can draw its animated light border around the open panel (*Settings › HCG Nexus › Appearance › Halo border*). Nexus works the same without it.
+**Roadmap:** each product's development state with the evidence behind it, and an export of development gaps as an HCG LifeOS import file.
+
+**Connected devices:** import the device inventory exported by HCG System Tester on your Mac. Nexus only reads the file; it never controls a device.
+
+**Package Trust Center:** repository signatures, checksums and device-compatibility evidence, kept separate. Read-only.
 
 **Free public demo:** this candidate build needs no sign-in and no payment. Device compatibility is unverified until tested.
 
 **It is off after installation.** Turn it on in *Settings › HCG Nexus*. The package has no install scripts and never resprings by itself.
 """
 limitations = """
-- **Tested:** 0.3.1~beta1 in the iOS Simulator only. No configuration counts as tested until a device result is recorded under Tested devices.
-- **Intended test target:** iPhone 13 Pro, iOS 16.5, Dopamine (rootless), ElleKit, PreferenceLoader. Other rootless setups are untested.
-- Rootless only (`iphoneos-arm64`). The binaries target iOS 15.0 and later; the package declares no iOS range, so a package manager may offer it on other rootless iOS versions.
+- **Tested:** 0.6.0~beta1 in CI and the iOS Simulator only. No configuration counts as tested until a device result is recorded under Tested devices.
+- **Intended test targets:** iPhone 13 Pro, iOS 16.5, and iPhone 11 Pro Max, iOS 17.4, both Dopamine (rootless) with ElleKit and PreferenceLoader. Other rootless setups are untested.
+- Rootless only (`iphoneos-arm64`), iOS 15.0 or later (declared).
 - Needs a tweak injector (ElleKit, Substitute, Substrate or libhooker) and PreferenceLoader.
+- *Check now* reads public HCG pages only when you tap it; Nexus sends no account, key or cookie.
 - Connected Devices and HCG sign-in belong to the standalone app; the tweak says so instead of offering them.
 """
 install = """
-1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.3.1~beta1. To light the panel, also install **HCG Halo (Beta)** 0.2.0~beta1, in either order. Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
-2. Respring once, after installing everything you chose (your package manager's restart button or the Respring action in the jailbreak app). The package never resprings by itself.
-3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.3.1~beta1* and *SpringBoard: Running*.
+1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Nexus** 0.6.0~beta1. Accept the dependencies it asks for (PreferenceLoader, an injector) if they are not installed yet.
+2. Respring once (your package manager's restart button or the Respring action in the jailbreak app). The package never resprings by itself.
+3. Open **Settings › HCG Nexus**. *Status* should show *Installed 0.6.0~beta1* and *SpringBoard: Running*.
 4. Turn on **Enable HCG Nexus**. The handle appears on the right edge without another respring.
 """
 removal = """
@@ -66,12 +69,16 @@ allow_setuid = []
 # Paid: HCG Connect sign-in plus HCG Store ownership. Never stored or served publicly here,
 # EXCEPT the exact versions in exception_versions, which are free in the candidate channel.
 level = "paid"
-exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'; 21 Nov 2026 for 0.3.3~beta1: 'Approve publishing to repo candidate') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
-exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1"]
+exception = "Free public demo (no sign-in, no payment) in HCG Repo Candidate under the owner's free-demo policy for approved candidate builds, approved by the owner on 17 Nov 2026 (0.2.1~beta1) and 18 Nov 2026 (0.2.2~beta1 and 0.3.1~beta1: candidate builds of the HCG Halo × HCG Nexus integration 'authorised as free public demos with no account or payment requirement', 'Candidate publication is already authorised'; 0.3.0~beta1: 'Candidate builds are free public demos', approved but never imported; 19 Nov 2026 for 0.3.2~beta1, with HCG Halo 0.3.1~beta1: 'Approved: import and publish HCG Nexus 0.3.2~beta1 and HCG Halo 0.3.1~beta1 together as free public betas in HCG Repo Candidate'; 21 Nov 2026 for 0.3.3~beta1: 'Approve publishing to repo candidate'; 26 Nov 2026 for 0.6.0~beta1: 'Approve publishing 0.6.0~beta1 to repo candidate') for the versions in exception_versions only. HCG Nexus stays a paid product: 0.2.0 and every other version (including the 0.2.1 release) remain paid and protected, and any further free build needs its own approval."
+exception_versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.0~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1", "0.6.0~beta1"]
+
+[versions."0.6.0~beta1"]
+status = "experimental"
+label = "Free public demo — HCG Nexus Command Center; simulator-tested, real-device testing pending."
 
 [versions."0.3.1~beta1"]
 status = "experimental"
-label = "Free public demo — redesign + Command Mode + HCG Halo border interface; simulator-tested, real-device testing pending."
+label = "Superseded — redesign + Command Mode + HCG Halo border interface; simulator-tested, real-device testing pending."
 
 [versions."0.2.2~beta1"]
 status = "experimental"
