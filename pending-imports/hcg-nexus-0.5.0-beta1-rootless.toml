@@ -1,0 +1,30 @@
+# HELD: not imported, not published. Move to imports/ (and add 0.5.0~beta1 to exception_versions in
+# packages/com.hakmicapitalgroup.hcgnexus/package.toml with the approval quoted) only after the owner approves
+# this exact SHA-256. Pushing a file under pending-imports/ triggers nothing.
+#
+# HCG Nexus 0.5.0~beta1 (free candidate beta of a paid tweak), rootless. Simulator/CI-tested; real-device testing pending.
+# Everything in 0.4.0~beta1 (HCG Ecosystem dashboard, HCG Interchange Protocol), plus the read-only Package Trust
+# Center: OpenPGP verification of Release.gpg/InRelease against a key the user pins (RSA, SHA-256/512; SHA-1 refused),
+# Packages and .deb checksum verification, Release Passport / compatibility / hcg.repo.monitor viewing, declared and
+# installed-app entitlements, installed inventory and security warnings. Installs and changes nothing; never touches
+# Sileo, Zebra or APT sources. HCG Repo is unsigned today, so it is shown as Unsigned. Depends unchanged.
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #34, id 45685911146 (route both, rootless; attempt 2),
+# from commit 26e51a8 on branch claude/hcg-nexus-tweak-yb1ii2. All four jobs passed: lint + 28,369 Core host checks;
+# Device Link + HCGConnectVerify; app XCTests + screenshots of every section; jailbreak package + preview. Re-checked
+# locally on the downloaded file: zip sha256 0f3e1fca...a6d6 matches GitHub; inspect-package.py
+# --require-new-arm64e-abi 16/16 OK; build ID 26e51a82da; control Version 0.5.0~beta1; .deb 1,684,900 bytes.
+# Artifact hcg-nexus-rootless-deb (ID 15059426617) EXPIRES 2026-12-02.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.5.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 45685911146
+commit = "26e51a82da3b6fb87a5df54866fe70cac7fd7c63"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "279902e728aac293209acaff8f8c4ff4a90c00edc20682536b1501cc8562ac04"
