@@ -1,0 +1,130 @@
+{
+  "architecture": "iphoneos-arm64",
+  "artifact_digest": "sha256:083de842da92e75dccf5709e5a30cbed38dafa3b71265373e4921fb143c55114",
+  "artifact_id": 15146455798,
+  "artifact_name": "hcg-portal-rootless-deb",
+  "artifact_zip_sha256": "083de842da92e75dccf5709e5a30cbed38dafa3b71265373e4921fb143c55114",
+  "commit": "531d3dcdc83d1c9a378f1d16f7f977326d400cd8",
+  "downloaded_sha256": "4e00a61a3333917f2cdb3bf1da2d2104007101d7104b6476b2d461800200e09f",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.portal_0.1.0~beta5_iphoneos-arm64.deb",
+  "imported_at": "2026-11-26T23:13:09Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [],
+    "architecture": "iphoneos-arm64",
+    "binaries": [
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/MobileSubstrate/DynamicLibraries/HCGPortal.dylib",
+        "signed": true
+      },
+      {
+        "arches": [
+          "arm64",
+          "arm64e"
+        ],
+        "entitlements": null,
+        "libraries": [
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/System/Library/Frameworks/QuartzCore.framework/QuartzCore",
+          "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+          "/System/Library/PrivateFrameworks/Preferences.framework/Preferences",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "minimum_ios": [
+          "15.0"
+        ],
+        "path": "var/jb/Library/PreferenceBundles/HCGPortalPrefs.bundle/HCGPortalPrefs",
+        "signed": true
+      }
+    ],
+    "binary_minimum_ios": "15.0",
+    "depends": "mobilesubstrate (>= 0.9.5000), preferenceloader, firmware (>= 15.0)",
+    "maintainer_scripts": [
+      "postrm"
+    ],
+    "package": "com.hakmicapitalgroup.portal",
+    "sha256": "4e00a61a3333917f2cdb3bf1da2d2104007101d7104b6476b2d461800200e09f",
+    "size": 385444,
+    "version": "0.1.0~beta5"
+  },
+  "member": "com.hakmicapitalgroup.portal_0.1.0~beta5_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.portal",
+  "repository": "F1r3srp3nt/HCG-Jailbreak-Research",
+  "request": "hcg-portal-0.1.0-beta5-rootless",
+  "run_attempt": 1,
+  "run_id": 45876610604,
+  "run_url": "https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/45876610604",
+  "schema": 1,
+  "sha256": "4e00a61a3333917f2cdb3bf1da2d2104007101d7104b6476b2d461800200e09f",
+  "sha512": "de3d0eef15ca968eb091a676e4e10d93864dc9810d2916db651c40c5afd8e4a8c6ff0db298a8375ba31011f16c484ce04e0d4668e641a498a2205832de534c89",
+  "size": 385444,
+  "source": "github-workflow-artifact",
+  "validation_levels": {
+    "maintainer_script_review": {
+      "executed": false,
+      "note": "the scripts were read (static analysis); they were not run",
+      "scripts": [
+        "postrm"
+      ],
+      "state": "passed-with-warnings"
+    },
+    "script_free_lifecycle": {
+      "note": "dpkg ran on a copy with the maintainer scripts removed: this proves the payload installs, reinstalls, removes and purges cleanly; it does not prove the original maintainer scripts work",
+      "scripts_executed": false,
+      "state": "passed",
+      "steps": [
+        {
+          "ok": true,
+          "problems": [],
+          "status": "install ok installed",
+          "step": "install"
+        },
+        {
+          "ok": true,
+          "problems": [],
+          "status": "install ok installed",
+          "step": "reinstall"
+        },
+        {
+          "ok": true,
+          "problems": [],
+          "status": "not-installed",
+          "step": "remove"
+        },
+        {
+          "ok": true,
+          "problems": [],
+          "status": "not-installed",
+          "step": "purge"
+        }
+      ],
+      "upgrade_from": null
+    },
+    "static_inspection": {
+      "note": "the package was read and checked; nothing was installed",
+      "state": "passed"
+    }
+  },
+  "version": "0.1.0~beta5",
+  "workflow": ".github/workflows/hcg-portal.yml"
+}
