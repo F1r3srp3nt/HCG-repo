@@ -2,8 +2,8 @@
 
 ## 0.6.0~beta1
 
-Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.3.3~beta1, plus the
-work from the unreleased 0.4.0 and 0.5.0 betas:
+Free in HCG Repo Candidate only. Simulator-tested; real-device testing is pending. Everything in 0.5.0~beta1 (which
+includes 0.4.0~beta1), plus:
 
 - **Command Center** (HCG Ecosystem › Command Center): every HCG product in 13 categories with search, favorites, expandable categories, a connection dashboard and notices.
   - Each product has a profile: install status and version, connection status and last successful communication, capabilities, how it connects, permissions, troubleshooting, development requirements and roadmap.
@@ -14,6 +14,22 @@ work from the unreleased 0.4.0 and 0.5.0 betas:
 - **HCG Ecosystem dashboard** (from 0.4.0): installed HCG products and versions, HCG Terminal screens, tweak status, opening Nexus from other HCG apps.
 - **Package Trust Center** (from 0.5.0): repository signatures, checksums, Release Passports and entitlements, read-only. Its cryptography now uses Apple's CommonCrypto and Security framework, and an independent review's findings are fixed (revocations, oversized keys, replayed indexes).
 - Declares iOS 15.0 or later. Works offline; *Check now* is the only network read and happens only when you tap it.
+
+## 0.5.0~beta1
+
+Free in HCG Repo Candidate only (superseded by 0.6.0~beta1). Simulator-tested; real-device testing is pending. Everything in 0.4.0~beta1, plus:
+
+- **Package Trust Center** (HCG Ecosystem › Security), read-only: HCG Repo signature checks against a key you pin (RSA, SHA-256/512; SHA-1 refused), package index and download checksums, Release Passports and compatibility, declared and installed-app entitlements, installed packages and security warnings.
+- It never calls a package safe because its checksum matches, and it installs nothing. HCG Repo is unsigned today, so it shows *Unsigned*.
+- Uses the portable verifier that 0.6.0~beta1 later hardened (independent review fixes) and moved to Apple's cryptography; prefer 0.6.0~beta1.
+
+## 0.4.0~beta1
+
+Free in HCG Repo Candidate only (superseded by 0.6.0~beta1). Simulator-tested; real-device testing is pending. Everything in 0.3.3~beta1, plus:
+
+- **HCG Ecosystem dashboard** (was HCG Products): installed HCG products with versions, compatibility and health, read-only settings of HCG Halo, Vortex, Portal and Animation Center, Candidate updates with Zebra/Sileo links (never installs) and an activity history.
+- **HCG Terminal** screens through Terminal's own links (version and build, iOS 17 compatibility); diagnostics, packages and processes through Unleashed Tools.
+- **Opening Nexus from HCG apps:** HCG Portal's interface and Darwin requests from HCG apps (unlocked only, rate-limited, can be turned off).
 
 ## 0.3.3~beta1
 
