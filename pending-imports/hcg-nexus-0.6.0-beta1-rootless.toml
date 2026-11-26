@@ -1,0 +1,33 @@
+# HELD: not imported, not published.
+#
+# Move to imports/ (and add 0.6.0~beta1 to exception_versions in packages/com.hakmicapitalgroup.hcgnexus/package.toml
+# with the approval quoted) only after the owner approves this exact SHA-256. Pushing a file under pending-imports/
+# triggers nothing. Earlier versions (0.4.0~beta1, 0.5.0~beta1) are held separately and are not replaced.
+#
+# HCG Nexus 0.6.0~beta1 (free candidate beta of a paid tweak), rootless. Simulator/CI-tested; real-device testing pending.
+# Everything in 0.5.0~beta1, plus the HCG Nexus Command Center: a versioned ecosystem registry (41 products, 13
+# categories), evidence-only connection states (Connected only after a real two-way exchange), product profiles, a
+# 14-state roadmap with HCG LifeOS export, HCG System Tester inventory import and read-only Check now for HCG News and
+# the identity discovery. Package Trust Center cryptography now uses Apple CommonCrypto and the Security framework, and
+# the independent OpenPGP review findings are fixed (revocation memory, bounded key work, Suite/Date replay checks).
+# Installs and changes nothing; never touches Sileo, Zebra or APT sources.
+# Depends now declares firmware (>= 15.0) (clears firmware-undeclared).
+# Built with Xcode's toolchain by HCG-Nexus "Build package" run #35, id 45777325673 (route both, rootless), from commit
+# 1540d61 on branch claude/hcg-nexus-tweak-yb1ii2. Re-checked locally on the downloaded file: zip sha256 2bb7ec20...1c35
+# matches GitHub; inspect-package.py --require-new-arm64e-abi 35/35 OK; build ID 1540d61c7a; control Version
+# 0.6.0~beta1; .deb 2,076,696 bytes. Artifact hcg-nexus-rootless-deb (ID 15096538703) EXPIRES 2026-12-03: preserve it
+# with HCG-Nexus "Preserve candidate artifact" (run_id 45777325673) before then if approval comes later.
+
+[request]
+package = "com.hakmicapitalgroup.hcgnexus"
+version = "0.6.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Nexus"
+run_id = 45777325673
+commit = "1540d61c7ac2a7b071f7aece7fecd81836b813a2"
+artifact = "hcg-nexus-rootless-deb"
+sha256 = "587b2fbd7548b0c9e84d888503ffbfd07ff687d2b679ee241e476b858e33e713"
