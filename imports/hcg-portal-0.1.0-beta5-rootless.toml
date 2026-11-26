@@ -1,0 +1,32 @@
+# HCG Portal 0.1.0~beta5, rootless. DIAGNOSTIC CANDIDATE awaiting physical-device validation: it adds a Rendering
+# Diagnostics page (stage-by-stage evidence, history, Copy Diagnostics), a Visual Test inside Settings and an opt-in
+# static Cover Sheet Test Orb, plus mitigations for beta 4 not appearing on hardware (hook lookup through the injector's
+# own library, -isVisible for the Cover Sheet, read-only MKBGetDeviceLockState for data protection, a settle delay after
+# unlock). Unlock gating is unchanged: Portal works only after iOS has unlocked the iPhone and fails closed.
+# Simulator validated only; NOT validated on a physical iPhone.
+# Upgrades 0.1.0~beta4, 0.1.0~beta3 and 0.1.0~beta1 under the same package ID (all stay in the pool for rollback).
+# Candidate channel only (temporarily free diagnostic testing package; owner approval of 26 Nov 2026 for this exact
+# SHA-256, docs/ACCESS.md). Permanent pricing and access are unchanged.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit 531d3dc (branch claude/portal-0.1.0-beta5-diagnostics, now also
+# on main), macOS CI run 45876610604 (HCG Portal build: Xcode 16.4), artifact hcg-portal-rootless-deb
+# (ID 15146455798; zip digest sha256:083de842da92e75dccf5709e5a30cbed38dafa3b71265373e4921fb143c55114 as recorded by
+# GitHub). It is the only artifact of that run (no -UNVALIDATED artifact was produced).
+# Project record (HCGPortal/README.md at 31b1e26): 385,444 bytes; Xcode 16.4 (16F6), arm64e ABI 0x80000002, embedded
+# build ID 531d3dcdc83d; validate.sh --require-new-abi 0 failures / 0 warnings (in CI and on the downloaded bytes);
+# host tests 2,927,412 checks; Simulator runtime tests passed; preview run 45876610538 147/147.
+# Two earlier beta 5 builds (df55dff8... from 194614f and 8664a99e... from 4efb15c) are obsolete and must never be
+# imported; Prepare packages refuses any bytes other than the SHA-256 below.
+
+[request]
+package = "com.hakmicapitalgroup.portal"
+version = "0.1.0~beta5"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 45876610604
+commit = "531d3dcdc83d1c9a378f1d16f7f977326d400cd8"
+artifact = "hcg-portal-rootless-deb"
+sha256 = "4e00a61a3333917f2cdb3bf1da2d2104007101d7104b6476b2d461800200e09f"

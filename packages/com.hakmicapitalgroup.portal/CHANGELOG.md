@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.0~beta5
+
+**Diagnostic candidate, awaiting physical-device validation.** HCG Portal 0.1.0~beta4 was reported not to appear on a
+physical iPhone. This build adds evidence on the device and fixes for the likely causes. **Simulator validated only;
+it is not yet known whether it appears and responds on a physical iPhone.**
+
+- **Rendering Diagnostics** (Settings › HCG Portal):
+  - one line per stage, with SpringBoard's own evidence: installed and loaded version, injection, hook route, lock
+    state (raw values), Cover Sheet (raw flags), host view, overlays created and attached, frame and bounds,
+    hidden / alpha / clipping / masks of every ancestor, what a touch at the orb's centre reaches, animation;
+  - the last attempt, the last success and the exact refusal reason, and a timestamped history (80 entries);
+  - **Copy Diagnostics** for sending the report; no SSH needed. A stage is marked ✓ only from evidence.
+- **Visual Test in Settings:** the real portal renderer and touch code inside Settings, with checks for renderer,
+  artwork, layout, animation, orb taps, menu open and close and destination taps. Nothing opens from it, and it is
+  never on the Lock Screen.
+- **Cover Sheet Test Orb** (off by default): a static pink *PORTAL TEST* circle with a tap counter, at a fixed place on
+  the unlocked Cover Sheet, with no animation or menu, so the attachment and touch path can be tested on their own.
+- **Fixes for the likely causes:**
+  - the hook interface is also looked up in the injector's own library (ElleKit or Substrate), and the route is
+    recorded;
+  - Cover Sheet visibility comes from `-isVisible` (then `-isPresented`);
+  - data protection is read from `MKBGetDeviceLockState` (read only; no other MobileKeyBag call, enforced by the
+    build), with `-isProtectedDataAvailable` as a fallback; unclear values keep Portal hidden;
+  - a 0.7 s settle delay after an unlock while the Cover Sheet is visible, reported as such.
+- **Unchanged:** unlock gating (fail closed), removal on lock with pending actions cancelled, no authentication code,
+  kill switch, off after installation.
+- Validation: Xcode 16.4 build and `validate.sh --require-new-abi` (0 failures, 0 warnings); host tests (2,927,412
+  checks); Simulator runtime tests; Simulator preview 147/147.
+
 ## 0.1.0~beta4
 
 Unlock gating and a touch-interaction repair. **Simulator validated; physical iPhone validation pending.** The touch

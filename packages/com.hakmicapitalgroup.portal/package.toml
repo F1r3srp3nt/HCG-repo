@@ -14,8 +14,8 @@ channel = "beta"
 # free public demo (no sign-in, no payment) under HCG Repo's free-demo policy (docs/ACCESS.md), which keeps it out of
 # the stable source. Any other version needs its own approval.
 level = "connect"
-exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Portal 0.1.0~beta1 as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), of 0.1.0~beta3 as a free public demo (21 Nov 2026: 'Approved — beta 3 is a free public demo, publish it'), and of 0.1.0~beta4 (21 Nov 2026: 'I authorize public Candidate distribution of this specific beta 4 package, provided all final integrity, compatibility, and security checks pass. This authorization does not apply to Stable, other packages, or future releases.'), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
-exception_versions = ["0.1.0~beta1", "0.1.0~beta3", "0.1.0~beta4"]
+exception = "Free public beta demo (no sign-in, no payment) in HCG Repo Candidate only, under the owner's authorisation of HCG Portal 0.1.0~beta1 as a free public candidate demo at https://repo.hakmicapitalgroup.com/repo/candidate/ (18 Nov 2026), of 0.1.0~beta3 as a free public demo (21 Nov 2026: 'Approved — beta 3 is a free public demo, publish it'), and of 0.1.0~beta4 (21 Nov 2026: 'I authorize public Candidate distribution of this specific beta 4 package, provided all final integrity, compatibility, and security checks pass. This authorization does not apply to Stable, other packages, or future releases.'), and of 0.1.0~beta5 (26 Nov 2026: 'I approve HCG Portal 0.1.0~beta5 for import and publication to HCG Repo Candidate as a temporarily free diagnostic testing package.', this exact package, SHA-256 4e00a61a3333917f2cdb3bf1da2d2104007101d7104b6476b2d461800200e09f, 385,444 bytes; Stable unchanged; permanent pricing unchanged), for the versions in exception_versions only. This does not change production pricing or access; no expiry date and no remote disabling."
+exception_versions = ["0.1.0~beta1", "0.1.0~beta3", "0.1.0~beta4", "0.1.0~beta5"]
 
 [display]
 # summary is intentionally empty: the listing uses the Description from the .deb's control file.
@@ -24,49 +24,59 @@ tint = "#33E6FF"
 notes = """
 **Free public beta demo.** No sign-in and no payment. Expect rough edges and please report problems.
 
-**0.1.0~beta4: Portal now works only on an unlocked iPhone, and its controls have a touch-interaction repair.** **Simulator validated; physical iPhone validation is still pending.** The touch repair and the earlier Safe Mode issue are **not** confirmed resolved on real hardware.
+**0.1.0~beta5 is a DIAGNOSTIC CANDIDATE awaiting physical-device validation.** It is temporarily free for testing. It exists to find out why 0.1.0~beta4 did not appear on a real iPhone, and to fix it. **It is validated in CI and the iOS Simulator only; it has not yet been shown to appear or respond to touch on a physical iPhone.**
+
+- **Settings › HCG Portal › Rendering Diagnostics** shows every stage on the device with its evidence: installed and loaded version, injection, hooks, lock state, Cover Sheet, host view, attachment, frame, visibility, z-order, touch path, animation, the last attempt, the last success and the exact reason Portal refused, with a timestamped history. **Copy Diagnostics** puts it all on the clipboard. No SSH needed. Nothing is shown as working unless SpringBoard reports it.
+- **Visual Test in Settings** runs the real portal and its touch handling inside Settings (never on the Lock Screen; nothing opens from it).
+- **Cover Sheet Test Orb** (off by default): a plain pink *PORTAL TEST* circle that counts taps, shown only on the Cover Sheet after you unlock.
+- **Fixes for the likely causes:** Portal also finds its hook interface in the injector's own library, uses a more reliable Cover Sheet visibility signal, reads the lock state read-only from iOS (and stays hidden if any source is unclear), and waits 0.7 s after an unlock before showing.
+
+**Unchanged from 0.1.0~beta4:** Portal works only on an unlocked iPhone; it never appears on the locked Lock Screen, never requests or bypasses Face ID, Touch ID or the passcode, and is removed at once when you lock.
 
 - **Only after iOS has unlocked your iPhone.** Portal appears on the Cover Sheet when you pull it down **after** unlocking with Face ID, Touch ID or your passcode. It **no longer appears on the locked Lock Screen**: there it has no view, no button and nothing for VoiceOver. Face ID recognising you while the Lock Screen is still up is not enough; Portal waits until iOS has actually unlocked.
 - **It never bypasses Face ID, Touch ID or your passcode.** Portal does not request, perform or touch authentication. It only reads the lock state iOS reports, and if that state can't be read it stays hidden (fail closed).
 - **Locking removes it at once.** Pressing the side button removes the portal and cancels anything it was about to open, so nothing chosen before a lock can run after it.
-- **Touch repair:** on 0.1.0~beta3 the portal could be drawn but not respond to taps. The orb and the menu now use their own tap handling, which SpringBoard's own Cover Sheet tap gestures wait for. Swipes and long presses on the Cover Sheet work as before.
+- **Touch handling:** the orb and the menu use their own tap handling, which SpringBoard's own Cover Sheet tap gestures wait for. Swipes and long presses on the Cover Sheet work as before.
 
 HCG Portal adds a **luminous, interactive portal** to the Cover Sheet, below the clock and above your notifications: a dark translucent centre with slowly turning cyan-and-violet energy rings.
 
 - **Tap it** for a radial menu: **Nexus**, **Backgrounds**, **Devices** and **HCG Apps**. Tap outside to close it. Choosing something closes the Cover Sheet and opens it.
-- **Backgrounds** opens Settings for HCG Animation Center. **HCG Apps** holds up to six apps you choose. **Devices** shows *Not connected* until HCG Connector / Origin exist. **Nexus** needs a future HCG Nexus update.
+- **Backgrounds** opens Settings for HCG Animation Center. **HCG Apps** holds up to six apps you choose. **Devices** shows *Not connected* until HCG Connector / Origin exist. **Nexus** needs HCG Nexus 0.6.0~beta1 (HCG Repo Candidate) with *Let HCG Apps Open Nexus* turned on.
 - **Stays out of the way:** it moves, shrinks or collapses to a small orb around notifications, media controls, the flashlight and the camera, and only the portal itself takes a tap.
 - **Make it yours:** position and size with a live preview and Reset, four colour themes, brightness, animation speed and intensity, an optional opening animation when it first appears after an unlock.
 
-**It is off after installation**: turn it on in *Settings › HCG Portal*. Changes apply without a respring. Settings also shows Portal's view of the lock state, its touch diagnostics and its last step (useful when reporting problems).
+**It is off after installation**: turn it on in *Settings › HCG Portal*. Changes apply without a respring. Settings also has Rendering Diagnostics with Copy Diagnostics: please include that text when reporting problems.
 
 No account, telemetry or network access.
 """
 known_issues = """
-- **0.1.0~beta4 is not yet validated on a physical iPhone.** It passes CI (Xcode build and validation, 65/65 Simulator runtime checks, 122/122 preview checks with real UIKit touch events, lock / unlock / relock / rapid-lock cases). That is not a device result. **The touch repair and the 0.1.0~beta1 Safe Mode issue are not confirmed resolved on real hardware.**
+- **0.1.0~beta5 is a diagnostic candidate and is not yet validated on a physical iPhone.** It passes CI (Xcode 16.4 build and validation, host tests, Simulator runtime tests, 147/147 Simulator preview checks with synthesised UIKit touches). That is not a device result. **0.1.0~beta4 was reported not to appear on a physical iPhone; whether beta 5 fixes this is not yet known.** Physical testing is planned on an iPhone 11 Pro Max (iOS 17.4, Dopamine) and an iPhone 13 Pro (iOS 16.5).
+- **If nothing appears,** open *Settings › HCG Portal › Rendering Diagnostics*, tap **Copy Diagnostics** and send the text: the first stage marked ✗ shows where it stopped.
 - **Behaviour change from 0.1.0~beta3:** the portal is no longer on the locked Lock Screen. Unlock, then pull the Cover Sheet down from the top to see it.
 - **If the portal appears while your iPhone is locked, or something opens after you locked it, stop using it** and turn it off (Removal step 2 or 4), then report it: that would be a security failure.
-- **If the orb does not respond,** *Settings › HCG Portal › Touches* shows whether taps reach Portal and which gesture took them; please include that line in reports.
+- **If the orb does not respond,** Rendering Diagnostics shows whether a touch at its centre reaches Portal and, if not, which view takes it; please include Copy Diagnostics in reports.
 - **SpringBoard Safe Mode with 0.1.0~beta1 (cause not confirmed).** A screen recording showed Sileo reaching *Setting up HCG Portal* while installing 0.1.0~beta1, then SpringBoard entering Safe Mode. No crash report has been reviewed. **If you are in Safe Mode, follow Removal step 1 before anything else.**
-- The lock-state interfaces Portal reads are verified against iOS 17.0.3. On other iOS versions, if one is missing, Portal stays hidden and Settings says why (it never shows itself unsafely).
-- **Nexus cannot be opened yet:** HCG Nexus offers no way for another tweak to open its panel. Portal shows *Update needed*.
+- The lock-state interfaces Portal reads are checked at run time on every iOS version. If one is missing or unclear, Portal stays hidden and Rendering Diagnostics shows the raw values and why (it never shows itself unsafely). iOS 16.5 and 17.4 have not yet been tested on a device.
+- **Nexus** opens only with HCG Nexus 0.6.0~beta1 and its *Let HCG Apps Open Nexus* setting on; otherwise Portal shows why.
 - **Backgrounds opens Settings,** not HCG Animation Center's page directly.
 - **May crash SpringBoard.** Safety checks (off by default, kill switch, crash-loop guard, fault fallback) reduce but cannot rule this out. See Removal.
 - Battery and performance impact have not been measured. The icon is provisional.
 """
 limitations = """
-- **Tested:** nothing on a device yet. 0.1.0~beta4 is validated in CI and the iOS Simulator only; the physical-device qualification (install through Sileo, locked / unlocked / relock, orb and menu, respring, reboot, HCG Animation Center on and off) is pending.
+- **Tested:** nothing on a device yet. 0.1.0~beta5 is validated in CI and the iOS Simulator only; the 14-step physical qualification (HCGPortal/docs/QUALIFICATION_0.1.0-beta5.md in HCG-Jailbreak-Research) is pending.
 - Works only on an unlocked iPhone, on the Cover Sheet. It never appears on the locked Lock Screen.
 - Rootless only (`iphoneos-arm64`). Needs a Substrate-compatible injector (ElleKit) and PreferenceLoader. The minimum of iOS 15.0 is a build setting, not a compatibility claim.
 - Devices is a placeholder (*Not connected*). Typed commands, voice, device selection and Agent Runtime actions are on the roadmap only.
 - Coexistence with other Lock Screen / Cover Sheet tweaks is untested.
 """
 install = """
-1. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Portal (Beta)** (version **0.1.0~beta4**). Accept the dependencies offered (PreferenceLoader, an injector). If 0.1.0~beta3 is installed, it is offered as an upgrade.
-2. **Before upgrading from 0.1.0~beta3, turn Portal off** (*Settings › HCG Portal › Enable HCG Portal* → off), so the first launch of the new version is an "off" launch.
+1. **If an earlier Portal is installed and on, turn it off first** (*Settings › HCG Portal › Enable HCG Portal* → off), so the first launch of the new version is an "off" launch.
+2. Add **HCG Repo Candidate** (`https://repo.hakmicapitalgroup.com/repo/candidate/`), refresh, and install **HCG Portal (Beta)** version **0.1.0~beta5** (an earlier Portal is offered the upgrade). Accept the dependencies offered (PreferenceLoader, an injector).
 3. Respring when the package manager asks. Nothing appears yet: it is off.
-4. Open **Settings › HCG Portal**, turn on **Enable HCG Portal**, lock your iPhone, unlock it, then **pull the Cover Sheet down from the top**.
-5. Optional: **Position & Size**, colours, and **HCG Apps** to choose your app shortcuts.
+4. Open **Settings › HCG Portal › Rendering Diagnostics**: it should say *SpringBoard answered* and show 0.1.0-beta5.
+5. Run **Visual Test in Settings**: the portal should turn, open its menu when tapped and close when you tap outside.
+6. Turn on **Enable HCG Portal** and **Cover Sheet Test Orb**. Lock (nothing of Portal may appear), unlock, then **pull the Cover Sheet down from the top**: a pink *PORTAL TEST* circle should appear and count your taps.
+7. Turn **Cover Sheet Test Orb** off to get the full portal. Copy Diagnostics after each step that does not match and send it.
 """
 removal = """
 **If SpringBoard is in Safe Mode** (tweaks are not running): do step 1 **before** you tap *Exit Safe Mode* or respring, or SpringBoard may load Portal again.
@@ -83,7 +93,7 @@ removal = """
 2. **Turn it off:** Settings › HCG Portal › **Enable HCG Portal** → off. The portal disappears at once.
 3. **Uninstall:** remove **HCG Portal (Beta)** in your package manager, then respring. Your Cover Sheet and Lock Screen are exactly as before. *Purge* also deletes Portal's own preference, status and kill-switch files, and nothing else.
 4. **If Settings can't be opened:** over SSH or NewTerm, `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled`, then respring.
-5. **Back to 0.1.0~beta3:** in NewTerm or over SSH, `sudo apt install --allow-downgrades com.hakmicapitalgroup.portal=0.1.0~beta3`, then respring (some package managers also let you pick an older version on the package page). Package managers never downgrade by themselves. Note that 0.1.0~beta3 shows the portal on the locked Lock Screen and may not respond to taps.
+5. **Back to an earlier version:** in NewTerm or over SSH, `sudo apt install --allow-downgrades com.hakmicapitalgroup.portal=0.1.0~beta4` (or `=0.1.0~beta3`), then respring (some package managers also let you pick an older version on the package page). Package managers never downgrade by themselves. 0.1.0~beta4 has no diagnostics; 0.1.0~beta3 shows the portal on the locked Lock Screen and may not respond to taps.
 6. **If SpringBoard keeps crashing:** after three quick SpringBoard launches in a row that each end within 30 s, it turns itself off (*Auto-disabled*). Otherwise reboot: rootless jailbreaks such as Dopamine are semi-untethered, so the phone starts without tweaks. In the Dopamine app turn *Tweak Injection* off, jailbreak, remove the package, then turn injection back on.
 """
 
@@ -91,9 +101,15 @@ removal = """
 allow_setuid = []
 # No entitlements are expected on the tweak dylib or the Settings bundle; the import fails if any appear.
 
+[versions."0.1.0~beta5"]
+status = "experimental"
+label = "Diagnostic candidate — awaiting physical-device validation. Rendering Diagnostics, Visual Test and Cover Sheet Test Orb; Simulator validated only."
+# No device_tests entry until the owner's iPhone (11 Pro Max, iOS 17.4; 13 Pro, iOS 16.5) has run
+# HCGPortal/docs/QUALIFICATION_0.1.0-beta5.md (criteria 1-14).
+
 [versions."0.1.0~beta4"]
 status = "experimental"
-label = "Experimental beta — works only after iOS unlocks; touch repair; Simulator validated, physical iPhone validation pending."
+label = "Superseded by 0.1.0~beta5 — reported not to appear on a physical iPhone; works only after iOS unlocks. Simulator validated only."
 # No device_tests entry until the owner's iPhone has run HCGPortal/docs/QUALIFICATION_0.1.0-beta4.md (Q1-Q16).
 
 [versions."0.1.0~beta3"]
