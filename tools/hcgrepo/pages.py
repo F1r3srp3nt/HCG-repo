@@ -63,8 +63,8 @@ def account_body(store_base: str, repo_url: str, candidate_url: str) -> str:
   </section>
   <section class="section-tight card" aria-labelledby="restore-h">
     <h2 id="restore-h">Restore purchases on a device</h2>
-    <p>Add the HCG Repo source in Sileo, Zebra or Saily, then sign in with the same HCG account when the package manager
-    asks (it opens HCG Connect in a secure browser sheet). Your packages are restored from your account; nothing is
+    <p>Add the HCG Repo source in Sileo (Zebra and Saily once qualified), then sign in with the same HCG account when the
+    package manager asks (it opens HCG Connect in a secure browser sheet). Your packages are restored from your account; nothing is
     stored on the device except a revocable HCG Store token. <a href="../install/">Installation guides</a>.</p>
   </section>
 </div>
@@ -122,14 +122,14 @@ covers only the file you checked, never a different file a package manager insta
 PACKAGE_MANAGERS = [
     # name, status, environments, notes (facts from upstream source, docs/PACKAGE_MANAGERS.md)
     ("Sileo", "Recommended", "Rootless and rootful",
-     "Free and paid HCG packages. Paid packages: sign in with your HCG account when Sileo asks; Sileo verifies "
-     "repository signatures once the HCG Repo Keyring is installed."),
-    ("Zebra", "Supported", "Rootless and rootful",
-     "Free and paid HCG packages (Zebra uses the same payment-provider protocol on HTTPS sources). Zebra does not "
-     "verify repository signatures."),
-    ("Saily (Irisin)", "Supported", "Rootless and roothide, iOS 15+",
-     "Free packages; paid packages through the same payment-provider protocol. No repository signature verification; "
-     "package checksums are checked."),
+     "Free HCG packages. Paid packages (when HCG Store activates them): sign in with your HCG account when Sileo asks. "
+     "Sileo verifies repository signatures once the HCG Repo Keyring is installed."),
+    ("Zebra", "Free packages", "Rootless and rootful",
+     "Free HCG packages. Zebra speaks the same payment-provider protocol on HTTPS sources; paid packages in Zebra are "
+     "evaluated but not yet qualified. Zebra does not verify repository signatures."),
+    ("Saily (Irisin)", "Free packages", "Rootless and roothide, iOS 15+",
+     "Free HCG packages; package checksums are checked, repository signatures are not. Paid packages are not yet "
+     "qualified in Saily."),
     ("APT (command line)", "Free packages only", "Rootless and rootful",
      "Verifies repository signatures and checksums. APT has no payment protocol, so paid packages install through a "
      "package manager above."),
@@ -155,7 +155,7 @@ def install_body(repo_url: str, candidate_url: str) -> str:
 <ul class="cards" role="list">{cards}</ul></section>
 <section class="section-tight card" aria-labelledby="paid-h"><h2 id="paid-h">Paid packages</h2>
 <ol><li>Buy in <strong>HCG Store</strong> (HCG Repo never takes payments).</li>
-<li>In Sileo, Zebra or Saily, open the package and sign in with your HCG account when asked.</li>
+<li>In Sileo, open the package and sign in with your HCG account when asked (Zebra and Saily once they are qualified).</li>
 <li>Install. The package manager receives a short-lived link to the exact file after HCG Store has checked your
 entitlement on its server.</li></ol>
 <p class="hint">Paid packages are not available yet: HCG Store's protected delivery is not switched on.</p></section>

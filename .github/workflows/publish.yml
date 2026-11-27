@@ -26,6 +26,10 @@ on:
         description: "Also deploy the isolated Sileo diagnostic sources under /diag/ (docs/SILEO_CRASH.md). Leaves /repo/ unchanged."
         type: boolean
         default: false
+      advertise_payment_provider:
+        description: "Acknowledge that this publication advertises HCG Store as the payment provider (config/repo.toml [payment_provider] advertise = true, owner-approved). Leave off otherwise."
+        type: boolean
+        default: false
       confirm:
         description: "Type PUBLISH to deploy"
         required: true
@@ -105,6 +109,18 @@ jobs:
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) bin/hcgrepo build "${args[@]}"
           python3 -c 'import json;d=json.load(open("_site/build-info.json"));print("signed=" + str(d["signature_verified"]).lower())' >> "$GITHUB_OUTPUT"
           find _site -type f | sort
+
+      - name: Payment provider advertisement (second key; docs/STORE_PROVIDER.md)
+        env:
+          ACK: ${{ inputs.advertise_payment_provider }}
+        run: |
+          if [ -f _site/repo/payment_endpoint ]; then
+            [ "$ACK" = "true" ] || { echo "::error::this build advertises payment provider $(cat _site/repo/payment_endpoint); re-run with advertise_payment_provider only if the owner approved activation"; exit 1; }
+            echo "Advertising payment provider: $(cat _site/repo/payment_endpoint)"
+          else
+            [ "$ACK" != "true" ] || { echo "::error::advertise_payment_provider was set but the build advertises no provider ([payment_provider] advertise = false)"; exit 1; }
+            echo "No payment provider advertised."
+          fi
 
       - name: Publication guard (exact checksums, completeness, no silent change against the live repository)
         id: guard

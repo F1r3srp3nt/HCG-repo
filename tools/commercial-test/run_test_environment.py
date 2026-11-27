@@ -21,6 +21,7 @@ env = T.CommercialAcceptance.env
 print(f"HCG Repo (TEST)   {T.CommercialAcceptance.repo_base}")
 print(f"HCG Store (TEST)  {env.origin}   (certificate: {env.tmp / 'cert.pem'})")
 print(f"Controls          http://127.0.0.1:{env.control_port}/  (next-user, clock, idp, authority, grant, revoke-all)")
+print(f"HCG Repo root     {T.CommercialAcceptance.case.root}   (HCG_REPO_ROOT for bin/hcgrepo admin / store status)")
 print("TEST only: HCG Connect protocol mock, test ledger, test payments. Ctrl-C to stop.", flush=True)
 try:
     while True:

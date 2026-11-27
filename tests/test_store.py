@@ -6,7 +6,7 @@ import re
 import unittest
 from unittest import mock
 
-from support import NS, RepoTestCase, tool_deb
+from support import NS, RepoTestCase, set_payment_provider, tool_deb
 from hcgrepo.config import ConfigError, load_config
 from hcgrepo.importer import import_deb
 from hcgrepo.site import ASSET_DIR, build
@@ -132,7 +132,7 @@ class StoreTests(RepoTestCase):
     def test_protected_product_with_payment_endpoint(self):
         self.write_meta(NS + "testtool", '[access]\nlevel = "connect"\n')
         self.assertEqual(import_deb(self.cfg, tool_deb(self.work), {**PROV, "hcg_store": {"store_release": "rel-0000000000000001"}})[0], "protected")
-        self.edit_repo_toml('payment_endpoint = ""', 'payment_endpoint = "https://connect.example.invalid/sileo"')
+        set_payment_provider(self.root, "https://connect.example.invalid/sileo")
         self.reload()
         site = build(self.cfg, PROD, self.tmp / "site").out_dir
         html = (site / "products" / "test-fixtures" / "index.html").read_text()

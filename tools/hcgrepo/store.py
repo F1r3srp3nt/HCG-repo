@@ -13,7 +13,7 @@ of its own beyond config/products.toml, which the Store's check:repo-mapping alr
 
 Nothing here publishes. An accepted artifact is recorded as a protected lock entry with provenance;
 publication stays the manual Publish repository workflow, and the index shows protected entries only
-once [access] payment_endpoint is set (docs/ACCESS.md).
+once [payment_provider] advertise = true (docs/STORE_PROVIDER.md).
 """
 
 from __future__ import annotations

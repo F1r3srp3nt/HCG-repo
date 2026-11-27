@@ -307,6 +307,38 @@ def cmd_commercial(a, cfg) -> int:
     return _print_report(r, "commercial settings consistent")
 
 
+def cmd_store(a, cfg) -> int:
+    """HCG Store integration (docs/STORE_PROVIDER.md). Read-only: status, publication plan, rollback check."""
+    from . import storeint
+    checkout = Path(a.store_checkout) if getattr(a, "store_checkout", None) else None
+    if a.action == "status":
+        d = storeint.status(cfg, live=not a.offline, store_checkout=checkout)
+        print(json.dumps(d, indent=1) if a.json else storeint.render_status(d))
+        return 0
+    if a.action == "plan":
+        feed, err = storeint.fetch_feed(cfg)
+        if feed is None:
+            print(f"HCG Store's published releases could not be read ({err}); nothing to plan")
+            return 1
+        rows = storeint.publication_plan(cfg, feed)
+        print(json.dumps(rows, indent=1) if a.json else "\n".join(
+            f"{r['state']:<22} {r['product']} {r['version']} {r.get('store_release')}: {r['next']}" for r in rows)
+            or "HCG Store publishes nothing for HCG Repo's products")
+        return 1 if any(r["state"] in ("new", "conflict", "recorded-not-current") or
+                        (r["state"] == "not-published-in-store" and r["next"] != "kept for history; not indexed") for r in rows) else 0
+    if a.action == "rollback":
+        if not (a.product and a.to):
+            print("store rollback needs --product KEY --to VERSION")
+            return 2
+        feed, _ = storeint.fetch_feed(cfg) if not a.offline else (None, "")
+        r, edit = storeint.rollback_check(cfg, a.product, a.to, feed)
+        rc = _print_report(r, f"{a.product} may move to {a.to}")
+        if r.ok:
+            print("\nMake this change in a pull request (nothing was changed):\n" + edit)
+        return rc
+    return 2
+
+
 def cmd_build(a, cfg) -> int:
     from .site import BuildError, build
     base = _base(a, cfg)
@@ -562,7 +594,8 @@ def cmd_admin(a, cfg) -> int:
     import time
     from . import admin
     from .release import incoming_root
-    srv, url, _ = admin.serve(cfg, incoming_root(a.incoming), port=a.port)
+    srv, url, _ = admin.serve(cfg, incoming_root(a.incoming), port=a.port,
+                              store_checkout=Path(a.store_checkout) if a.store_checkout else None)
     print(f"HCG Repo administration (local only): {url}")
     print("The token in the URL is required for every request. Ctrl+C stops the dashboard. Nothing here publishes.")
     try:
@@ -874,6 +907,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sp.add_parser("admin", help="local administration dashboard over the Release Manager (127.0.0.1 only)")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--incoming", help="private incoming store (default $HCG_REPO_INCOMING)")
+    p.add_argument("--store-checkout", help="local HCG Store checkout (web-hcg-store) for the integration section's catalogue checks")
     p.set_defaults(fn=cmd_admin)
 
     p = sp.add_parser("passport", help="HCG Release Passport records (hcg.release-passport v1) from the repository's records")
@@ -922,6 +956,15 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also render prepared commercial listings, marked as previews, for owner review (docs/COMMERCIAL.md); "
                         "the result is never deployable")
     p.set_defaults(fn=cmd_build)
+
+    p = sp.add_parser("store", help="HCG Store integration: status, Store → HCG Repo publication plan, rollback check (read-only)")
+    p.add_argument("action", choices=["status", "plan", "rollback"])
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--offline", action="store_true", help="do not contact HCG Store")
+    p.add_argument("--store-checkout", help="local HCG Store checkout (web-hcg-store) for catalogue mapping checks")
+    p.add_argument("--product", help="rollback: HCG Repo product key")
+    p.add_argument("--to", help="rollback: the recorded version to make the approved commercial version")
+    p.set_defaults(fn=cmd_store)
 
     p = sp.add_parser("commercial", help="show the owner-controlled commercial release settings and what blocks the next step")
     p.add_argument("key", nargs="?", help="product key (default: every commercial product)")

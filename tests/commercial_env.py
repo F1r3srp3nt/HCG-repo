@@ -180,6 +180,74 @@ class PaymentClient:
         return st, b
 
 
+class SileoInstall:
+    """Sileo's install path for one package, step by step as Sileo c9f7015 does it, ending in a real dpkg install.
+
+    1. Packages index of the source (Sileo parses the stanza; `Tag: cydia::commercial` marks a provider package).
+    2. Free package: download <source>/<Filename>. Provider package: package/<id>/info, then authorize_download for the
+       exact version and architecture, and download the returned https URL (PaymentProvider.downloadURL).
+    3. Compare the file's SHA-256 with the index (Sileo DownloadManager refuses a mismatch).
+    4. Install. Sileo runs `apt-get install --allow-unauthenticated` on the downloaded file; here real dpkg installs it
+       into an isolated root with its own database (tools/hcgrepo/deepcheck._dpkg). Not a device: no SpringBoard,
+       no uicache, no jailbreak.
+    """
+
+    def __init__(self, http: Http, repo_url: str, client: "PaymentClient | None", root: Path):
+        self.http, self.repo_url, self.client, self.root = http, repo_url, client, root
+        for d in ("root", "admin/info", "admin/updates", "admin/triggers", "debs"):
+            (root / d).mkdir(parents=True, exist_ok=True)
+        for f in ("status", "available"):
+            (root / "admin" / f).touch()
+        self.steps: list[str] = []
+
+    def stanza(self, pkg: str, version: str | None = None) -> dict:
+        st, _, raw = self.http.request("GET", self.repo_url + "Packages")
+        assert st == 200, f"Packages HTTP {st}"
+        for s in raw.decode().split("\n\n"):
+            f = dict(l.split(": ", 1) for l in s.splitlines() if ": " in l and not l.startswith(" "))
+            if f.get("Package") == pkg and (version is None or f.get("Version") == version):
+                return f
+        raise LookupError(f"{pkg} {version or ''} is not in the index")
+
+    def download(self, pkg: str, version: str | None = None) -> tuple[Path, dict]:
+        f = self.stanza(pkg, version)
+        commercial = "cydia::commercial" in [x.strip() for x in f.get("Tag", "").split(",")]
+        if commercial:
+            assert self.client and self.client.endpoint, "a provider package needs the source's payment provider"
+            st, info = self.client.package_info(pkg)
+            self.steps.append(f"package/{pkg}/info -> {st} price={info.get('price')} purchased={info.get('purchased')}")
+            st, b = self.client.authorize_download(pkg, f["Version"], f["Architecture"])
+            self.steps.append(f"authorize_download {f['Version']} {f['Architecture']} -> {st}")
+            if st != 200 or not b.get("url"):
+                raise PermissionError(b.get("error") or f"authorize_download HTTP {st}")
+            url = b["url"]
+            assert url.startswith("https://"), "Sileo requires an https download URL"
+        else:
+            url = urllib.parse.urljoin(self.repo_url, f["Filename"])
+        st, _, data = self.http.request("GET", url)
+        self.steps.append(f"GET {'<authorized URL>' if commercial else f['Filename']} -> {st} ({len(data)} bytes)")
+        if st != 200:
+            raise PermissionError(f"download HTTP {st}")
+        sha = hashlib.sha256(data).hexdigest()
+        if sha != f["SHA256"]:
+            raise ValueError(f"SHA-256 mismatch: index {f['SHA256']}, got {sha}")       # Sileo refuses it
+        out = self.root / "debs" / f"{pkg}_{f['Version']}.deb"
+        out.write_bytes(data)
+        return out, f
+
+    def install(self, pkg: str, version: str | None = None) -> dict:
+        import sys as _sys
+        _sys.path.insert(0, str(REPO / "tools"))
+        from hcgrepo.deepcheck import _dpkg, _status
+        deb, f = self.download(pkg, version)
+        cp = _dpkg(self.root, "-i", str(deb))
+        status = _status(self.root, pkg)
+        self.steps.append(f"dpkg -i -> exit {cp.returncode}, status {status!r}")
+        files = subprocess.run(["dpkg-deb", "-c", str(deb)], capture_output=True, text=True).stdout
+        return {"exit": cp.returncode, "status": status, "version": f["Version"], "sha256": f["SHA256"],
+                "stderr": cp.stderr[-400:], "files": [l.split()[-1] for l in files.splitlines() if not l.endswith("/")]}
+
+
 class CommercialEnv:
     """Everything a test needs. start() builds and launches; stop() tears down."""
 
@@ -234,7 +302,7 @@ class CommercialEnv:
                 rel = json.loads(json.dumps(rtemplate))
                 rel.update(id=rid, productId=pid, version=v, build=v.replace(".", ""), status="approved")
                 art = dict(rel["artifacts"][0], id="jb-rootless", editionId="jailbreak", fileName=deb.name,
-                           architectures=["iphoneos-arm64"])
+                           architectures=["iphoneos-arm64"], sha256=self.sha(deb), sizeBytes=deb.stat().st_size)
                 rel["artifacts"] = [art]
                 rel_list.append(rel)
                 key_path = f"{pid}/{deb.name}"
@@ -291,8 +359,12 @@ class CommercialEnv:
         else:
             raise RuntimeError("TEST Store did not start")
         self.origin = f"https://127.0.0.1:{self.port}"
-        self.endpoint = self.origin + "/repo-api/v1/sileo/"
         self.http = Http(self.tmp / "cert.pem")
+        # The provider path HCG Repo advertises (docs/STORE_PROVIDER.md); a Store without the proposed alias patch
+        # serves it only at the original /repo-api/v1/sileo/.
+        st, _, _ = self.http.request("GET", self.origin + "/api/sileo/v1/info")
+        self.provider_alias = st == 200
+        self.endpoint = self.origin + ("/api/sileo/v1/" if self.provider_alias else "/repo-api/v1/sileo/")
 
     def serve_repo_https(self, site: Path, port: int = 0) -> str:
         """Serve the HCG Repo TEST site over HTTPS (same certificate): Zebra uses payment endpoints only on HTTPS

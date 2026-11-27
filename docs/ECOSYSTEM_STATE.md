@@ -17,7 +17,7 @@ States used here:
 | **Planned** | Named in the roadmap; no package |
 
 Repository signing: **not active** (`signing_fingerprint = ""`). Payment endpoint: **not advertised**
-(`payment_endpoint = ""`). Commercial delivery: **off**.
+(`[payment_provider] advertise = false`; configured URL `https://store.hakmicapitalgroup.com/api/sileo/v1/`). Commercial delivery: **off**.
 
 ## Published: HCG Repo Candidate (`/repo/candidate/`, free public betas)
 

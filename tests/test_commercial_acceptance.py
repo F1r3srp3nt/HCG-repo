@@ -14,8 +14,9 @@ import re
 import unittest
 import urllib.parse
 
-from commercial_env import (AVAILABLE, FREE, PRO, PRODUCTS, SECOND, TRIAL, UDID, CommercialEnv, Http, PaymentClient)
-from support import NS, REPO, RepoTestCase, tool_deb
+from commercial_env import (AVAILABLE, FREE, PRO, PRODUCTS, SECOND, TRIAL, UDID, CommercialEnv, Http, PaymentClient,
+                            SileoInstall)
+from support import NS, REPO, RepoTestCase, set_payment_provider, tool_deb
 from hcgrepo import cli
 from hcgrepo.config import load_config
 from hcgrepo.debinspect import inspect_deb
@@ -121,7 +122,8 @@ installation = "enabled"
         with open(c.root / "config" / "products.toml", "a") as f:
             f.write(prods)
         p = c.root / "config" / "repo.toml"
-        text = p.read_text().replace('payment_endpoint = ""', f'payment_endpoint = "{env.endpoint}"')
+        set_payment_provider(c.root, env.endpoint)
+        text = p.read_text()
         assert 'base_url = "https://store.hakmicapitalgroup.com/"' in text
         text = text.replace('base_url = "https://store.hakmicapitalgroup.com/"', f'base_url = "{env.origin}/"')
         p.write_text(text)                                                 # every Store link points at the TEST Store
@@ -411,7 +413,9 @@ installation = "enabled"
         st, h = self.env.http.json("GET", self.env.origin + "/api/v1/health")
         self.assertEqual((h["mode"], h["payments"], h["entitlementAuthority"]), ("test", "test-mode", "test-ledger"))
         prod = load_config(REPO)                                           # the real repository configuration
-        self.assertEqual((prod.payment_endpoint, prod.signing_fingerprint), ("", ""))
+        self.assertEqual((prod.payment_endpoint, prod.signing_fingerprint), ("", ""))   # nothing advertised, no key
+        self.assertFalse(prod.payment_provider.advertise)
+        self.assertEqual(prod.payment_provider.url, "https://store.hakmicapitalgroup.com/api/sileo/v1/")
         self.assertTrue(self.env.endpoint.startswith("https://127.0.0.1:"))
 
     # ------------------------------------------------------------------ Profile and range (proposed Store patch)
@@ -470,6 +474,120 @@ installation = "enabled"
         forged = url.rsplit("/", 1)[0] + "/" + token[:-3] + ("AAA" if not token.endswith("AAA") else "BBB")
         self.assertEqual(self.fetch(forged, headers={"range": "bytes=0-9"})[0], 403)
 
+
+    # ------------------------------------------------------------------ HCG Store as the official provider (STORE_PROVIDER.md)
+    def sileo(self, name, client=None):
+        d = self.tmp / f"device-{name}"
+        return SileoInstall(self.env.http, self.repo_url, client, d)
+
+    def test_23_sileo_free_installation_is_unchanged(self):
+        dev = self.sileo("free", self.client("sileo"))                   # source has a provider; free needs no account
+        r = dev.install(FREE, "1.0.0")
+        self.assertEqual((r["exit"], r["status"]), (0, "install ok installed"), r)
+        self.assertEqual(r["sha256"], self.free_sha)
+        self.assertTrue(any((dev.root / "root" / f.lstrip("./")).exists() for f in r["files"]))
+        self.assertFalse(any("authorize_download" in s for s in dev.steps))
+
+    def test_24_authenticated_commercial_package_discovery(self):
+        st, _, raw = self.fetch(self.repo_url + "payment_endpoint")
+        self.assertEqual(raw.decode(), self.env.endpoint)                 # plain text, no newline
+        if self.env.provider_alias:
+            self.assertTrue(self.env.endpoint.endswith("/api/sileo/v1/"))
+        f = self.sileo("disc").stanza(PRO)
+        self.assertIn("cydia::commercial", f["Tag"])
+        self.assertTrue(f["Filename"].startswith("protected/"))
+        for k in ("SHA256", "Architecture", "Version", "Depends"):
+            self.assertIn(k, f)
+        anon = self.client("sileo")
+        self.assertEqual(anon.info()[1]["name"], "HCG Store")
+        c = self.signed_in("cust-24")
+        st, info = c.package_info(PRO)
+        self.assertEqual((st, info["purchased"], info["available"]), (200, 0, True))
+        self.assertIn("4.99", info["price"])                              # price from HCG Store's TEST offer
+        st, ui = c.user_info()
+        self.assertEqual(st, 200)
+        self.assertNotIn(PRO, ui["items"])                                # signed in is not ownership
+
+    def test_25_test_purchase_and_authorized_installation_through_sileo(self):
+        c = self.signed_in("cust-25")
+        with self.assertRaises(PermissionError):
+            self.sileo("before", c).install(PRO, "1.0.0")
+        st, p = c.purchase(PRO)
+        self.assertEqual((st, p["status"]), (200, 1))                    # opens HCG Store checkout; grants nothing
+        self.assertTrue(p["url"].startswith(self.env.origin + "/apps/hcg-test-pro?edition=jailbreak&buy=1"), p["url"])
+        self.assertEqual(c.package_info(PRO)[1]["purchased"], 0)
+        browser = self.env.web_sign_in("cust-25", "cust-25@example.test")     # the checkout page, same HCG account
+        self.env.web_buy(browser, "hcg-test-pro-test")                   # TEST provider, signed webhook → entitlement
+        self.assertEqual(c.package_info(PRO)[1]["purchased"], 1)
+        dev = self.sileo("after", c)
+        r = dev.install(PRO, "1.0.0")
+        self.assertEqual((r["exit"], r["status"]), (0, "install ok installed"), r)
+        self.assertEqual(r["sha256"], self.env.sha(self.env.debs[(PRO, "1.0.0")]))
+        self.assertTrue((dev.root / "root" / "var/jb/usr/bin/testpro").exists())
+        self.assertTrue(any("authorize_download 1.0.0 iphoneos-arm64 -> 200" in s for s in dev.steps), dev.steps)
+
+    def test_26_unauthorized_paid_downloads_are_blocked(self):
+        f = self.sileo("x").stanza(PRO)
+        self.assertEqual(self.fetch(self.repo_url + f["Filename"])[0], 404)             # never on the static site
+        self.assertEqual(self.fetch(self.http_repo_base + "repo/" + f["Filename"])[0], 404)
+        with self.assertRaises(PermissionError):                         # not signed in
+            self.sileo("anon", self.client("sileo")).install(PRO, "1.0.0")
+        with self.assertRaises(PermissionError):                         # signed in, no entitlement
+            self.sileo("other", self.signed_in("cust-26")).install(PRO, "1.0.0")
+        self.buyer("cust-26b")
+        owner = self.signed_in("cust-26b")
+        with self.assertRaises(PermissionError):                         # owns PRO only
+            self.sileo("wrong", owner).install(SECOND, "1.0.0")
+        owner.sign_out()
+        owner.token = "forged-" + "x" * 40
+        with self.assertRaises(PermissionError):                         # forged or signed-out token
+            self.sileo("forged", owner).install(PRO, "1.0.0")
+
+    def test_27_zebra_compatibility_evaluation_protocol_only(self):
+        """Evaluation, not qualification: Zebra's requests from source (docs/PACKAGE_MANAGERS.md); no device."""
+        f = self.sileo("z").stanza(PRO)
+        self.assertIsNone(urllib.parse.urlsplit(f["Filename"]).netloc or None)   # relative: ZBDownloadManager authorizes
+        z = self.client("zebra")
+        st, b = z.authorize_download(PRO, "1.0.0")                       # signed out: Zebra sends token "none"
+        self.assertNotEqual(st, 200)
+        self.assertFalse(b.get("success", True))
+        self.buyer("cust-27")
+        z = self.signed_in("cust-27", "zebra")
+        r = self.sileo("zebra", z).install(PRO, "1.0.0")
+        self.assertEqual((r["exit"], r["status"]), (0, "install ok installed"), r)
+
+    def test_28_store_integration_status_against_the_test_store(self):
+        import os
+        import shutil
+        from hcgrepo import storeint
+        chk = self.tmp / "store-checkout"
+        (chk / "catalogue").mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(self.env.tmp / "store-catalogue" / "products.json", chk / "catalogue" / "products.json")
+        os.environ["HCG_STORE_CA_FILE"] = str(self.env.tmp / "cert.pem")
+        try:
+            d = storeint.status(self.cfg, live=True, store_checkout=chk)
+            feed, _ = storeint.fetch_feed(self.cfg)
+        finally:
+            os.environ.pop("HCG_STORE_CA_FILE", None)
+        pv, h = d["provider"], d["store_health"]
+        self.assertTrue(pv["advertise"] and pv["api"]["ok"], pv)
+        self.assertEqual(pv["api"]["name"], "HCG Store")
+        self.assertEqual((h["mode"], h["entitlement_authority"], h["entitlements_available"]), ("test", "test-ledger", True))
+        pro = next(a for a in d["associations"] if a["key"] == "test-pro")
+        self.assertEqual([(b["version"], b["indexed"]) for b in pro["builds"]], [("1.0.0", True)])
+        self.assertTrue(pro["builds"][0]["store_release"])
+        self.assertGreaterEqual(d["counts"]["paid_packages"], 3)
+        tested = set(PRODUCTS) | {k for k, *_ in PRODUCTS.values()}
+        self.assertFalse([u for u in d["unmapped"] if (u.get("store_product") in tested or u.get("key") in tested)], d["unmapped"])
+        self.assertIn("fixture-quasar-shell", {u.get("store_product") for u in d["unmapped"]})   # Store side, unmapped here
+        plan = {r["product"]: r for r in d["publication_plan"] if r["product"].startswith("test-")}
+        self.assertEqual(plan["test-pro"]["state"], "recorded", plan)
+        self.assertFalse([m for m in d["invalid_metadata"] if m["level"] == "error"], d["invalid_metadata"])
+        r, edit = storeint.rollback_check(self.cfg, "test-pro", "0.9.0", feed)
+        self.assertIn("rollback-not-recorded", r.codes())                # only recorded, Store-linked builds
+        r, edit = storeint.rollback_check(self.cfg, "test-pro", "1.0.0", feed)
+        self.assertTrue(r.ok, r.render())
+        self.assertIn('approved_version = "1.0.0"', edit)
 
 if __name__ == "__main__":
     unittest.main()

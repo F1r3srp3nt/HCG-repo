@@ -18,6 +18,7 @@ has no backend, database or rules of its own. Each view or button calls the func
 | Release history | imports, protections, withdrawals and Release Manager events | lock + reviews |
 | Artifact provenance | the release passport of any release | `passport` |
 | Withdrawals | withdraw a version (typed confirmation); withdraw a submission | `withdraw`, `release withdraw` |
+| HCG Store Integration | configured and advertised payment provider, live provider API and Store health (entitlement service), package associations, free/paid counts, unmapped products, invalid metadata, Store → HCG Repo publication plan, integration history. Read-only; `--store-checkout` adds catalogue checks ([STORE_PROVIDER.md](STORE_PROVIDER.md)) | `store status` |
 
 - **Never publishes.** Approvals, preparations and withdrawals change local files to review and commit, as with the
   CLI. Publication stays the manual Publish repository workflow, run with the owner's approval.

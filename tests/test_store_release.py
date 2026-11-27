@@ -5,7 +5,7 @@ SHA-256, and distributed under the same access rule, may be recorded. Recording 
 import copy
 import json
 
-from support import NS, RepoTestCase, tool_deb
+from support import NS, RepoTestCase, set_payment_provider, tool_deb
 from hcgrepo import cli
 from hcgrepo.config import load_lock
 from hcgrepo.debinspect import inspect_deb
@@ -126,8 +126,7 @@ class StoreReleaseTests(RepoTestCase):
     def test_only_store_approved_protected_packages_are_indexed(self):
         from hcgrepo.site import build
         import_deb(self.cfg, self.deb, {"source": "source-build"})   # protected, but no Store release yet
-        p = self.root / "config" / "repo.toml"
-        p.write_text(p.read_text().replace('payment_endpoint = ""', 'payment_endpoint = "https://store.example/repo-api/v1/sileo/"'))
+        set_payment_provider(self.root, "https://store.example/repo-api/v1/sileo/")
         site = build(self.reload(), "https://repo.hakmicapitalgroup.com/", self.tmp / "a").out_dir
         self.assertNotIn(f"Package: {PKG}", (site / "repo" / "Packages").read_text())
         self.assertEqual(self.run_cli(record(self.info)), 0)

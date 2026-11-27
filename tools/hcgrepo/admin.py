@@ -113,7 +113,13 @@ def act(cfg: RepoConfig, store: Path, action: str, body: dict) -> dict:
 # ---------------------------------------------------------------------------- HTTP
 
 
-def make_handler(cfg: RepoConfig, store: Path, token: str, port_ref: dict):
+def store_integration(cfg: RepoConfig, store_checkout: Path | None) -> dict:
+    """The HCG Store Integration section: the same data as `bin/hcgrepo store status` (storeint.status), fetched live."""
+    from . import storeint
+    return storeint.status(cfg, live=True, store_checkout=store_checkout)
+
+
+def make_handler(cfg: RepoConfig, store: Path, token: str, port_ref: dict, store_checkout: Path | None = None):
     class Handler(http.server.BaseHTTPRequestHandler):
         server_version = "hcgrepo-admin"
 
@@ -155,6 +161,8 @@ def make_handler(cfg: RepoConfig, store: Path, token: str, port_ref: dict):
                     return self._json(200, overview(cfg, store))
                 if u.path == "/api/submission":
                     return self._json(200, submission(cfg, store, q.get("id", "")))
+                if u.path == "/api/store-integration":
+                    return self._json(200, store_integration(cfg, store_checkout))
                 if u.path == "/api/passport":
                     return self._json(200, all_passports(cfg, q.get("package") or None, q.get("version") or None))
             except (rm.ReleaseError, SubmissionError, ImportError_, AdminError) as exc:
@@ -179,11 +187,11 @@ def make_handler(cfg: RepoConfig, store: Path, token: str, port_ref: dict):
     return Handler
 
 
-def serve(cfg: RepoConfig, store: Path, port: int = 8765, token: str | None = None):
+def serve(cfg: RepoConfig, store: Path, port: int = 8765, token: str | None = None, store_checkout: Path | None = None):
     """Start the dashboard on 127.0.0.1. Returns (server, url, thread)."""
     token = token or secrets.token_urlsafe(24)
     port_ref: dict = {}
-    srv = http.server.ThreadingHTTPServer(("127.0.0.1", port), make_handler(cfg, store, token, port_ref))
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", port), make_handler(cfg, store, token, port_ref, store_checkout))
     port_ref["port"] = srv.server_address[1]
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()
@@ -204,7 +212,7 @@ nav button.on{color:var(--text);border-color:var(--accent)}main{padding:16px 20p
 table{width:100%;border-collapse:collapse;margin:8px 0 18px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:600;font-size:12px}code,.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
 .pill{display:inline-block;padding:1px 7px;border-radius:9px;font-size:12px;border:1px solid var(--line)}
-.passed,.validated,.approved,.prepared,.published{color:var(--ok)}.failed,.refused,.withdrawn{color:var(--bad)}
+.passed,.validated,.approved,.prepared,.published,.ok,.recorded,.yes{color:var(--ok)}.new,.no,.unavailable{color:var(--warn)}.conflict,.error{color:var(--bad)}.failed,.refused,.withdrawn{color:var(--bad)}
 .partial,.passed-with-warnings,.protected{color:var(--warn)}.not-recorded,.not-run,.not-applicable{color:var(--muted)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:10px 0}
 pre{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);padding:10px;border-radius:6px;font-size:12px}
@@ -220,7 +228,7 @@ button.danger{background:var(--bad)}.msg{margin:8px 0;padding:8px;border-radius:
 <script>
 const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
 const TABS = [['incoming','Incoming'],['approvals','Pending approvals'],['prepare','Candidate preparation'],['published','Published packages'],
-  ['compat','Compatibility evidence'],['failures','Known failures'],['history','Release history'],['provenance','Artifact provenance'],['withdraw','Withdrawals']];
+  ['compat','Compatibility evidence'],['failures','Known failures'],['history','Release history'],['provenance','Artifact provenance'],['withdraw','Withdrawals'],['store','HCG Store Integration']];
 const LEVELS = [['static_inspection','Static package inspection'],['maintainer_script_review','Maintainer script review (read, not run)'],
   ['script_free_lifecycle','Script-free dpkg lifecycle'],['device_installation','Device installation'],['application_launch','Application launch'],['runtime_verification','Full runtime verification']];
 let DATA = null, TAB = 'incoming';
@@ -273,7 +281,32 @@ function render() {
      <div class="card"><div class="row"><div><label>Package</label><input id="wd-p"></div><div><label>Version</label><input id="wd-v"></div></div><label>Architecture</label><input id="wd-a" value="iphoneos-arm64">
      <label>Reason</label><input id="wd-r"><label>Type "package version" exactly to confirm</label><input id="wd-c">
      <button class="act danger" onclick="doAct('withdraw',{package:v('wd-p'),version:v('wd-v'),architecture:v('wd-a'),reason:v('wd-r'),confirm:v('wd-c')})">Withdraw version</button></div>`;
+  if (TAB === 'store') { m.innerHTML = '<h2>HCG Store Integration</h2><p class="muted">Checking HCG Store live…</p>'; loadStore(); return; }
   m.innerHTML = h + '<div id="detail"></div>';
+}
+async function loadStore() {
+  const S = await api('/api/store-integration'); const m = document.getElementById('main');
+  if (!S.provider) { m.innerHTML = '<h2>HCG Store Integration</h2><p>' + esc(S.message || 'unavailable') + '</p>'; return; }
+  const pv = S.provider, api_ = pv.api || {}, H = S.store_health, C = S.counts, yn = b => pill(b ? 'yes' : 'no');
+  let h = '<h2>HCG Store Integration</h2><p class="muted">Live from HCG Store\'s public endpoints and this repository\'s records (same data as <code>bin/hcgrepo store status</code>). Read-only: nothing here imports, publishes or changes a setting.</p>';
+  h += '<div class="card"><h3>Payment provider</h3><table>' +
+    `<tr><td>Configured URL</td><td><code>${esc(pv.url)}</code></td></tr><tr><td>Advertised (payment_endpoint)</td><td>${yn(pv.advertise)} ${esc(pv.advertised_url)}</td></tr>` +
+    `<tr><td>Trusted hosts</td><td>${esc(pv.trusted_hosts.join(', '))}</td></tr><tr><td>Owner approval</td><td>${pv.approval ? esc(pv.approval.approved_by + ' · ' + pv.approval.date + ' · ' + pv.approval.record) : '<span class="muted">none</span>'}</td></tr>` +
+    `<tr><td>Provider API (<code>${esc(api_.endpoint)}</code>)</td><td>${pill(api_.ok ? 'ok' : 'unavailable')} HTTP ${esc(api_.http_status)} ${esc(api_.ok ? api_.name : api_.error)}</td></tr></table></div>`;
+  h += '<div class="card"><h3>HCG Store health and entitlements</h3><table>' +
+    [['Endpoint', H.endpoint], ['Status', H.ok ? 'ok' : 'HTTP ' + H.http_status + ' ' + (H.error || '')], ['Mode', H.mode], ['HCG Connect', H.hcg_connect], ['Entitlement authority', H.entitlement_authority],
+     ['Payments', H.payments], ['Protected downloads', H.protected_downloads], ['Publishing', H.publishing]].map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join('') +
+    `<tr><td>Entitlement service</td><td>${pill(H.entitlements_available ? 'ok' : 'unavailable')} <span class="muted">as reported by HCG Store; HCG Store re-checks it on every protected request</span></td></tr></table></div>`;
+  h += `<div class="card"><h3>Packages</h3><p>Free: <b>${C.free_packages}</b> packages (${C.free_versions} versions) · Paid: <b>${C.paid_packages}</b> (${C.paid_versions}) · Account-required: <b>${C.account_packages}</b> (${C.account_versions})</p></div>`;
+  h += '<h3>Published package associations</h3>' + table(S.associations.filter(a => a.key !== 'test-fixtures'), [['key','HCG Repo product'],['store_product','HCG Store product',a=>esc((a.store_product||'—') + (a.store_edition ? ' / ' + a.store_edition : ''))],
+    ['packages','Packages',a=>a.packages.map(x=>`<code>${esc(x)}</code>`).join('<br>')],['access','Access'],['commercial','Commercial',a=>a.commercial ? esc('approved version ' + (a.commercial.approved_version || 'none')) + ' ' + pill(a.commercial.installable ? 'yes' : 'no') : '<span class="muted">—</span>'],
+    ['builds','Builds (indexed / Store release)',a=>a.builds.map(b=>`${esc(b.version)} ${pill(b.indexed ? 'yes' : 'no')} ${esc(b.status)}${b.store_release ? ' <code>' + esc(b.store_release) + '</code>' : ''}`).join('<br>')]]);
+  h += `<h3>Unmapped products</h3><p class="muted">Source: ${esc(S.catalogue_source)}</p>` + table(S.unmapped, [['side','Side'],['x','Product',u=>esc(u.store_product || u.key)],['reason','Reason']]);
+  h += '<h3>Invalid package metadata</h3>' + table(S.invalid_metadata, [['level','Level',r=>pill(r.level)],['code','Code'],['message','Message']]);
+  h += `<h3>HCG Store → HCG Repo publication</h3><p class="muted">HCG Store published feed: ${esc(S.published_feed)}. Each row is what a maintainer does next with the reviewed commands; nothing is imported automatically.</p>` +
+    table(S.publication_plan, [['state','State',r=>pill(r.state)],['product','Product'],['version','Version'],['store_release','Store release'],['next','Next step']]);
+  h += '<h3>Integration and publication history</h3>' + table(S.history, [['at','When'],['kind','Kind'],['subject','Event'],['ref','Reference']]);
+  m.innerHTML = h;
 }
 async function load() { DATA = await api('/api/overview'); if (!DATA.incoming) { document.getElementById('main').innerHTML = '<p>Open the URL printed by <code>bin/hcgrepo admin</code> (it carries the session token).</p>'; return; } render(); }
 load();

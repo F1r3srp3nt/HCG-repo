@@ -110,7 +110,7 @@ The tweak itself has no licence check and no network code; protection is at deli
 ## 8. Authorised download flow (Sileo)
 
 1. HCG Repo indexes the approved version as `Tag: cydia::commercial`, `Filename: protected/<file>` (never served) and
-   publishes `repo/payment_endpoint` = `https://store.hakmicapitalgroup.com/repo-api/v1/sileo/`.
+   publishes `repo/payment_endpoint` = `https://store.hakmicapitalgroup.com/api/sileo/v1/` ([STORE_PROVIDER.md](STORE_PROVIDER.md)).
 2. Sileo signs in through the Store's `authenticate` (HCG Connect); the Store issues a revocable, Store-only token.
 3. `package/<id>/info` reports price, `purchased`, `available`; `package/<id>/purchase` never grants and returns the
    Store's buy page.
@@ -137,4 +137,4 @@ revoke centrally. A file already downloaded stays on that device; a revoked user
 6. `$1.99 USD` offer set to `approved-for-sale`; protected downloads enabled with founder launch approval (§8).
 7. In HCG Repo, each with an approval record: `store_readiness = "ready"`, `approved_version`,
    `commercial_release = "approved"`, `purchases`, `downloads`, `installation` = `"enabled"`, and
-   `[access] payment_endpoint`. Then Publish ([COMMERCIAL.md](COMMERCIAL.md), steps 3–7).
+   `[payment_provider] advertise = true`. Then Publish ([COMMERCIAL.md](COMMERCIAL.md), steps 3–7).

@@ -1,0 +1,99 @@
+From 06c85759be838229d05192bc15e186808314f9d9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 23:29:15 +0000
+Subject: [PATCH] Payment-provider API at /api/sileo/v1/ (advertised by HCG
+ Repo); /repo-api/v1/sileo/ kept as an alias (proposed, from HCG Repo)
+
+Same handlers and rules on both paths; file URLs unchanged. Test: both bases serve
+info and user_info, and both refuse anonymous authorize_download.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QS5EmmvAHiKVudQmscdEHx
+---
+ web-hcg-store/server/src/app.ts              |  6 +++---
+ web-hcg-store/server/src/sileo.ts            |  6 +++++-
+ web-hcg-store/server/test/acceptance.test.ts | 19 +++++++++++++++++++
+ 3 files changed, 27 insertions(+), 4 deletions(-)
+
+diff --git a/web-hcg-store/server/src/app.ts b/web-hcg-store/server/src/app.ts
+index b72725d..c5e009a 100644
+--- a/web-hcg-store/server/src/app.ts
++++ b/web-hcg-store/server/src/app.ts
+@@ -16,7 +16,7 @@
+  *   GET  /api/v1/repo/products/:key/access     access state for HCG Repo product pages (CORS)
+  *   GET  /api/public/v1/release-resolution/:product   current approved release and how to get it (public, CORS; no URLs to files)
+  *   GET  /api/public/v1/published                      every product's currently published releases (public, CORS; metadata only)
+- *   /repo-api/v1/sileo/*                       Sileo payment-provider API (see sileo.ts)
++ *   /api/sileo/v1/*                            Sileo payment-provider API (see sileo.ts); /repo-api/v1/sileo/* is an alias
+  *   GET  /repo-api/v1/files/:signed            short-lived file URL issued to Sileo
+  */
+ import { resolveRelease, ResolutionError } from "./release-resolution";
+@@ -37,7 +37,7 @@ import { currentReleaseOf, findArtifact, findByRepoKey, findProduct, type Protec
+ import { getProfile } from "./profiles";
+ import { createPublishing } from "./publishing";
+ import { SessionStore, type Session } from "./sessions";
+-import { handleSileo } from "./sileo";
++import { handleSileo, SILEO_BASES } from "./sileo";
+ 
+ /** HCG's account portal, where an account's HCG licences are managed (main-site handoff, /features links.account). */
+ const HCG_ACCOUNT_URL = "https://beta.hakmicapitalgroup.com/client-portal";
+@@ -767,7 +767,7 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+       return json(res, 200, { format: "hcg.store.published/1", generatedAt: new Date(now()).toISOString(), products }, { ...cors, "cache-control": "public, max-age=60" });
+     }
+     if (await publishing.route(req, res, url)) return;
+-    if (p.startsWith("/repo-api/v1/sileo/")) return handleSileo.route(sileoCtx, req, res, url);
++    if (SILEO_BASES.some((b) => p.startsWith(b))) return handleSileo.route(sileoCtx, req, res, url);
+     if ((match = /^\/repo-api\/v1\/files\/([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.exec(p)) && m === "GET") return handleSileo.serveFile(sileoCtx, res, match[1]!, req.headers.range);
+     if (p.startsWith("/api/") || p.startsWith("/auth/") || p.startsWith("/repo-api/")) return errorJson(res, 404, "not_found", "Not found.");
+     if (m === "GET" || m === "HEAD") return serveStatic(req, res, p);
+diff --git a/web-hcg-store/server/src/sileo.ts b/web-hcg-store/server/src/sileo.ts
+index 3710a37..cb17bcb 100644
+--- a/web-hcg-store/server/src/sileo.ts
++++ b/web-hcg-store/server/src/sileo.ts
+@@ -70,8 +70,12 @@ function priceText(unitAmount: number, currency: string): string {
+   }
+ }
+ 
++/** Where the payment-provider API is served. HCG Repo advertises SILEO_BASES[0] (HCG-repo docs/STORE_PROVIDER.md); the
++ * original /repo-api/v1/sileo/ stays as an alias so signed-in package managers keep working. Same handlers, same rules. */
++export const SILEO_BASES = ["/api/sileo/v1/", "/repo-api/v1/sileo/"] as const;
++
+ async function route(ctx: SileoCtx, req: IncomingMessage, res: ServerResponse, url: URL) {
+-  const base = "/repo-api/v1/sileo/";
++  const base = SILEO_BASES.find((b) => url.pathname.startsWith(b)) ?? SILEO_BASES[1];
+   const p = url.pathname.slice(base.length);
+   const m = req.method ?? "GET";
+   let match: RegExpExecArray | null;
+diff --git a/web-hcg-store/server/test/acceptance.test.ts b/web-hcg-store/server/test/acceptance.test.ts
+index 46c94b3..4ed3ee4 100644
+--- a/web-hcg-store/server/test/acceptance.test.ts
++++ b/web-hcg-store/server/test/acceptance.test.ts
+@@ -354,6 +354,25 @@ describe("8. no public artifact URL bypasses the gate", () => {
+     expect(after).toMatchObject({ success: false, invalidate: true });
+   });
+ 
++  it("serves the payment-provider API at /api/sileo/v1/ (advertised by HCG Repo) and at the /repo-api/v1/sileo/ alias", async () => {
++    const a = await (await fetch(`${h.origin}/api/sileo/v1/info`)).json();
++    const b = await (await fetch(`${h.origin}/repo-api/v1/sileo/info`)).json();
++    expect(a).toEqual(b);
++    const s = await sileoSignIn(ALICE);
++    for (const base of ["/api/sileo/v1/", "/repo-api/v1/sileo/"]) {
++      const r = await fetch(`${h.origin}${base}user_info`, {
++        method: "POST", headers: { "content-type": "application/json" },
++        body: JSON.stringify({ token: s.token, udid: "fixture-udid", device: "iPhone14,2" }),
++      });
++      expect(r.status).toBe(200);
++      const anon = await fetch(`${h.origin}${base}package/com.example.fixture.quasar.unleashed/authorize_download`, {
++        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ architecture: "iphoneos-arm64" }),
++      });
++      expect(((await anon.json()) as { success: boolean }).success).toBe(false);
++    }
++    expect((await fetch(`${h.origin}/api/sileo/v2/info`)).status).toBe(404);
++  });
++
+   it("with the launch switch off, owners get 'Downloads are not available yet.' everywhere", async () => {
+     await h.stop();
+     h = await startHarness({ env: { HCG_STORE_PROTECTED_DOWNLOADS: "disabled" } });
+-- 
+2.43.0
+

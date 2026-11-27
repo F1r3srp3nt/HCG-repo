@@ -44,7 +44,7 @@ closed system; Installer 5 uses its own; APT has none. HCG Store implements the 
 | Package checksum vs index | yes | **none found** | yes (deb hash) | via APT | — | yes |
 | Install step | `apt-get --allow-unauthenticated` on the fetched deb | `apt` on local debs with `Dir::State::lists=/var/empty` | own installer daemon | APT | own | APT |
 | `Valid-Until` (replay) | not handled | not handled | not handled | APT default | — | enforced |
-| HCG status | **Recommended** | **Supported** | **Supported** (rootless/roothide) | Legacy; not for paid packages | Free only, not tested | Free only |
+| HCG status | **Recommended** (protocol-tested; device qualification pending) | **Evaluated** at protocol level only (test 27); not qualified | Protocol-tested (rootless/roothide) | Legacy; not for paid packages | Free only, not tested | Free only |
 
 Key file paths: Sileo `Sileo/Backend/Payment Manager/` (`PaymentManager.swift`, `PaymentAuthenticator.swift`,
 `PaymentProvider.swift`, `PaymentPackageInfo.swift`), `Sileo/Backend/APT Wrapper/APTWrapper.swift` (`verifySignature`); Zebra `Zebra/Tabs/Sources/Helpers/ZBPaymentVendor.m`,

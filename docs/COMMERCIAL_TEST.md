@@ -36,10 +36,11 @@ proposed patch (`docs/store-integration/0001-repo-profile-and-ranges.patch`).
 
 | Store revision | Result |
 |---|---|
-| `57e442c` (Store `main`) | 22 run: 20 passed, 2 skipped (21, 22 need the patch) |
-| `30b3990` (`main` + proposed patch, local only, not pushed) | 22 run: 22 passed |
+| `57e442c` (Store `main`, 27 Nov) | 22 run: 20 passed, 2 skipped (21, 22 need the patch) |
+| `bc19ab5` (Store `main`, later) | 28 run: 26 passed, 2 skipped |
+| `06c8575` (`bc19ab5` + patches 0001 and 0002, local only, not pushed) | 28 run: 28 passed; Store server tests 165 passed |
 | Store's own server tests with the patch | 146 passed; `tsc` clean |
-| Whole HCG Repo suite (`python3 -m unittest discover -s tests`) | 266 run, all passed |
+| Whole HCG Repo suite (`python3 -m unittest discover -s tests`) | 278 run, all passed |
 
 | # | Acceptance item | Test |
 |---|---|---|
@@ -65,6 +66,7 @@ proposed patch (`docs/store-integration/0001-repo-profile-and-ranges.patch`).
 | 20 | Test mode, test ledger, no production payment endpoint or signing configured | `test_20` |
 | 21 | Profile: CORS only for HCG Repo origins, ownership from the ledger, no UDID/token/URL in the response | `test_21` |
 | 22 | Byte ranges after authorization (206/416), never without it | `test_22` |
+| — | HCG Store as the official provider: Sileo free install, authenticated discovery, TEST purchase and authorized install with real `dpkg`, blocked downloads, Zebra evaluation, integration status ([STORE_PROVIDER.md](STORE_PROVIDER.md)) | `test_23` … `test_28` |
 
 ## What this does not prove
 

@@ -27,6 +27,22 @@ FIXTURE_PRODUCT = (
     + ", ".join(f'"{NS}{x}"' for x in FIXTURE_IDS) + "]\n")
 
 
+def set_payment_provider(root: Path, url: str, advertise: bool = True, hosts: list[str] | None = None,
+                         approved: bool = True) -> None:
+    """Rewrite [payment_provider] in <root>/config/repo.toml (docs/STORE_PROVIDER.md). TEST approval record by default."""
+    import re as _re
+    from urllib.parse import urlsplit as _split
+    hosts = hosts if hosts is not None else [_split(url).netloc.lower()]
+    block = (f'[payment_provider]\nurl = "{url}"\ntrusted_hosts = [{", ".join(chr(34) + h + chr(34) for h in hosts)}]\n'
+             f'advertise = {"true" if advertise else "false"}\n')
+    if approved:
+        block += 'approved_by = "TEST owner"\ndate = "2026-11-27"\nrecord = "TEST approval (test suite)"\n'
+    p = root / "config" / "repo.toml"
+    text, n = _re.subn(r"\[payment_provider\]\n.*?(?=\n\[|\Z)", block.rstrip("\n"), p.read_text(), count=1, flags=_re.S)
+    assert n == 1, "config/repo.toml has no [payment_provider] section"
+    p.write_text(text)
+
+
 class RepoTestCase(unittest.TestCase):
     """Each test gets a private copy of config/ and branding/ with an empty pool and lock."""
 

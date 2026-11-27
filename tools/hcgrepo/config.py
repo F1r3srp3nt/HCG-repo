@@ -79,6 +79,73 @@ def normalize_store_url(url: str) -> str:
     return out
 
 
+# ---------------------------------------------------------------------------- payment provider
+#
+# [payment_provider] in config/repo.toml (docs/STORE_PROVIDER.md): HCG Store's Sileo payment-provider API. The URL is
+# configured and validated always; <repo>/payment_endpoint is written ONLY when advertise = true, which needs an owner
+# approval record. A provider outside trusted_hosts, with credentials, a query, a fragment or whitespace is refused.
+
+HOST_RE = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}|127\.0\.0\.1|localhost")
+DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+@dataclass(frozen=True)
+class PaymentProvider:
+    url: str = ""                 # validated, normalized (https, trailing slash) or ""
+    advertise: bool = False       # write <repo>/payment_endpoint (stable channel only)
+    trusted_hosts: tuple = ()
+    approved_by: str = ""
+    date: str = ""
+    record: str = ""
+
+    @property
+    def host(self) -> str:
+        return urlsplit(self.url).netloc if self.url else ""
+
+
+def validate_provider_url(url: str, trusted_hosts) -> str:
+    """The normalized provider URL, or ConfigError. Exact host (and port) match against trusted_hosts."""
+    raw = url
+    if raw != raw.strip() or any(c.isspace() or ord(c) < 32 for c in raw):
+        raise ConfigError("[payment_provider] url must not contain whitespace or control characters (Saily/Irisin does not trim it)")
+    u = urlsplit(raw)
+    if u.scheme != "https":
+        raise ConfigError(f"[payment_provider] url must be https:// (Sileo and Zebra refuse insecure providers), got {raw!r}")
+    if u.username or u.password or "@" in u.netloc:
+        raise ConfigError("[payment_provider] url must not carry credentials")
+    if u.query or u.fragment or "?" in raw or "#" in raw:
+        raise ConfigError("[payment_provider] url must not have a query or fragment")
+    netloc = u.netloc.lower()
+    if netloc not in trusted_hosts:
+        raise ConfigError(f"[payment_provider] url host {netloc!r} is not in trusted_hosts {list(trusted_hosts)}")
+    path = u.path or "/"
+    if "//" in path or "/../" in path + "/" or not re.fullmatch(r"[A-Za-z0-9._~/-]*", path):
+        raise ConfigError(f"[payment_provider] url path {path!r} is not a plain path")
+    return f"https://{netloc}{path.rstrip('/')}/"
+
+
+def parse_payment_provider(sec: dict) -> PaymentProvider:
+    hosts = []
+    for h in sec.get("trusted_hosts", []):
+        h = str(h).strip().lower()
+        name, _, port = h.partition(":")
+        if not HOST_RE.fullmatch(name) or (port and not port.isdigit()):
+            raise ConfigError(f"[payment_provider] trusted_hosts entry {h!r} is not an exact host name (no wildcards, no schemes)")
+        hosts.append(h)
+    url = str(sec.get("url", ""))
+    url = validate_provider_url(url, hosts) if url else ""
+    pp = PaymentProvider(url=url, advertise=bool(sec.get("advertise", False)), trusted_hosts=tuple(hosts),
+                         approved_by=str(sec.get("approved_by", "")).strip(), date=str(sec.get("date", "")).strip(),
+                         record=str(sec.get("record", "")).strip())
+    if pp.advertise:
+        if not pp.url:
+            raise ConfigError("[payment_provider] advertise = true needs url")
+        if not (pp.approved_by and DATE_RE.fullmatch(pp.date) and pp.record):
+            raise ConfigError("[payment_provider] advertise = true needs the owner approval record: approved_by, date "
+                              "(YYYY-MM-DD) and record (docs/STORE_PROVIDER.md)")
+    return pp
+
+
 # ---------------------------------------------------------------------------- products
 
 # Optional product-level `access` (connect | paid puts the product under "Sign-in required"). Who may
@@ -337,7 +404,8 @@ class RepoConfig:
     products: list[Product]
     store_base_url: str
     access_require_explicit: bool = True
-    payment_endpoint: str = ""
+    payment_endpoint: str = ""   # the ADVERTISED provider URL (written to <repo>/payment_endpoint); "" = not advertised
+    payment_provider: PaymentProvider = field(default_factory=PaymentProvider)
     channel: str = "stable"      # which channel this configuration builds: "stable" (/repo/) or "candidate"
     preview_listings: bool = False   # build --preview-listings: also render prepared commercial listings (never deployed)
     approver_keys: list = field(default_factory=list)   # [approvals] approver_keys: founder approval public keys
@@ -451,9 +519,10 @@ def load_config(root: Path | None = None) -> RepoConfig:
         raise ConfigError("config/repo.toml [store] base_url is required")
     store_base = normalize_store_url(store_raw)
     acc = cfg.get("access", {})
-    endpoint = acc.get("payment_endpoint", "").strip()
-    if endpoint and not endpoint.startswith("https://"):
-        raise ConfigError("[access] payment_endpoint must be an https:// URL (Sileo refuses insecure providers)")
+    if "payment_endpoint" in acc:
+        raise ConfigError("[access] payment_endpoint was replaced by [payment_provider] url / advertise (docs/STORE_PROVIDER.md)")
+    provider = parse_payment_provider(cfg.get("payment_provider", {}))
+    endpoint = provider.url if provider.advertise else ""
     return RepoConfig(
         root=root, origin=r["origin"], label=r["label"], suite=r["suite"], codename=r["codename"],
         version=str(r["version"]), description=r["description"], repo_subdir=sub, architectures=archs,
@@ -462,7 +531,7 @@ def load_config(root: Path | None = None) -> RepoConfig:
         signing_fingerprint=s.get("fingerprint", "").replace(" ", "").upper(),
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
         external_deps=ext, products=parse_products(products), store_base_url=store_base,
-        access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint,
+        access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint, payment_provider=provider,
         publish_compatibility=bool(cfg.get("compatibility", {}).get("publish", False)),
         publish_trust=bool(cfg.get("trust", {}).get("publish", False)),
         signing_valid_days=int(s.get("valid_days", 0) or 0),

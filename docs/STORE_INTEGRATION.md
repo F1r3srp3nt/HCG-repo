@@ -63,17 +63,17 @@ no token in any URL, stores nothing, and uses no inline code, so it works under 
 store must allow this site's origin with credentials in its CORS policy for the check to work.
 
 A product page offers **Install in Sileo** only for a package that is in the generated index: a
-`public` package, or a protected one indexed as `cydia::commercial` once `[access] payment_endpoint`
+`public` package, or a protected one indexed as `cydia::commercial` once `[payment_provider] advertise = true`
 is set ([ACCESS.md](ACCESS.md)). Otherwise it says "Downloads are not available yet." A product page
 never links a `.deb`. `verify` checks all of this on every build.
 
 ## Payment provider candidate
 
 [ACCESS.md](ACCESS.md) describes the Sileo Payment Provider API that HCG Connect must provide, and
-`[access] payment_endpoint` in `config/repo.toml` that enables it. HCG Store's server implements
+`[payment_provider] advertise = true` in `config/repo.toml` that enables it. HCG Store's server implements
 that API at `https://store.hakmicapitalgroup.com/repo-api/v1/sileo/` (Store repository:
 `web-hcg-store/server/src/sileo.ts`, documented in its `docs/HCG-REPO.md`). It is **not enabled**.
-It is the candidate value for `[access] payment_endpoint`, pending founder approval. The endpoint is
+It is the candidate value for `[payment_provider] advertise = true`, pending founder approval. The endpoint is
 not set here.
 
 ## What remains

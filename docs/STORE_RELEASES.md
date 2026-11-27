@@ -5,7 +5,7 @@
 - Its "Ship to Store" publishing work is on the unmerged branch `publishing/ship-to-store` of
   `F1r3srp3nt/store`, tested at commit `10b2365`.
 - HCG Executable Maker's side is on the unmerged branch `distribution/ship-to-store`.
-- Production `[access] payment_endpoint` stays empty, so the public index lists no protected package.
+- Production `[payment_provider] advertise` stays `false`, so the public index lists no protected package ([STORE_PROVIDER.md](STORE_PROVIDER.md)).
 
 ## What is connected, and how
 
@@ -17,7 +17,7 @@ HCG Repo reuses the Store's contracts. It does not copy them or keep a second pr
 | 2. Ship | Executable Maker | Store publishing API (`server/src/publishing.ts`): draft release → declared artifact → scoped, resumable upload → Store-side verification (SHA-256, format, control fields, catalogue mapping) → submit |
 | 3. Approve | A person in HCG Store, not the person who created the release | `POST /api/v1/publishing/releases/<id>/approve` with eligibility `public` |
 | 4. Record | An HCG Repo maintainer | `bin/hcgrepo import-store-release --release <record.json> --artifact <art-id> --deb <file>` |
-| 5. Publish | An HCG Repo maintainer | The manual **Publish repository** workflow on `main`. Protected entries appear only while `payment_endpoint` is set |
+| 5. Publish | An HCG Repo maintainer | The manual **Publish repository** workflow on `main`. Protected entries appear only while the payment provider is advertised |
 | 6. Deliver | HCG Store | Sileo payment-provider API (`server/src/sileo.ts`). `authorize_download` re-checks the session, the entitlement, release approval and the launch switch, then returns a 120-second signed URL |
 
 For step 4:
@@ -61,7 +61,7 @@ checksums only. The `.deb` is never stored in this repository or on the public s
 was already recorded from its own build, that provenance is kept and the Store link is added as
 `hcg_store`.
 
-**Index rule.** With `payment_endpoint` set, a protected package is indexed (as `cydia::commercial`,
+**Index rule.** With the payment provider advertised, a protected package is indexed (as `cydia::commercial`,
 with a `Filename` that is never deployed) **only if it has such a Store link**. Without one, Sileo
 would list a package that no one can download.
 
@@ -157,7 +157,7 @@ These are proposed for review. None was made in those repositories.
    - It should be authorised by a central permission for HCG Repo maintainers.
    - That lets HCG Repo detect new approvals and withdrawals instead of relying on a saved record.
 4. **Correct the documentation.**
-   - `docs/HCG-REPO.md` refers to HCG Repo's `[payments] endpoint`. The setting is `[access] payment_endpoint`.
+   - `docs/HCG-REPO.md` refers to HCG Repo's `[payments] endpoint`. The setting is `[payment_provider]` (formerly `[access] payment_endpoint`).
    - Its "remaining work 1" (protected index entries) now exists in HCG Repo.
 5. **Withdrawal signal.** Either the listing above or a webhook, so that a Store withdrawal reaches HCG Repo without a manual step.
 6. **Deploy on https.** Sileo refuses a provider endpoint or download URL that is not https (`PaymentManager`, `PaymentProvider.downloadURL`).

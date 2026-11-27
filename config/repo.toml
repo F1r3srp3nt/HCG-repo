@@ -51,9 +51,19 @@ public_key_file = "keys/hcg-repo-archive-key.asc"
 # packages/<id>/package.toml. connect/paid packages are never stored in this public repository
 # or served as public files (see docs/ACCESS.md).
 require_explicit = true
-# HTTPS base URL of the HCG Connect payment provider (Sileo Payment Provider API). Empty while
-# HCG Connect is not configured: connect/paid packages are then left out of the public index.
-payment_endpoint = ""
+
+[payment_provider]
+# HCG Store's Sileo payment-provider API (docs/STORE_PROVIDER.md). HCG Store stays the only authority for prices,
+# purchases and entitlements; HCG Repo only advertises where the provider is.
+# The url is always validated: https, an exact host from trusted_hosts, no credentials/query/fragment/whitespace.
+url = "https://store.hakmicapitalgroup.com/api/sileo/v1/"
+trusted_hosts = ["store.hakmicapitalgroup.com"]
+# advertise = true writes <repo>/payment_endpoint (stable source only) and lists eligible paid packages as
+# Tag: cydia::commercial. OFF until end-to-end qualification and the owner's explicit approval, recorded here:
+advertise = false
+approved_by = ""
+date = ""
+record = ""
 
 [store]
 # HCG Store, where products are bought and access is granted. It is NOT live yet.

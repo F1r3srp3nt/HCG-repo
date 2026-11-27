@@ -13,7 +13,7 @@ owner approval record. These tests check what that guarantees in the built site 
 import json
 import re
 
-from support import NS, REPO, RepoTestCase, tool_deb
+from support import NS, REPO, RepoTestCase, set_payment_provider, tool_deb
 from hcgrepo import cli
 from hcgrepo.config import COMMERCIAL_DEFAULTS, Report, load_config, load_lock
 from hcgrepo.debinspect import inspect_deb
@@ -112,8 +112,7 @@ class CommercialTests(RepoTestCase):
         return info
 
     def endpoint(self):
-        p = self.root / "config" / "repo.toml"
-        p.write_text(p.read_text().replace('payment_endpoint = ""', f'payment_endpoint = "{ENDPOINT}"'))
+        set_payment_provider(self.root, ENDPOINT)
         return self.reload()
 
     def site(self, name, **kw):

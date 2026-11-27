@@ -4,7 +4,7 @@ mode indexes them as commercial without exposing the file; identity, artwork and
 import json
 import shutil
 
-from support import NS, RepoTestCase, tool_deb
+from support import NS, RepoTestCase, set_payment_provider, tool_deb
 from hcgrepo.config import Report, load_lock
 from hcgrepo.importer import ImportError_, import_deb, protect
 from hcgrepo.repo import check_lock_history, check_repository, load_pool
@@ -80,7 +80,8 @@ class AccessTests(RepoTestCase):
     def test_payment_endpoint_mode_indexes_commercial_without_file(self):
         self.set_access("connect")
         import_deb(self.cfg, tool_deb(self.work), {"source": "hcg-store", "store_release": "rel-0000000000000001"})
-        self.set_cfg('payment_endpoint = ""', 'payment_endpoint = "https://connect.example.invalid/sileo"')
+        set_payment_provider(self.root, "https://connect.example.invalid/sileo")
+        self.reload()
         res = build(self.cfg, PROD, self.tmp / "site")
         packages = (res.out_dir / "repo" / "Packages").read_text()
         self.assertIn(f"Package: {PKG}", packages)
@@ -97,7 +98,8 @@ class AccessTests(RepoTestCase):
 
     def test_insecure_payment_endpoint_refused(self):
         with self.assertRaises(Exception):
-            self.set_cfg('payment_endpoint = ""', 'payment_endpoint = "http://connect.example.invalid/"')
+            set_payment_provider(self.root, "http://connect.example.invalid/")
+            self.reload()
 
     def test_protect_moves_existing_public_package_out(self):
         import_deb(self.cfg, tool_deb(self.work), {"source": "t"})

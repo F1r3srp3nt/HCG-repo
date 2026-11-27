@@ -50,11 +50,11 @@ Current decisions (18 Nov 2026):
 - **Builds:**
   - Protected files are never written to the output, and an install link for a protected package fails the build unless a payment endpoint is configured.
   - Without a payment endpoint, protected packages are **left out of the index**. The website lists them under **Sign-in required** as *Not yet available*, with no install action.
-  - With a payment endpoint (`[access] payment_endpoint = "https://…"`), they are indexed with `Tag: cydia::commercial` and `Filename: protected/<file>`. That path is never deployed. The build also publishes `repo/payment_endpoint`.
+  - With the payment provider advertised (`[payment_provider]` url + `advertise = true` with an owner approval record; [STORE_PROVIDER.md](STORE_PROVIDER.md)), they are indexed with `Tag: cydia::commercial` and `Filename: protected/<file>`. That path is never deployed. The build also publishes `repo/payment_endpoint`.
 - **Verification:**
   - Every `protected/` path must **not** return 200 (`protected-exposed`).
   - Protected entries must be tagged commercial.
-  - A `payment_endpoint` must be HTTPS.
+  - The provider URL must be HTTPS on a host listed in `trusted_hosts`; it is written without a trailing newline.
 - **CI artifacts:** **Prepare packages** deletes its build artifacts after importing, because artifacts of a public repository can be downloaded by any GitHub user.
 
 ## Status: protected delivery is NOT live
@@ -89,7 +89,7 @@ Protected files must come from storage that only the provider can sign URLs for.
 | `com.hakmicapitalgroup.hcgterminal.unleashed_0.1.0-1_iphoneos-arm64.deb` | `7fdb735e74e551fa05a23a81714ff537f97556a67d600f49f090b543ef1d42bf` |
 
 When the endpoint answers `info` correctly:
-1. Set `payment_endpoint` in `config/repo.toml`.
+1. Set `[payment_provider] advertise = true` with the owner approval record in `config/repo.toml`, and run Publish with `advertise_payment_provider` ([STORE_PROVIDER.md](STORE_PROVIDER.md)).
 2. Rebuild.
 3. Confirm with `bin/hcgrepo verify` that the `protected/` paths return 404.
 

@@ -201,7 +201,7 @@ review of the Store's delivery path is required before commercial delivery goes 
 4. Decide policy P-1.
 5. An approved Store offer and Store release (`approvedEligibility: public`) for the first paid product, then the
    HCG Repo commercial gates (`docs/COMMERCIAL.md`).
-6. Turn on Store protected downloads, then set `payment_endpoint` in `config/repo.toml`.
+6. Turn on Store protected downloads, then set `[payment_provider] advertise = true` with the owner approval record, and run Publish with `advertise_payment_provider` ([STORE_PROVIDER.md](STORE_PROVIDER.md)).
 7. Physical qualification on iPhone 11 Pro Max and iPhone 13 Pro with Sileo and Zebra
    (`docs/DEVICE_QUALIFICATION_COMMERCIAL.md`).
 8. Production repository signing (founder key ceremony, `docs/SIGNING.md`) — independent of commerce, recommended

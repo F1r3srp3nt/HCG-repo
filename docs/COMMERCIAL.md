@@ -21,7 +21,7 @@ The authoritative record is the `[[products.commercial.approvals]]` entry in `co
 | Product registry for HCG Repo | `config/products.toml` (one entry per product; `[products.commercial]` holds the commercial settings) | HCG ERP is the source of truth for products; HCG Repo mirrors it ([STORE_INTEGRATION.md](STORE_INTEGRATION.md)) |
 | Who may download a package | `packages/<id>/package.toml` `[access] level` ([ACCESS.md](ACCESS.md)) | HCG Repo |
 | Paid package files | Never in this repository or on the public site: lock status `protected`, file outside Git | HCG Repo (containment) |
-| Index entries for paid builds | Only with `[access] payment_endpoint` set **and** an HCG Store release approved for public delivery ([STORE_RELEASES.md](STORE_RELEASES.md)) **and**, for a commercial product, every commercial gate open | HCG Repo build + verify |
+| Index entries for paid builds | Only with the payment provider advertised (`[payment_provider] advertise = true`, [STORE_PROVIDER.md](STORE_PROVIDER.md)) **and** an HCG Store release approved for public delivery ([STORE_RELEASES.md](STORE_RELEASES.md)) **and**, for a commercial product, every commercial gate open | HCG Repo build + verify |
 | Identity, sign-in | HCG Connect (central) | HCG |
 | Prices actually charged, checkout, payments | HCG Store server: `server/data/offers.json` (server-authoritative, empty), signed provider webhooks | HCG Store |
 | Entitlements, licences, refunds, revocation | HCG central entitlements; HCG Store reports verified purchases through its grant outbox | HCG |
@@ -106,7 +106,7 @@ A preview marks each prepared listing as *Preview… awaiting the owner's approv
 5. **Commercial release.** HCG Store approves the release for public delivery to HCG Repo; record it with
    `bin/hcgrepo import-store-release`. Then, each with its approval record: `approved_version`,
    `commercial_release = "approved"`, `purchases = "enabled"`, `downloads = "enabled"`, `installation = "enabled"`, and
-   `[access] payment_endpoint` in `config/repo.toml`. Merge, run **Publish**. The approved version appears in the main
+   `[payment_provider] advertise = true` (with its owner approval record) in `config/repo.toml`. Merge, run **Publish**. The approved version appears in the main
    index as `Tag: cydia::commercial`, `Filename: protected/…`; Sileo asks the Store's payment provider, which checks
    sign-in and ownership server-side and returns a short-lived signed URL. The file is never on the public site.
 
@@ -166,6 +166,6 @@ Each step is a separate owner decision. Nothing happens automatically, and no st
 5. **Import the commercial build** (a separate version, e.g. `0.1.0`) from its pinned CI artifact via Prepare packages,
    then `bin/hcgrepo import-store-release` with the Store's approved release record.
 6. **Approve the release:** `approved_version = "<version>"` and `commercial_release = "approved"`.
-7. **Activate:** `purchases`, `downloads`, `installation` = `"enabled"` and `[access] payment_endpoint` =
+7. **Activate:** `purchases`, `downloads`, `installation` = `"enabled"` and `[payment_provider] advertise = true`, url =
    `"https://store.hakmicapitalgroup.com/repo-api/v1/sileo/"`. Merge and Publish. Confirm with Check transport that the
    index lists exactly the approved version as `cydia::commercial` and that `protected/` paths return 404.

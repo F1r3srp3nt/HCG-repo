@@ -1,4 +1,4 @@
-From 30b39906ea704edaa6c3f24e99debdabda48e2c8 Mon Sep 17 00:00:00 2001
+From 6b4b84f367cff53611cd9512ca7b35e280ca0c23 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 27 Nov 2026 02:22:25 +0000
 Subject: [PATCH] HCG Repo Profile endpoint and range requests for protected
@@ -18,10 +18,10 @@ Claude-Session: https://claude.ai/code/session_01QS5EmmvAHiKVudQmscdEHx
  2 files changed, 63 insertions(+), 6 deletions(-)
 
 diff --git a/web-hcg-store/server/src/app.ts b/web-hcg-store/server/src/app.ts
-index da8f5d3..1110c3b 100644
+index e85f67b..b72725d 100644
 --- a/web-hcg-store/server/src/app.ts
 +++ b/web-hcg-store/server/src/app.ts
-@@ -385,15 +385,41 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+@@ -420,15 +420,41 @@ export function createStoreApp(deps: AppDeps): StoreApp {
      if (!mayDownload(access, artifact.id)) {
        return errorJson(res, 403, "not_released", "This file is not approved for delivery.");
      }
@@ -64,8 +64,8 @@ index da8f5d3..1110c3b 100644
 +      "accept-ranges": "bytes",
        "content-type": contentType,
        "content-length": String(size),
-       "content-disposition": `attachment; filename="${fileName.replace(/["\\]/g, "_")}"`,
-@@ -609,6 +635,37 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+       // ASCII fallback plus the exact name (RFC 6266/5987), e.g. "HCG Mail.app.zip".
+@@ -660,6 +686,37 @@ export function createStoreApp(deps: AppDeps): StoreApp {
        return json(res, 200, await library(fresh.session));
      }
      if ((match = /^\/api\/v1\/downloads\/([a-z0-9-]+)$/.exec(p)) && m === "GET") return download(req, res, match[1]!);
@@ -103,7 +103,7 @@ index da8f5d3..1110c3b 100644
      if ((match = /^\/api\/v1\/repo\/products\/([a-z0-9-]+)\/access$/.exec(p)) && (m === "GET" || m === "OPTIONS")) {
        const cors = repoCors(req);
        if (m === "OPTIONS") return send(res, 204, "", cors);
-@@ -644,7 +701,7 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+@@ -711,7 +768,7 @@ export function createStoreApp(deps: AppDeps): StoreApp {
      }
      if (await publishing.route(req, res, url)) return;
      if (p.startsWith("/repo-api/v1/sileo/")) return handleSileo.route(sileoCtx, req, res, url);
@@ -113,7 +113,7 @@ index da8f5d3..1110c3b 100644
      if (m === "GET" || m === "HEAD") return serveStatic(req, res, p);
      return errorJson(res, 405, "method_not_allowed", "Method not allowed.");
 diff --git a/web-hcg-store/server/src/sileo.ts b/web-hcg-store/server/src/sileo.ts
-index 9c1dae9..2e58330 100644
+index 0eb56b7..3710a37 100644
 --- a/web-hcg-store/server/src/sileo.ts
 +++ b/web-hcg-store/server/src/sileo.ts
 @@ -38,7 +38,7 @@ export interface SileoCtx {
@@ -125,7 +125,7 @@ index 9c1dae9..2e58330 100644
  }
  
  /** Sileo treats `success: false` / `error` as failure and clears its token when `invalidate` is true. */
-@@ -164,7 +164,7 @@ async function route(ctx: SileoCtx, req: IncomingMessage, res: ServerResponse, u
+@@ -165,7 +165,7 @@ async function route(ctx: SileoCtx, req: IncomingMessage, res: ServerResponse, u
   * default) and is re-checked when used: the session must still be active and the entitlement must
   * still be granted, so revocation applies even inside the expiry window.
   */
@@ -134,7 +134,7 @@ index 9c1dae9..2e58330 100644
    const payload = verifyPayload<{ a: string; s: string; h: string; exp: number }>(ctx.cfg.secretKey, "repo-file", token);
    if (!payload || payload.exp < ctx.now()) return errorJson(res, 403, "link_expired", "This download link has expired.");
    const s = ctx.sessions.byHash(payload.h);
-@@ -176,7 +176,7 @@ async function serveFile(ctx: SileoCtx, res: ServerResponse, token: string) {
+@@ -177,7 +177,7 @@ async function serveFile(ctx: SileoCtx, res: ServerResponse, token: string) {
    if (!mayDownload(a, file.id)) {
      return errorJson(res, 403, "not_entitled", "Your HCG account does not include this package.");
    }

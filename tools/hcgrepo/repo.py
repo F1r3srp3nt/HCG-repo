@@ -226,7 +226,7 @@ def check_commercial(cfg: RepoConfig, lock: dict, report: Report) -> None:
                                  "commercial release must be its own build")
         # The main (stable) source needs the provider; the candidate source never has one and never indexes paid builds.
         if c.installation == "enabled" and not cfg.payment_endpoint and cfg.channel == "stable":
-            report.error("commercial-order", f"{where}: installation enabled needs [access] payment_endpoint "
+            report.error("commercial-order", f"{where}: installation enabled needs [payment_provider] advertise = true "
                          "(HCG Store's payment provider) in config/repo.toml")
 
 
