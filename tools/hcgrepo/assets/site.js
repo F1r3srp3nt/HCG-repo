@@ -33,4 +33,37 @@
       }
     });
   });
+
+  // Package discovery: search, category, environment, iOS version and access filters over the cards on this page.
+  var form = document.querySelector("[data-filters]");
+  if (form) {
+    var cards = Array.prototype.slice.call(document.querySelectorAll(".pkg-card"));
+    var sectionSel = form.querySelector('[data-filter="section"]');
+    var sections = {};
+    cards.forEach(function (c) { sections[c.getAttribute("data-section")] = true; });
+    Object.keys(sections).sort().forEach(function (s) {
+      var o = document.createElement("option"); o.value = s; o.textContent = s.replace(/_/g, " "); sectionSel.appendChild(o);
+    });
+    var count = form.querySelector("[data-filter-count]");
+    function ver(v) { var p = String(v || "0").split("."); return (+p[0] || 0) * 100 + (+p[1] || 0); }
+    function apply() {
+      var q = form.querySelector('[data-filter="text"]').value.trim().toLowerCase();
+      var sec = sectionSel.value, lay = form.querySelector('[data-filter="layout"]').value;
+      var ios = form.querySelector('[data-filter="ios"]').value, acc = form.querySelector('[data-filter="access"]').value;
+      var shown = 0;
+      cards.forEach(function (c) {
+        var ok = (!q || c.getAttribute("data-filter-text").indexOf(q) >= 0)
+          && (!sec || c.getAttribute("data-section") === sec)
+          && (!lay || (" " + c.getAttribute("data-layout") + " ").indexOf(" " + lay + " ") >= 0)
+          && (!ios || !c.getAttribute("data-min-ios") || ver(c.getAttribute("data-min-ios")) <= ver(ios + ".99"))
+          && (!acc || c.getAttribute("data-access") === acc);
+        c.hidden = !ok;
+        if (ok) shown++;
+      });
+      count.textContent = shown + " of " + cards.length + " packages shown (stable and testing channel)";
+    }
+    form.addEventListener("input", apply);
+    form.addEventListener("change", apply);
+    apply();
+  }
 })();

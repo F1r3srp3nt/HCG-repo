@@ -80,6 +80,8 @@ The workflow rebuilds and verifies the snapshot, deploys it, and checks every li
 - [docs/TRANSPORT.md](docs/TRANSPORT.md): HTTPS diagnosis, the settings fix, phone-side 522 checks and Sileo refresh steps.
 - [docs/ACCESS.md](docs/ACCESS.md): public / HCG Connect / paid access levels and the protected-delivery contract.
 - [imports/README.md](imports/README.md): pinned import requests and the **Prepare packages** workflow.
+- [docs/COMMERCIAL_DISTRIBUTION.md](docs/COMMERCIAL_DISTRIBUTION.md): commercial delivery contracts (authorities, HCG Store APIs, HCG Connect sign-in, entitlement categories, delivery binding, lifecycle, Ship to Repo, security review, production prerequisites). Not active.
+- [docs/PACKAGE_MANAGERS.md](docs/PACKAGE_MANAGERS.md), [docs/PROFILE.md](docs/PROFILE.md), [docs/COMMERCIAL_TEST.md](docs/COMMERCIAL_TEST.md), [docs/DEVICE_QUALIFICATION_COMMERCIAL.md](docs/DEVICE_QUALIFICATION_COMMERCIAL.md), [docs/ECOSYSTEM_STATE.md](docs/ECOSYSTEM_STATE.md): client matrix from upstream source, the My Library page, the TEST environment and acceptance results, Sileo/Zebra device qualification, and the published/held/planned inventory.
 - [docs/DISTRIBUTION_V2.md](docs/DISTRIBUTION_V2.md): artifact providers, the submission manifest, the Candidate Release Manager (`bin/hcgrepo release`), validation levels and the compatibility registry.
 - [docs/EXECUTABLE_MAKER_SUBMISSION.md](docs/EXECUTABLE_MAKER_SUBMISSION.md), [docs/RELEASE_PASSPORT.md](docs/RELEASE_PASSPORT.md), [docs/ADMIN_DASHBOARD.md](docs/ADMIN_DASHBOARD.md): the submission contract, release records and the local dashboard.
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): importing, provenance, immutability, building, publishing, withdrawing.

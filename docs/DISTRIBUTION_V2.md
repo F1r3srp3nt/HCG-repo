@@ -184,7 +184,7 @@ owner's approval and `[compatibility] publish = true` in `config/repo.toml`, whi
 |---|---|---|
 | HCG Connect | admin identity for Release Manager actions | `--by` today. Later, an HCG Connect identity verified server-side before `approve`/`prepare`. |
 | Executive Control Center | who may submit, approve or publish | maps to the three gates: submit, approve, Publish workflow (GitHub environment protection) |
-| HCG Store | commercial listings and entitlements | unchanged: [COMMERCIAL.md](COMMERCIAL.md), [STORE_INTEGRATION.md](STORE_INTEGRATION.md) |
+| HCG Store | commercial listings and entitlements | [COMMERCIAL.md](COMMERCIAL.md), [STORE_INTEGRATION.md](STORE_INTEGRATION.md); delivery contracts and TEST results in [COMMERCIAL_DISTRIBUTION.md](COMMERCIAL_DISTRIBUTION.md) |
 | Executable Maker | submissions | Unleashify handoff today; a native manifest v1 later (section 2) |
 | HCG Server | artifact storage and build host | `https-artifact` with `provider = "hcg-server-build-host"` / `developer-upload` and an `auth_env` CI secret |
 | Nexus | discovery | reads the public `Packages` index, and `compatibility.json` once enabled |

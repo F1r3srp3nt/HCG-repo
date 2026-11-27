@@ -86,7 +86,7 @@ class AccessTests(RepoTestCase):
         self.assertIn(f"Package: {PKG}", packages)
         self.assertIn("Tag: cydia::commercial", packages)
         self.assertIn(f"Filename: protected/{FILE}", packages)
-        self.assertEqual((res.out_dir / "repo" / "payment_endpoint").read_text(), "https://connect.example.invalid/sileo/\n")
+        self.assertEqual((res.out_dir / "repo" / "payment_endpoint").read_text(), "https://connect.example.invalid/sileo/")   # no newline: Saily/Irisin does not trim
         self.assertFalse([f for f in res.out_dir.rglob("*") if f.name == FILE])
         v = self.serve_verify(res.out_dir)
         self.assertTrue(v.report.ok, v.report.render())

@@ -331,7 +331,7 @@ def page(title: str, body: str, rel: str, description: str, canonical: str, curr
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="{rel or './'}"><img src="{rel}repo/CydiaIcon@2x.png" alt="" width="34" height="34"><span>HCG Repo</span></a>
-    <nav aria-label="Primary">{nav('#packages', 'Packages')}{nav('#install', 'Install')}{nav('#help', 'Help')}</nav>
+    <nav aria-label="Primary">{nav('#packages', 'Packages')}{nav('account/', 'My Library')}{nav('trust/', 'Trust')}{nav('install/', 'Install')}{nav('#help', 'Help')}</nav>
   </div>
 </header>
 <main id="main" tabindex="-1">
@@ -410,7 +410,13 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
     product_link = f'\n    <a class="btn btn-metal" href="products/{e(product.key)}/">Product page</a>' if product else ""
     install_btn = (f'<a class="btn btn-metal" href="sileo://package/{e(pkg)}">Open in Sileo (installation failed in testing)</a>'
                    if install_failed(p) else f'<a class="btn btn-primary" href="sileo://package/{e(pkg)}">Install in Sileo</a>')
-    return f"""<li class="card pkg-card">
+    min_ios = (ios_requirement(p)[0] or "").replace("iOS ", "").split()[0] if ios_requirement(p)[0] else ""
+    filt = (f' data-filter-text="{e((display_name(p) + " " + pkg + " " + summary).lower())}"'
+            f' data-section="{e(p.info.get("Section") or "Other")}"'
+            f' data-layout="{e(" ".join(sorted({describe_arch(v.info.architecture).split()[0].lower() for v in current})))}"'
+            f' data-min-ios="{e(min_ios)}" data-access="{e(p.meta.access_for(p.info.version))}"'
+            f' data-channel="{"candidate" if CANDIDATE_DIR in repo_rel else "stable"}"')
+    return f"""<li class="card pkg-card"{filt}>
   <div class="pkg-head">
     {icon}
     <div class="pkg-title">
@@ -435,6 +441,17 @@ def package_card(cfg: RepoConfig, versions: list[PoolPackage], repo_rel: str) ->
 </li>"""
 
 
+FILTER_BAR = """<form class="card filters" role="search" data-filters onsubmit="return false">
+  <label>Search<input type="search" data-filter="text" placeholder="Name, package ID or feature" autocomplete="off"></label>
+  <label>Category<select data-filter="section"><option value="">All categories</option></select></label>
+  <label>Environment<select data-filter="layout"><option value="">Rootless or rootful</option><option value="rootless">Rootless</option><option value="rootful">Rootful</option></select></label>
+  <label>My iOS version<select data-filter="ios"><option value="">Any</option><option>15</option><option>16</option><option>17</option><option>18</option></select></label>
+  <label>Access<select data-filter="access"><option value="">Free and paid</option><option value="public">Free</option><option value="connect">HCG account</option><option value="paid">Paid</option></select></label>
+  <p class="hint" data-filter-count aria-live="polite"></p>
+</form>
+"""
+
+
 def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[PoolPackage]], info: dict,
             candidate: dict | None = None) -> str:
     n = len(groups)
@@ -443,7 +460,7 @@ def landing(cfg: RepoConfig, base: str, repo_url: str, groups: dict[str, list[Po
         cards = "".join(package_card(cfg, v, "repo/") for v in groups.values())
         packages_html = (f'<p class="section-lead">{n} package{"s" if n != 1 else ""} in the repository index. '
                          'Each card shows the release status and the environment the package declares.</p>'
-                         f'<ul class="cards" role="list">{cards}</ul>')
+                         + FILTER_BAR + f'<ul class="cards" role="list">{cards}</ul>')
     else:
         packages_html = """<div class="card empty">
   <img src="assets/brand/favicon.svg" alt="" width="56" height="56">
@@ -1170,7 +1187,9 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             if not p.protected:
                 shutil.copyfile(cfg.root / p.rel, repo_dir / "debs" / p.info.canonical_filename())
         if cfg.payment_endpoint:
-            (repo_dir / "payment_endpoint").write_text(cfg.payment_endpoint.rstrip("/") + "/\n", encoding="utf-8")
+            # No trailing newline: Sileo and Zebra trim the file, but Saily/Irisin passes it to URL(string:) as is
+            # (Lakr233/Irisin 3924284, RepositoryCenter+Downloader.swift:206), where a newline would break the URL.
+            (repo_dir / "payment_endpoint").write_text(cfg.payment_endpoint.rstrip("/") + "/", encoding="utf-8")
         for icon in ("CydiaIcon.png", "CydiaIcon@2x.png", "CydiaIcon@3x.png"):
             shutil.copyfile(cfg.root / "branding" / icon, repo_dir / icon)
         # Sileo shows sileo-featured.json at the top of this source's page (not in the Sources list,
@@ -1268,6 +1287,22 @@ def build(cfg: RepoConfig, base_url: str, out_dir: Path, sign_key: str | None = 
             pdir = tmp / "products" / product.key
             pdir.mkdir(parents=True)
             (pdir / "index.html").write_text(product_page(cfg, base_url, repo_url, product, groups, cand), encoding="utf-8")
+        # My Library (account profile), Package Trust Center and installation guides (tools/hcgrepo/pages.py).
+        from . import pages
+        cand_url = cand["url"] if cand else repo_url + CANDIDATE_DIR + "/"
+        for slug, title, desc, body, scripts in (
+            ("account", "My Library · HCG Repo", "Your HCG packages, licences and purchases, from your HCG account.",
+             pages.account_body(cfg.store_base_url, "../" + cfg.repo_subdir + "/", cand_url), ("account.js",)),
+            ("trust", "Package Trust Center · HCG Repo", "Repository signing, package verification and entitlement checks.",
+             pages.trust_body(res.signature_verified, cfg.signing_fingerprint, repo_url, cand_url, info["date_human"]), ()),
+            ("install", "Install · HCG Repo", "Add HCG Repo to Sileo, Zebra, Saily or APT, and how paid packages install.",
+             pages.install_body(repo_url, cand_url), ()),
+        ):
+            (tmp / slug).mkdir()
+            (tmp / slug / "index.html").write_text(page(title, body, "../", desc, base_url + slug + "/",
+                                                        current={"account": "My Library", "trust": "Trust",
+                                                                 "install": "Install"}[slug], scripts=scripts),
+                                                   encoding="utf-8")
         (tmp / "404.html").write_text(page("Not found · HCG Repo", '<section class="section prose"><div class="intro card">'
                                            '<h1>Page not found</h1><p>The page you asked for does not exist.</p>'
                                            f'<p><a class="btn btn-primary" href="{e(base_url)}">Go to HCG Repo</a></p></div></section>',

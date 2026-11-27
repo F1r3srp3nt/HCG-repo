@@ -295,3 +295,17 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; letter-spacing: 0
   .card, .btn, .badge, .banner-frame { border: 1px solid CanvasText; clip-path: none; }
   .circuit { display: none; }
 }
+
+/* Package discovery filters (index) */
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 16px; align-items: end; margin: 0 0 20px; }
+.filters label { display: flex; flex-direction: column; gap: 6px; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #8aa0b3); }
+.filters input, .filters select { font: inherit; font-size: .95rem; letter-spacing: normal; text-transform: none; color: inherit; background: rgba(0,0,0,.45);
+  border: 1px solid rgba(47,211,230,.35); border-radius: 6px; padding: 9px 10px; min-width: 0; }
+.filters input:focus, .filters select:focus { outline: 2px solid rgba(47,211,230,.8); outline-offset: 1px; }
+.filters .hint { grid-column: 1 / -1; margin: 0; }
+.pkg-card[hidden] { display: none; }
+/* Account / trust tables */
+.kv-table { width: 100%; border-collapse: collapse; }
+.kv-table th, .kv-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.kv-table th { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #8aa0b3); font-weight: 600; }
+code.fpr { word-break: break-all; }

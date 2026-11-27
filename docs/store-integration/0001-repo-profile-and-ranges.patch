@@ -1,0 +1,148 @@
+From 30b39906ea704edaa6c3f24e99debdabda48e2c8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 02:22:25 +0000
+Subject: [PATCH] HCG Repo Profile endpoint and range requests for protected
+ downloads (proposed, from HCG Repo)
+
+- GET /api/v1/repo/profile: read-only HCG Repo view of the signed-in account from library() (owned items mapped to
+  Debian package IDs, purchases, connected package managers), credentialed CORS for HCG_STORE_REPO_ORIGINS only. It
+  grants nothing; every download is still decided at request time.
+- streamArtifact: a single byte range (206/416, Accept-Ranges), applied only after every access check, for resumed or
+  retried package-manager downloads; also for /api/v1/downloads.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QS5EmmvAHiKVudQmscdEHx
+---
+ web-hcg-store/server/src/app.ts   | 63 +++++++++++++++++++++++++++++--
+ web-hcg-store/server/src/sileo.ts |  6 +--
+ 2 files changed, 63 insertions(+), 6 deletions(-)
+
+diff --git a/web-hcg-store/server/src/app.ts b/web-hcg-store/server/src/app.ts
+index da8f5d3..1110c3b 100644
+--- a/web-hcg-store/server/src/app.ts
++++ b/web-hcg-store/server/src/app.ts
+@@ -385,15 +385,41 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+     if (!mayDownload(access, artifact.id)) {
+       return errorJson(res, 403, "not_released", "This file is not approved for delivery.");
+     }
+-    return streamArtifact(res, artifact.storageKey, artifact.fileName, artifact.contentType);
++    return streamArtifact(res, artifact.storageKey, artifact.fileName, artifact.contentType, req.headers.range);
+   }
+ 
+-  function streamArtifact(res: ServerResponse, storageKey: string, fileName: string, contentType: string) {
++  function streamArtifact(res: ServerResponse, storageKey: string, fileName: string, contentType: string, range?: string) {
+     const root = resolve(cfg.artifactStorageDir);
+     const file = resolve(root, storageKey);
+     if (!file.startsWith(root + sep) || !existsSync(file)) return errorJson(res, 404, "not_found", "File not found in private storage.");
+     const size = statSync(file).size;
++    // A single byte range (resumed or retried package-manager downloads). Only after every access check passed.
++    const r = range ? /^bytes=(\d*)-(\d*)$/.exec(range.trim()) : null;
++    if (range && r && (r[1] || r[2])) {
++      let start = r[1] ? Number(r[1]) : size - Number(r[2]);
++      let end = r[1] && r[2] ? Number(r[2]) : size - 1;
++      if (start < 0) start = 0;
++      if (end >= size) end = size - 1;
++      if (start > end || start >= size) {
++        res.writeHead(416, { "content-range": `bytes */${size}`, "cache-control": "private, no-store, max-age=0" });
++        return res.end();
++      }
++      res.writeHead(206, {
++        "content-type": contentType,
++        "content-length": String(end - start + 1),
++        "content-range": `bytes ${start}-${end}/${size}`,
++        "accept-ranges": "bytes",
++        "content-disposition": `attachment; filename="${fileName.replace(/["\\]/g, "_")}"`,
++        "cache-control": "private, no-store, max-age=0",
++        vary: "Cookie, Authorization",
++        "x-content-type-options": "nosniff",
++        "referrer-policy": "no-referrer",
++      });
++      createReadStream(file, { start, end }).pipe(res);
++      return;
++    }
+     res.writeHead(200, {
++      "accept-ranges": "bytes",
+       "content-type": contentType,
+       "content-length": String(size),
+       "content-disposition": `attachment; filename="${fileName.replace(/["\\]/g, "_")}"`,
+@@ -609,6 +635,37 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+       return json(res, 200, await library(fresh.session));
+     }
+     if ((match = /^\/api\/v1\/downloads\/([a-z0-9-]+)$/.exec(p)) && m === "GET") return download(req, res, match[1]!);
++    if (p === "/api/v1/repo/profile" && (m === "GET" || m === "OPTIONS")) {
++      // HCG Repo Profile (HCG-repo docs/PROFILE.md): the signed-in account's HCG Repo view, read-only, from the same
++      // library() the Store's own account page uses. Credentialed CORS only for HCG_STORE_REPO_ORIGINS. It grants
++      // nothing: every download is still decided by HCG's check at the moment it is requested.
++      const cors = repoCors(req);
++      if (m === "OPTIONS") return send(res, 204, "", cors);
++      const fresh = await freshSession(req);
++      const signIn = { sign_in_url: `${cfg.publicOrigin}/auth/login?return_to=${encodeURIComponent("/account")}`, store_url: cfg.publicOrigin };
++      const ended: Record<string, string> = fresh.ended ? { "set-cookie": sessions.clearCookie() } : {};
++      if (fresh.unavailable) return json(res, 503, { signedIn: null, unavailable: true, message: "Your HCG account could not be checked right now.", ...signIn }, cors);
++      if (!fresh.session) return json(res, 200, { signedIn: false, ...signIn }, { ...cors, ...ended });
++      const lib = await library(fresh.session);
++      const packages: Record<string, string> = {};
++      for (const product of registry.catalogue.products) {
++        for (const e of product.editions) {
++          const pkg = e.identifiers.find((i) => i.kind === "debian-package")?.value;
++          if (pkg) packages[`${product.id}:${e.id}`] = pkg;
++        }
++      }
++      return json(res, 200, {
++        signedIn: true,
++        user: { name: fresh.session.name ?? null, email: fresh.session.email ?? null },
++        library: lib.owned.filter((o) => o.hcgRepoKey).map((o) => ({ ...o, package: packages[`${o.productId}:${o.editionId}`] ?? null })),
++        purchases: lib.purchases,
++        connectedPackageManagers: lib.devices,
++        devicesNote: lib.devicesNote,
++        ownershipUnavailable: lib.ownershipUnavailable,
++        downloadsMessage: lib.downloadsMessage,
++        ...signIn,
++      }, cors);
++    }
+     if ((match = /^\/api\/v1\/repo\/products\/([a-z0-9-]+)\/access$/.exec(p)) && (m === "GET" || m === "OPTIONS")) {
+       const cors = repoCors(req);
+       if (m === "OPTIONS") return send(res, 204, "", cors);
+@@ -644,7 +701,7 @@ export function createStoreApp(deps: AppDeps): StoreApp {
+     }
+     if (await publishing.route(req, res, url)) return;
+     if (p.startsWith("/repo-api/v1/sileo/")) return handleSileo.route(sileoCtx, req, res, url);
+-    if ((match = /^\/repo-api\/v1\/files\/([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.exec(p)) && m === "GET") return handleSileo.serveFile(sileoCtx, res, match[1]!);
++    if ((match = /^\/repo-api\/v1\/files\/([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.exec(p)) && m === "GET") return handleSileo.serveFile(sileoCtx, res, match[1]!, req.headers.range);
+     if (p.startsWith("/api/") || p.startsWith("/auth/") || p.startsWith("/repo-api/")) return errorJson(res, 404, "not_found", "Not found.");
+     if (m === "GET" || m === "HEAD") return serveStatic(req, res, p);
+     return errorJson(res, 405, "method_not_allowed", "Method not allowed.");
+diff --git a/web-hcg-store/server/src/sileo.ts b/web-hcg-store/server/src/sileo.ts
+index 9c1dae9..2e58330 100644
+--- a/web-hcg-store/server/src/sileo.ts
++++ b/web-hcg-store/server/src/sileo.ts
+@@ -38,7 +38,7 @@ export interface SileoCtx {
+   accessDeps: AccessDeps;
+   now: () => number;
+   startLogin: (res: ServerResponse, returnTo: string, purpose: "web" | "sileo", purposeData: string | null) => void;
+-  streamArtifact: (res: ServerResponse, storageKey: string, fileName: string, contentType: string) => void;
++  streamArtifact: (res: ServerResponse, storageKey: string, fileName: string, contentType: string, range?: string) => void;
+ }
+ 
+ /** Sileo treats `success: false` / `error` as failure and clears its token when `invalidate` is true. */
+@@ -164,7 +164,7 @@ async function route(ctx: SileoCtx, req: IncomingMessage, res: ServerResponse, u
+  * default) and is re-checked when used: the session must still be active and the entitlement must
+  * still be granted, so revocation applies even inside the expiry window.
+  */
+-async function serveFile(ctx: SileoCtx, res: ServerResponse, token: string) {
++async function serveFile(ctx: SileoCtx, res: ServerResponse, token: string, range?: string) {
+   const payload = verifyPayload<{ a: string; s: string; h: string; exp: number }>(ctx.cfg.secretKey, "repo-file", token);
+   if (!payload || payload.exp < ctx.now()) return errorJson(res, 403, "link_expired", "This download link has expired.");
+   const s = ctx.sessions.byHash(payload.h);
+@@ -176,7 +176,7 @@ async function serveFile(ctx: SileoCtx, res: ServerResponse, token: string) {
+   if (!mayDownload(a, file.id)) {
+     return errorJson(res, 403, "not_entitled", "Your HCG account does not include this package.");
+   }
+-  return ctx.streamArtifact(res, file.storageKey, file.fileName, "application/vnd.debian.binary-package");
++  return ctx.streamArtifact(res, file.storageKey, file.fileName, "application/vnd.debian.binary-package", range);
+ }
+ 
+ function completeLogin(ctx: SileoCtx, res: ServerResponse, session: Session) {
+-- 
+2.43.0
+
