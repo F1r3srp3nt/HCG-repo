@@ -16,7 +16,7 @@ from email.utils import format_datetime
 from pathlib import Path
 
 from . import debian
-from .config import (LOCK_CHANNELS, PackageMeta, Report, RepoConfig, check_package_meta, entry_channel, load_lock,
+from .config import (LOCK_CHANNELS, PackageMeta, Report, RepoConfig, acknowledge_warnings, check_package_meta, entry_channel, load_lock,
                      load_package_meta)
 from .debinspect import DebInfo, InspectError, inspect_deb, validate_deb
 
@@ -61,6 +61,7 @@ def load_pool(cfg: RepoConfig, report: Report, extra: list[tuple[DebInfo, str]] 
             continue
         meta = load_package_meta(cfg, info.package)
         pr = validate_deb(info, cfg, meta)
+        acknowledge_warnings(meta, info.version, pr)
         check_package_meta(meta, pr)
         if not isinstance(src, DebInfo) and rel != expected_pool_rel(info):
             pr.error("pool-noncanonical-name", f"{rel} should be stored as {expected_pool_rel(info)}")

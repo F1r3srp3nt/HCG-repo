@@ -1,0 +1,25 @@
+{
+  "packages": [
+    {
+      "architecture": "iphoneos-arm64",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.qualification.free_1.0.0_iphoneos-arm64.deb",
+      "imported_at": "2026-11-28T00:24:41Z",
+      "package": "com.hakmicapitalgroup.qualification.free",
+      "sha256": "1e73f104879fef7847e3184912da88434beaed7b64177c8d6207d9a313a29b78",
+      "size": 988,
+      "status": "published",
+      "version": "1.0.0"
+    },
+    {
+      "architecture": "iphoneos-arm64",
+      "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.qualification.paid_1.0.0_iphoneos-arm64.deb",
+      "imported_at": "2026-11-28T00:24:35Z",
+      "package": "com.hakmicapitalgroup.qualification.paid",
+      "sha256": "9c5820dc1cc3cdbca88cb312b3d772dc2e9ffd0476d4f4e2a5b20a358c71803b",
+      "size": 1082,
+      "status": "protected",
+      "version": "1.0.0"
+    }
+  ],
+  "schema": 1
+}

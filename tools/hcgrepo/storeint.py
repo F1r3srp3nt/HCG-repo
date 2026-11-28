@@ -428,7 +428,9 @@ def render_status(d: dict) -> str:
     lines.append(f"Unmapped ({d['catalogue_source']})")
     lines += [f"  {u['side']:<6} {u.get('store_product') or u.get('key')}: {u['reason']}" for u in d["unmapped"]] or ["  none"]
     inv = [m for m in d["invalid_metadata"] if m["level"] == "error"]
-    lines.append(f"Invalid metadata     {len(inv)} error(s), {len(d['invalid_metadata']) - len(inv)} warning(s)")
+    nw = sum(1 for m in d["invalid_metadata"] if m["level"] == "warning")
+    na = sum(1 for m in d["invalid_metadata"] if m["level"] == "acknowledged")
+    lines.append(f"Invalid metadata     {len(inv)} error(s), {nw} warning(s), {na} acknowledged")
     lines += [f"  {m['code']}: {m['message']}" for m in inv]
     lines.append(f"Store → HCG Repo     current releases: {d['published_feed']}")
     lines += [f"  {r['state']:<22} {r['product']} {r['version']} {r.get('store_release')}: {r['next']}" for r in d["publication_plan"]] or ["  nothing published for HCG Repo products"]

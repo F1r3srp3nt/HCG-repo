@@ -1,0 +1,28 @@
+{
+  "architecture": "iphoneos-arm64",
+  "commit": "93f5c92261ceea7372539fa1bb7df806ba4ac471",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.qualification.free_1.0.0_iphoneos-arm64.deb",
+  "imported_at": "2026-11-28T00:24:41Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [],
+    "architecture": "iphoneos-arm64",
+    "binaries": [],
+    "binary_minimum_ios": null,
+    "depends": "firmware (>= 15.0)",
+    "maintainer_scripts": [],
+    "package": "com.hakmicapitalgroup.qualification.free",
+    "sha256": "1e73f104879fef7847e3184912da88434beaed7b64177c8d6207d9a313a29b78",
+    "size": 988,
+    "version": "1.0.0"
+  },
+  "original_filename": "com.hakmicapitalgroup.qualification.free_1.0.0_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.qualification.free",
+  "repository": "F1r3srp3nt/HCG-repo",
+  "schema": 1,
+  "sha256": "1e73f104879fef7847e3184912da88434beaed7b64177c8d6207d9a313a29b78",
+  "sha512": "4e0ff96570fd45e17eb6ad378d11ee1b3de5e12b92afca5adad4481b88e2615d69a896b9d3990bc69ab812781f175ee7b693d0caf360f98fdb829e2ad325d33c",
+  "size": 988,
+  "source": "local-file",
+  "version": "1.0.0"
+}

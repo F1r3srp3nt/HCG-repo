@@ -140,7 +140,7 @@ Live findings on 27 Nov 2026 (production, read-only):
   downloads `free-testing-only`, publishing `enabled`.
 - `hcg-animation-center` points to a Store product that is not in HCG Store's catalogue.
 - `hcg-vortex` has no Store product.
-- 8 metadata warnings and no errors.
+- 8 metadata warnings and no errors. Since 28 Nov they are reviewed acknowledgements (`[[validation.acknowledged]]` in the package's `package.toml`) for the exact published builds whose bytes cannot change. Nexus 0.6.0~beta1 and Vortex 0.1.0~beta2 already fixed them, and no package identity changed.
 - HCG Store currently publishes no `.deb` for HCG Repo's products.
 
 ## Tests (TEST environment, [COMMERCIAL_TEST.md](COMMERCIAL_TEST.md))
@@ -168,6 +168,6 @@ Not shown by these tests: a physical Sileo or Zebra. Device qualification follow
 2. HCG Store: protected downloads `enabled`, and HCG Payments with Stripe sandbox, then live.
 3. An approved Store release and offer for the first paid product; recorded with `import-store-release`; commercial
    gates opened.
-4. Physical qualification on iPhone 11 Pro Max and iPhone 13 Pro (Sileo first; Zebra separately).
+4. Physical qualification on iPhone 11 Pro Max and iPhone 13 Pro (Sileo first; Zebra separately): [QUALIFICATION_SILEO.md](QUALIFICATION_SILEO.md).
 5. `[payment_provider] advertise = true` with your approval record, in a reviewed PR. Then **Publish** with
    `advertise_payment_provider`.

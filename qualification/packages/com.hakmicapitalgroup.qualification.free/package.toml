@@ -1,0 +1,27 @@
+# Qualification fixture (docs/QUALIFICATION_SILEO.md). Built by tools/qualification/build_packages.py.
+
+[access]
+level = "public"
+exception = "Owner instruction, 28 Nov 2026: the qualification source must show that free packages install normally in Sileo. A free qualification fixture, only in the unlisted qualification source."
+exception_versions = ["1.0.0"]
+
+[display]
+summary = "Free qualification package: installs from this source without an HCG account."
+icon = "icon.png"
+tint = "#2FD3E6"
+notes = """
+Part of the **HCG Repo qualification** of HCG Store as HCG Repo's payment provider in Sileo.
+
+Installs `/var/jb/usr/share/hcg-qualification/free.txt` and `/var/jb/usr/bin/hcg-qualification-free`, which prints that file. No maintainer scripts, no binaries, no respring.
+"""
+install = """
+1. Install it in Sileo like any free package. No sign-in is needed.
+2. Check: Filza → `/var/jb/usr/share/hcg-qualification/free.txt`, or run `hcg-qualification-free` in a terminal.
+"""
+removal = """
+Remove **HCG Qualification (Free)** in Sileo. It leaves nothing behind.
+"""
+
+[versions."1.0.0"]
+status = "experimental"
+label = "Qualification fixture: free install test."

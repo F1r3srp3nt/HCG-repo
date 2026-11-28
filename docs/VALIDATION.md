@@ -45,6 +45,10 @@ There are three layers of checks. Any **error** blocks import, build and publica
 
 `smoke` and the CI build for each configured base URL, serve the result **under that URL's path prefix** (`/HCG-repo/` for project Pages, `/` for the custom domain), and verify it over HTTP. Requests outside the prefix return 404, as they do on GitHub Pages.
 
+## Acknowledged warnings
+
+A warning about a published build whose bytes cannot change can be acknowledged for that exact version with `[[validation.acknowledged]]` in `packages/<id>/package.toml`. It needs `code`, `versions`, `reason`, `reviewed_by` and `date`. It never applies to errors or to other versions, and the finding stays visible as `ack`.
+
 ## Regression tests (`python3 -m unittest discover -s tests`)
 
 87 tests in `tests/`. They cover:

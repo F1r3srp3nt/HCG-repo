@@ -1,0 +1,32 @@
+{
+  "architecture": "iphoneos-arm64",
+  "commit": "93f5c92261ceea7372539fa1bb7df806ba4ac471",
+  "control": "Package: com.hakmicapitalgroup.qualification.paid\nName: HCG Qualification (Paid TEST)\nVersion: 1.0.0\nArchitecture: iphoneos-arm64\nMaintainer: Hakmi Capital Group <noreply@hakmicapitalgroup.com>\nAuthor: Hakmi Capital Group\nSection: Utilities\nDepends: firmware (>= 15.0)\nDescription: TEST commercial package for HCG Store payment-provider qualification\n Qualification fixture for HCG Repo in Sileo. It is delivered only by HCG Store after an entitlement check (a sandbox TEST purchase). It has no value and grants nothing.\n Installs /var/jb/usr/share/hcg-qualification and /var/jb/usr/bin/hcg-qualification-paid. No scripts.\n",
+  "filename": "pool/iphoneos-arm64/com.hakmicapitalgroup.qualification.paid_1.0.0_iphoneos-arm64.deb",
+  "imported_at": "2026-11-28T00:24:35Z",
+  "importer": "hcgrepo 1.0.0",
+  "inspection": {
+    "apps": [],
+    "architecture": "iphoneos-arm64",
+    "binaries": [],
+    "binary_minimum_ios": null,
+    "depends": "firmware (>= 15.0)",
+    "maintainer_scripts": [],
+    "package": "com.hakmicapitalgroup.qualification.paid",
+    "sha256": "9c5820dc1cc3cdbca88cb312b3d772dc2e9ffd0476d4f4e2a5b20a358c71803b",
+    "size": 1082,
+    "version": "1.0.0"
+  },
+  "md5": "b18703c397d9b0f81aa955fd84928c6b",
+  "original_filename": "com.hakmicapitalgroup.qualification.paid_1.0.0_iphoneos-arm64.deb",
+  "package": "com.hakmicapitalgroup.qualification.paid",
+  "repository": "F1r3srp3nt/HCG-repo",
+  "schema": 1,
+  "sha1": "4dcb4cafc3124418f22a21725a7c9ca447674502",
+  "sha256": "9c5820dc1cc3cdbca88cb312b3d772dc2e9ffd0476d4f4e2a5b20a358c71803b",
+  "sha512": "9cdd0cb153c60b6e7b01d1fcc212e5c98a89ca14239046236c8b04a2d22d5b407beaf4b6f02b8baa09b22be095c950411212b98bca3c35b0c3e0935a6c213499",
+  "size": 1082,
+  "source": "local-file",
+  "storage": "protected: this .deb is not stored in this public repository",
+  "version": "1.0.0"
+}

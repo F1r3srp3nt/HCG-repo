@@ -1,0 +1,27 @@
+# Qualification fixture (docs/QUALIFICATION_SILEO.md). Built by tools/qualification/build_packages.py.
+# Paid (TEST): never stored here; HCG Store holds the bytes and delivers them after its own entitlement check.
+
+[access]
+level = "paid"
+
+[display]
+summary = "TEST commercial package: HCG Store delivers it only after a sandbox purchase on your HCG account."
+icon = "icon.png"
+tint = "#2FD3E6"
+notes = """
+Part of the **HCG Repo qualification** of HCG Store as HCG Repo's payment provider in Sileo. It has no value: it exists to test sign-in, a **sandbox** purchase (no real money) and authorized delivery.
+
+Installs `/var/jb/usr/share/hcg-qualification/paid.txt` and `/var/jb/usr/bin/hcg-qualification-paid`. No maintainer scripts, no binaries, no respring.
+"""
+install = """
+1. In Sileo, open the package and sign in with your HCG account when asked (HCG Connect in a secure browser sheet).
+2. Buy it with the sandbox checkout (HCG Store, Stripe test card). No real payment is taken.
+3. Install. Sileo asks HCG Store for a short-lived link to this exact file.
+"""
+removal = """
+Remove **HCG Qualification (Paid TEST)** in Sileo. It leaves nothing behind.
+"""
+
+[versions."1.0.0"]
+status = "experimental"
+label = "Qualification fixture: sandbox purchase and authorized install test."

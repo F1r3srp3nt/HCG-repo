@@ -110,6 +110,15 @@ jobs:
           python3 -c 'import json;d=json.load(open("_site/build-info.json"));print("signed=" + str(d["signature_verified"]).lower())' >> "$GITHUB_OUTPUT"
           find _site -type f | sort
 
+      - name: Keep the qualification source while qualification is active (docs/QUALIFICATION_SILEO.md)
+        run: |
+          active=$(python3 -c 'import tomllib;print(str(tomllib.load(open("qualification/config/repo.toml","rb")).get("qualification",{}).get("active",False)).lower())')
+          if [ "$active" = "true" ]; then
+            python3 tools/qualification/assemble.py --site _site --preflight
+          else
+            echo "No active qualification source."
+          fi
+
       - name: Payment provider advertisement (second key; docs/STORE_PROVIDER.md)
         env:
           ACK: ${{ inputs.advertise_payment_provider }}

@@ -1,0 +1,114 @@
+# Deploy the unlisted HCG Repo QUALIFICATION source (docs/QUALIFICATION_SILEO.md) WITHOUT changing the public site.
+#
+# Runs only when started by hand from main, and only when qualification/config/repo.toml [qualification] active = true
+# (the owner's recorded deployment approval). It:
+#   1. rebuilds the public site from the exact revision that is live now (build-info.json), with that revision's own
+#      tools and SOURCE_DATE_EPOCH, and proves every file is byte-identical to the live site;
+#   2. adds the qualification source under its unlisted path (tools/qualification/assemble.py), verified the way Sileo
+#      reads it, after HCG Store's payment provider answers as "HCG Store";
+#   3. deploys that to GitHub Pages and checks the live public sources are unchanged.
+# The public sources (/repo/, /repo/candidate/) and every other page stay exactly as they are.
+name: Qualification source
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type QUALIFY to deploy the unlisted qualification source (public sources stay byte-identical)"
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      live_packages: ${{ steps.live.outputs.packages }}
+      qpath: ${{ steps.live.outputs.qpath }}
+    steps:
+      - name: Confirm
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = "QUALIFY" ] || { echo "::error::Type QUALIFY to confirm"; exit 1; }
+
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: Owner approval recorded ([qualification] active)
+        run: |
+          python3 -c 'import tomllib,sys;q=tomllib.load(open("qualification/config/repo.toml","rb"))["qualification"];sys.exit(0 if q.get("active") else "[qualification] active = false: deployment is not approved")'
+
+      - name: Tests and validation (both sources)
+        run: |
+          python3 -m unittest discover -s tests
+          bin/hcgrepo validate
+          HCG_REPO_ROOT="$PWD/qualification" bin/hcgrepo validate
+
+      - name: Rebuild exactly what is live
+        id: live
+        run: |
+          base=https://repo.hakmicapitalgroup.com/
+          rev=$(curl -fsS "${base}build-info.json" | python3 -c 'import json,sys;print(json.load(sys.stdin)["revision"])')
+          echo "live revision: $rev"
+          git merge-base --is-ancestor "$rev" HEAD || { echo "::error::live revision $rev is not on main"; exit 1; }
+          for d in diag/d1-minimal/repo/Release; do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' "$base$d")" = 404 ] || { echo "::error::live diagnostics found; rebuild them first"; exit 1; }
+          done
+          git worktree add --detach "$RUNNER_TEMP/live" "$rev"
+          (cd "$RUNNER_TEMP/live" && SOURCE_DATE_EPOCH=$(git log -1 --format=%ct "$rev") bin/hcgrepo build --target production --out "$GITHUB_WORKSPACE/_site")
+          echo "packages=$(curl -fsS "${base}repo/Packages" | sha256sum | cut -c1-64)" >> "$GITHUB_OUTPUT"
+          echo "qpath=$(python3 -c 'import tomllib;print(tomllib.load(open("qualification/config/repo.toml","rb"))["qualification"]["path"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Prove the rebuilt public site is byte-identical to the live site
+        run: python3 tools/qualification/compare_live.py _site https://repo.hakmicapitalgroup.com/
+
+      - name: Add the qualification source (verified like Sileo; HCG Store provider preflight)
+        run: python3 tools/qualification/assemble.py --site _site --preflight
+
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+
+      - name: Public sources unchanged; qualification source reachable
+        env:
+          BEFORE: ${{ needs.build.outputs.live_packages }}
+          QPATH: ${{ needs.build.outputs.qpath }}
+        run: |
+          base=https://repo.hakmicapitalgroup.com/
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${base}${QPATH}repo/Release")
+            [ "$code" = 200 ] && break; sleep 30
+          done
+          [ "$code" = 200 ] || { echo "::error::${QPATH}repo/Release is not reachable (HTTP $code)"; exit 1; }
+          after=$(curl -fsS "${base}repo/Packages" | sha256sum | cut -c1-64)
+          [ "$after" = "$BEFORE" ] || { echo "::error::public Packages changed"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "${base}repo/payment_endpoint")" = 404 ] || { echo "::error::the public source advertises a payment provider"; exit 1; }
+          echo "Qualification source: ${base}${QPATH}repo/"
+          echo "payment_endpoint: $(curl -fsS "${base}${QPATH}repo/payment_endpoint")"

@@ -52,7 +52,7 @@ class Report:
     def render(self) -> str:
         lines = []
         for level, code, msg in self.items:
-            lines.append(f"  {'ERROR' if level == 'error' else 'warn '} [{code}] {msg}")
+            lines.append(f"  {'ERROR' if level == 'error' else 'ack  ' if level == 'acknowledged' else 'warn '} [{code}] {msg}")
         return "\n".join(lines)
 
 
@@ -406,6 +406,9 @@ class RepoConfig:
     access_require_explicit: bool = True
     payment_endpoint: str = ""   # the ADVERTISED provider URL (written to <repo>/payment_endpoint); "" = not advertised
     payment_provider: PaymentProvider = field(default_factory=PaymentProvider)
+    store_eligibility: tuple = ("public",)   # [store] accept_eligibility: Store release eligibilities this source records
+    qualification_path: str = ""            # [qualification] path: where a qualification source is deployed in the site
+    qualification_active: bool = False      # [qualification] active: deployed (owner-approved) and kept by Publish
     channel: str = "stable"      # which channel this configuration builds: "stable" (/repo/) or "candidate"
     preview_listings: bool = False   # build --preview-listings: also render prepared commercial listings (never deployed)
     approver_keys: list = field(default_factory=list)   # [approvals] approver_keys: founder approval public keys
@@ -522,6 +525,13 @@ def load_config(root: Path | None = None) -> RepoConfig:
     if "payment_endpoint" in acc:
         raise ConfigError("[access] payment_endpoint was replaced by [payment_provider] url / advertise (docs/STORE_PROVIDER.md)")
     provider = parse_payment_provider(cfg.get("payment_provider", {}))
+    elig = tuple(str(x) for x in store.get("accept_eligibility", ["public"]))
+    if not elig or any(e not in ("public", "internal-testing") for e in elig):
+        raise ConfigError("[store] accept_eligibility may contain only \"public\" and \"internal-testing\" (never \"private\")")
+    qual = cfg.get("qualification", {})
+    qpath = str(qual.get("path", "")).strip()
+    if qpath and not re.fullmatch(r"qualification/[a-z0-9][a-z0-9-]{3,40}/", qpath):
+        raise ConfigError("[qualification] path must look like \"qualification/<slug>/\"")
     endpoint = provider.url if provider.advertise else ""
     return RepoConfig(
         root=root, origin=r["origin"], label=r["label"], suite=r["suite"], codename=r["codename"],
@@ -532,6 +542,7 @@ def load_config(root: Path | None = None) -> RepoConfig:
         public_key_file=s.get("public_key_file", "keys/hcg-repo-archive-key.asc"),
         external_deps=ext, products=parse_products(products), store_base_url=store_base,
         access_require_explicit=bool(acc.get("require_explicit", True)), payment_endpoint=endpoint, payment_provider=provider,
+        store_eligibility=elig, qualification_path=qpath, qualification_active=bool(qual.get("active", False)),
         publish_compatibility=bool(cfg.get("compatibility", {}).get("publish", False)),
         publish_trust=bool(cfg.get("trust", {}).get("publish", False)),
         signing_valid_days=int(s.get("valid_days", 0) or 0),
@@ -587,6 +598,10 @@ class PackageMeta:
     access_exception_versions: list[str] = field(default_factory=list)
     channel: str = ""            # [release] channel: "" or "beta"
     known_issues: str = ""       # [display] known_issues (markdown); required for a beta
+    # [[validation.acknowledged]]: a reviewed acknowledgement of a WARNING for exact published versions whose bytes
+    # cannot change (code, versions, reason, reviewed_by, date). It never applies to errors or to other versions, and
+    # the finding stays visible as "acknowledged".
+    acknowledged: list[dict] = field(default_factory=list)
 
     def access_for(self, version: str) -> str:
         """The access level of one version. A recorded exception makes exactly the versions in
@@ -640,6 +655,7 @@ def load_package_meta(cfg: RepoConfig, package: str) -> PackageMeta:
         entitlements={rel_path(k): v for k, v in review.get("entitlements", {}).items()},
         allow_setuid=[rel_path(p) for p in review.get("allow_setuid", [])],
         versions=data.get("versions", {}),
+        acknowledged=[dict(a) for a in data.get("validation", {}).get("acknowledged", [])],
     )
     cl = d / "CHANGELOG.md"
     if cl.exists():
@@ -665,7 +681,24 @@ def parse_changelog(text: str) -> dict[str, str]:
     return out
 
 
+def acknowledge_warnings(meta: PackageMeta, version: str, report: Report) -> None:
+    """Mark warnings covered by a [[validation.acknowledged]] record for this exact version as acknowledged."""
+    for i, (lvl, code, msg) in enumerate(report.items):
+        if lvl != "warning":
+            continue
+        a = next((a for a in meta.acknowledged if a.get("code") == code and version in [str(v) for v in a.get("versions", [])]), None)
+        if a:
+            report.items[i] = ("acknowledged", code, f"{msg} [acknowledged {a.get('date')} by {a.get('reviewed_by')}: {a.get('reason')}]")
+
+
 def check_package_meta(meta: PackageMeta, report: Report) -> None:
+    for a in meta.acknowledged:
+        missing = [k for k in ("code", "versions", "reason", "reviewed_by", "date") if not a.get(k)]
+        if missing or not isinstance(a.get("versions"), list):
+            report.error("meta-bad-acknowledgement", f"[[validation.acknowledged]] {a.get('code', '?')} needs code, versions "
+                                                     f"(a list of exact versions), reason, reviewed_by and date (missing {missing})")
+        elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(a["date"])):
+            report.error("meta-bad-acknowledgement", f"[[validation.acknowledged]] {a['code']}: date must be YYYY-MM-DD")
     for asset in (meta.icon, meta.header, *(s.get("file") for s in meta.screenshots)):
         if asset and (meta.directory is None or not (meta.directory / asset).is_file()):
             report.error("meta-missing-asset", f"package.toml references missing file {asset!r}")

@@ -1,0 +1,53 @@
+# HCG Repo QUALIFICATION source (docs/QUALIFICATION_SILEO.md): a separate, unlisted APT source for the owner's
+# physical Sileo qualification of HCG Store as HCG Repo's payment provider. It is NOT the public HCG Repo:
+#   - its own identity (Origin/Label/Suite), lock, package metadata and pool;
+#   - only the two qualification packages (com.hakmicapitalgroup.qualification.free / .paid);
+#   - deployed under an unlisted path on the same site, next to the public sources, which stay byte-identical.
+# Unlisted is not access-controlled: GitHub Pages cannot restrict a public repository's site. Protection of the paid
+# package does not depend on the path: HCG Store delivers it only after its own entitlement check.
+
+[repository]
+origin = "HCG Repo Qualification"
+label = "HCG Repo Qualification"
+suite = "qualification"
+codename = "hcg-qualification"
+version = "1.0"
+description = "HCG Repo qualification source for HCG Store payment-provider testing in Sileo. Not for general use."
+repo_subdir = "repo"
+architectures = ["iphoneos-arm64"]
+package_namespace = "com.hakmicapitalgroup."
+reserved_bundle_ids = ["com.hakmicapitalgroup.hcgterminal"]
+
+[urls]
+# The unlisted path. Sileo source: <qualification>repo/
+qualification = "https://repo.hakmicapitalgroup.com/qualification/54906bcc56/"
+default_target = "qualification"
+
+[qualification]
+# Where the deploy places this source inside the site, and whether Publish/Qualification deploys keep it.
+# active = true only once the owner approves deployment (docs/QUALIFICATION_SILEO.md, "Deploy").
+path = "qualification/54906bcc56/"
+active = false
+
+[signing]
+required = false
+fingerprint = ""
+public_key_file = "keys/hcg-repo-archive-key.asc"
+
+[access]
+require_explicit = true
+
+[payment_provider]
+# The reconciled HCG Store provider endpoint (docs/STORE_PROVIDER.md). The deploy refuses to run until it answers.
+url = "https://store.hakmicapitalgroup.com/api/sileo/v1/"
+trusted_hosts = ["store.hakmicapitalgroup.com"]
+# Advertised in THIS qualification source only. The public sources keep advertise = false (config/repo.toml).
+advertise = true
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026: Proceed with preparing the physical Sileo qualification milestone. Prepare a private candidate repository that I can add to Sileo on my physical jailbroken iPhone, to verify that HCG Store appears under Payment Providers, official branding, HCG Connect sign-in, purchased packages retrieved, free packages install, a sandbox commercial purchase, authorized commercial installation and denied unauthorized downloads. Keep the public repository unchanged until qualification is complete. Deployment only with the owner's approval."
+
+[store]
+base_url = "https://store.hakmicapitalgroup.com/"
+# Store releases this source may record: the qualification release is approved for internal testing, not the public.
+accept_eligibility = ["internal-testing"]

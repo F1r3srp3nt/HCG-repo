@@ -57,8 +57,9 @@ def check_release(cfg: RepoConfig, rec: dict, artifact_id: str, info: DebInfo | 
                 "withdraw it here too (hcgrepo withdraw) if it was recorded")
     elif status != "approved":
         r.error("store-release-not-approved", f"release status is {status!r}; only releases a person approved in HCG Store can be indexed")
-    elif elig != "public":
-        r.error("store-release-not-public", f"release is approved for {elig!r}; only public releases go into the public index")
+    elif elig not in cfg.store_eligibility:
+        r.error("store-release-not-public", f"release is approved for {elig!r}; this source records only "
+                                            f"{', '.join(cfg.store_eligibility)} releases ([store] accept_eligibility)")
     if "hcg-repo" not in (rec.get("destinations") or []):
         r.error("store-destination", "the release was not shipped to HCG Repo (destinations lacks hcg-repo)")
     if rec.get("productSource") != "catalogue":

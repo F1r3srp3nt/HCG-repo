@@ -212,7 +212,7 @@ nav button.on{color:var(--text);border-color:var(--accent)}main{padding:16px 20p
 table{width:100%;border-collapse:collapse;margin:8px 0 18px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:600;font-size:12px}code,.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
 .pill{display:inline-block;padding:1px 7px;border-radius:9px;font-size:12px;border:1px solid var(--line)}
-.passed,.validated,.approved,.prepared,.published,.ok,.recorded,.yes{color:var(--ok)}.new,.no,.unavailable{color:var(--warn)}.conflict,.error{color:var(--bad)}.failed,.refused,.withdrawn{color:var(--bad)}
+.passed,.validated,.approved,.prepared,.published,.ok,.recorded,.yes{color:var(--ok)}.new,.no,.unavailable,.warning{color:var(--warn)}.acknowledged{color:var(--muted)}.conflict,.error{color:var(--bad)}.failed,.refused,.withdrawn{color:var(--bad)}
 .partial,.passed-with-warnings,.protected{color:var(--warn)}.not-recorded,.not-run,.not-applicable{color:var(--muted)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:10px 0}
 pre{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);padding:10px;border-radius:6px;font-size:12px}

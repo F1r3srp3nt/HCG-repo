@@ -95,3 +95,13 @@ label = "Superseded by 0.3.1~beta1 — 0.2.1~beta1 plus the HCG Halo border inte
 [versions."0.2.1~beta1"]
 status = "experimental"
 label = "Free public beta demo — owner reports Nexus running on iPhone 13 Pro (version not stated); not yet a recorded device test."
+
+# Published, immutable builds whose control data cannot change without a new version (bytes, URLs and checksums are
+# never replaced). Fixed from 0.6.0~beta1 on, which declares firmware (>= 15.0). The website and the compatibility
+# registry already state iOS 15.0+ for every version (derived from the binaries).
+[[validation.acknowledged]]
+code = "firmware-undeclared"
+versions = ["0.2.1~beta1", "0.2.2~beta1", "0.3.1~beta1", "0.3.2~beta1", "0.3.3~beta1", "0.4.0~beta1", "0.5.0~beta1"]
+reason = "published Candidate builds kept for rollback; their Depends cannot change without new bytes; fixed in 0.6.0~beta1 (firmware >= 15.0); iOS 15.0+ is shown on every page"
+reviewed_by = "HCG Repo maintainers (Claude), on the owner's instruction of 28 Nov 2026 to resolve the warnings without changing package identities"
+date = "2026-11-28"

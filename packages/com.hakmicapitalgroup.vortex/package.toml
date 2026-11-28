@@ -104,3 +104,12 @@ status = "experimental"
 label = "Experimental beta — fixes the visual bugs seen in the 0.3.0 recording; not yet installed on a device"
 # Polish and fixes (F1-F3) after the partial recording of the previous build. No new effects. No device_tests entry
 # until a phone with a confirmed version has run it; performance and battery impact unmeasured.
+
+# 0.1.0~beta1 is the published build that failed to unpack (Known incompatible, docs/device-tests/vortex-0.1.0-beta1.md).
+# It stays recorded for history with its warning label; 0.1.0~beta2 and later use gzip members.
+[[validation.acknowledged]]
+code = "legacy-lzma-member"
+versions = ["0.1.0~beta1"]
+reason = "the published Known-incompatible build this check was written for; kept for history with its failure label; fixed in 0.1.0~beta2 (gzip)"
+reviewed_by = "HCG Repo maintainers (Claude), on the owner's instruction of 28 Nov 2026 to resolve the warnings without changing package identities"
+date = "2026-11-28"

@@ -1,0 +1,94 @@
+# Products of the HCG Repo qualification source (docs/QUALIFICATION_SILEO.md). Not shown on the public site.
+
+[[products]]
+key = "hcg-qualification-free"
+name = "HCG Qualification (Free)"
+package_ids = ["com.hakmicapitalgroup.qualification.free"]
+layouts = ["iphoneos-arm64"]
+kind = "Command-line tool"
+access = "public"
+status = "Qualification"
+summary = "Free qualification package: installs without an account."
+
+[[products]]
+key = "hcg-qualification"
+name = "HCG Qualification (Paid TEST)"
+package_ids = ["com.hakmicapitalgroup.qualification.paid"]
+layouts = ["iphoneos-arm64"]
+kind = "Command-line tool"
+access = "paid"
+status = "Qualification"
+summary = "TEST commercial package: delivered only by HCG Store after a sandbox purchase."
+store_slug = "hcg-repo-qualification"
+store_edition = "jailbreak"
+
+[products.commercial]
+release_channel = "commercial-release"
+publisher = "Hakmi Capital Group"
+category = "Qualification (TEST)"
+# Display only. HCG Store's sandbox offer sets the amount charged (Stripe sandbox, no real money).
+price = "0.99"
+currency = "EUR"
+price_note = "Sandbox TEST purchase, no real payment"
+availability = "Qualification only"
+description = [
+  "TEST package for the physical qualification of HCG Store as HCG Repo's payment provider in Sileo.",
+  "It has no value and grants nothing. HCG Store delivers it only after a sandbox TEST purchase on the tester's HCG account.",
+]
+store_page = "live"
+listing = "approved"
+store_readiness = "ready"
+commercial_release = "approved"
+approved_version = "1.0.0"
+purchases = "enabled"
+downloads = "enabled"
+installation = "enabled"
+
+[[products.commercial.approvals]]
+setting = "listing"
+value = "approved"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
+
+[[products.commercial.approvals]]
+setting = "store_readiness"
+value = "ready"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
+
+[[products.commercial.approvals]]
+setting = "commercial_release"
+value = "approved"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
+
+[[products.commercial.approvals]]
+setting = "approved_version"
+value = "1.0.0"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
+
+[[products.commercial.approvals]]
+setting = "purchases"
+value = "enabled"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
+
+[[products.commercial.approvals]]
+setting = "downloads"
+value = "enabled"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
+
+[[products.commercial.approvals]]
+setting = "installation"
+value = "enabled"
+approved_by = "owner (Hakmi Capital Group)"
+date = "2026-11-28"
+record = "Owner instruction, 28 Nov 2026, for the qualification source only: verify a sandbox commercial purchase and authorized commercial installation through Sileo on the owner's physical iPhone. Not a public release; the public sources are unchanged."
